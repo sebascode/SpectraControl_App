@@ -1,0 +1,16 @@
+[project]
+name = "spectra-control"
+version = "0.1.0"
+description = "Philips Hue controller and screen sync for Linux"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.136.1",
+    "httpx>=0.28.1",
+    "mss>=10.2.0",
+    "pydantic>=2.13.3",
+    "pyportal>=1.0.1",
+    "python-multipart>=0.0.27",
+    "uvicorn>=0.46.0",
+    "websockets>=16.0",
+]

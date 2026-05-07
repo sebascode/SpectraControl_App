@@ -1,0 +1,1832 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Spectra Control</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            /* ── VARIABLES ── */
+            :root {
+                --bg: #0c0c0f;
+                --surface: #13131a;
+                --surface2: #1a1a25;
+                --border: #ffffff0f;
+                --border2: #ffffff18;
+                --text: #e8e8f0;
+                --text-dim: #6b6b80;
+                --text-muted: #3a3a50;
+                --accent: #f5a623;
+                --accent2: #ff6b35;
+                --sync: #22d3a5;
+                --sync-dim: #22d3a530;
+                --danger: #ff4757;
+                --radius: 10px;
+                --radius-lg: 16px;
+                --mono: "DM Mono", monospace;
+                --sans: "Syne", sans-serif;
+                --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            /* ── RESET ── */
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            html {
+                font-size: 14px;
+            }
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: var(--sans);
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            /* ── AMBIENT BACKGROUND ── */
+            body::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                background:
+                    radial-gradient(
+                        ellipse 60% 40% at 80% 10%,
+                        #f5a62308 0%,
+                        transparent 60%
+                    ),
+                    radial-gradient(
+                        ellipse 50% 50% at 10% 80%,
+                        #ff6b3506 0%,
+                        transparent 60%
+                    );
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            /* ── LAYOUT ── */
+            #app {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+            }
+
+            /* ── TOPBAR ── */
+            .topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 18px 28px;
+                border-bottom: 1px solid var(--border);
+                background: #0c0c0fcc;
+                backdrop-filter: blur(12px);
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            .logo {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 1.15rem;
+                font-weight: 800;
+                letter-spacing: -0.5px;
+            }
+            .logo-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: var(--accent);
+                box-shadow: 0 0 12px var(--accent);
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.4;
+                }
+            }
+
+            .topbar-right {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .status-badge {
+                font-family: var(--mono);
+                font-size: 0.75rem;
+                padding: 4px 10px;
+                border-radius: 20px;
+                border: 1px solid var(--border2);
+                background: var(--surface);
+                color: var(--text-dim);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .status-badge.connected {
+                border-color: var(--sync);
+                color: var(--sync);
+            }
+            .status-badge::before {
+                content: "";
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+
+            /* ── MAIN GRID ── */
+            .main {
+                flex: 1;
+                display: grid;
+                grid-template-columns: 280px 1fr;
+                grid-template-rows: 1fr;
+                gap: 0;
+                height: calc(100vh - 61px);
+            }
+
+            /* ── SIDEBAR ── */
+            .sidebar {
+                border-right: 1px solid var(--border);
+                background: var(--surface);
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            .sidebar-section {
+                padding: 20px;
+                border-bottom: 1px solid var(--border);
+            }
+            .section-label {
+                font-family: var(--mono);
+                font-size: 0.65rem;
+                font-weight: 500;
+                color: var(--text-muted);
+                letter-spacing: 0.15em;
+                text-transform: uppercase;
+                margin-bottom: 12px;
+            }
+
+            /* ── CONFIG PANEL ── */
+            .config-panel {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .config-input {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: var(--radius);
+                padding: 8px 10px;
+                color: var(--text);
+                font-family: var(--mono);
+                font-size: 0.78rem;
+                width: 100%;
+                outline: none;
+                transition: border-color var(--transition);
+            }
+            .config-input::placeholder {
+                color: var(--text-muted);
+            }
+            .config-input:focus {
+                border-color: var(--accent);
+            }
+
+            .btn {
+                border: none;
+                border-radius: var(--radius);
+                padding: 9px 14px;
+                cursor: pointer;
+                font-family: var(--sans);
+                font-size: 0.8rem;
+                font-weight: 600;
+                transition: all var(--transition);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                width: 100%;
+            }
+            .btn-primary {
+                background: var(--accent);
+                color: #0c0c0f;
+            }
+            .btn-primary:hover {
+                background: #ffbc55;
+                transform: translateY(-1px);
+            }
+            .btn-ghost {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                color: var(--text-dim);
+            }
+            .btn-ghost:hover {
+                border-color: var(--border);
+                color: var(--text);
+            }
+            .btn-sync {
+                background: var(--sync-dim);
+                border: 1px solid var(--sync);
+                color: var(--sync);
+            }
+            .btn-sync:hover {
+                background: #22d3a520;
+            }
+            .btn-sync.active {
+                background: var(--sync);
+                color: #0c0c0f;
+            }
+            .btn-danger {
+                background: #ff475720;
+                border: 1px solid var(--danger);
+                color: var(--danger);
+            }
+            .btn-danger:hover {
+                background: #ff475730;
+            }
+            .btn:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            /* ── SYNC PANEL ── */
+            .sync-panel {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .sync-indicator {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: var(--radius);
+                padding: 12px;
+                font-family: var(--mono);
+                font-size: 0.75rem;
+                color: var(--text-dim);
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .sync-indicator.active {
+                border-color: var(--sync);
+                color: var(--sync);
+            }
+            .sync-speed {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .speed-label {
+                color: var(--text-dim);
+                font-size: 0.7rem;
+            }
+
+            input[type="range"] {
+                -webkit-appearance: none;
+                width: 100%;
+                height: 4px;
+                border-radius: 2px;
+                background: var(--surface2);
+                outline: none;
+                cursor: pointer;
+            }
+            input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: var(--accent);
+                cursor: pointer;
+            }
+
+            .light-checkboxes {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .light-check {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 8px;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background var(--transition);
+            }
+            .light-check:hover {
+                background: var(--surface2);
+            }
+            .light-check input[type="checkbox"] {
+                accent-color: var(--sync);
+                cursor: pointer;
+            }
+            .light-check-label {
+                font-size: 0.8rem;
+                color: var(--text-dim);
+            }
+
+            /* ── CONTENT AREA ── */
+            .content {
+                overflow-y: auto;
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            /* ── TABS ── */
+            .tabs {
+                display: flex;
+                gap: 4px;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 0;
+            }
+            .tab {
+                padding: 8px 18px;
+                border: none;
+                background: none;
+                color: var(--text-muted);
+                font-family: var(--sans);
+                font-size: 0.85rem;
+                font-weight: 600;
+                cursor: pointer;
+                border-bottom: 2px solid transparent;
+                margin-bottom: -1px;
+                transition: all var(--transition);
+            }
+            .tab.active {
+                color: var(--text);
+                border-bottom-color: var(--accent);
+            }
+            .tab:hover {
+                color: var(--text-dim);
+            }
+
+            /* ── CARDS ── */
+            .cards-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 14px;
+            }
+
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+                padding: 18px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                transition:
+                    border-color var(--transition),
+                    transform var(--transition);
+                position: relative;
+                overflow: hidden;
+            }
+            .card:hover {
+                border-color: var(--border2);
+                transform: translateY(-1px);
+            }
+            .card.on {
+                border-color: #ffffff18;
+            }
+            .card.off {
+                opacity: 0.7;
+            }
+            .card.unreachable {
+                opacity: 0.4;
+            }
+
+            /* Color accent bar */
+            .card::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: var(--card-color, var(--border));
+                transition: background 0.5s;
+            }
+
+            .card-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .card-name {
+                font-size: 0.95rem;
+                font-weight: 700;
+                line-height: 1.2;
+            }
+            .card-type {
+                font-family: var(--mono);
+                font-size: 0.65rem;
+                color: var(--text-muted);
+                margin-top: 2px;
+            }
+
+            /* ── TOGGLE SWITCH ── */
+            .toggle {
+                position: relative;
+                width: 38px;
+                height: 22px;
+                cursor: pointer;
+                flex-shrink: 0;
+            }
+            .toggle input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .toggle-track {
+                position: absolute;
+                inset: 0;
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 11px;
+                transition: all var(--transition);
+            }
+            .toggle-track::after {
+                content: "";
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: var(--text-muted);
+                transition: all var(--transition);
+            }
+            .toggle input:checked + .toggle-track {
+                background: var(--accent);
+                border-color: var(--accent);
+            }
+            .toggle input:checked + .toggle-track::after {
+                transform: translateX(16px);
+                background: #0c0c0f;
+            }
+
+            /* ── SLIDERS IN CARD ── */
+            .card-controls {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .slider-row {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .slider-header {
+                display: flex;
+                justify-content: space-between;
+            }
+            .slider-label {
+                font-family: var(--mono);
+                font-size: 0.65rem;
+                color: var(--text-muted);
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+            }
+            .slider-val {
+                font-family: var(--mono);
+                font-size: 0.7rem;
+                color: var(--accent);
+            }
+
+            /* ── COLOR PICKER ── */
+            .color-section {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .color-presets {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .color-preset {
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                cursor: pointer;
+                border: 2px solid transparent;
+                transition: all var(--transition);
+                flex-shrink: 0;
+            }
+            .color-preset:hover,
+            .color-preset.active {
+                border-color: #ffffff60;
+                transform: scale(1.2);
+            }
+            .color-custom-row {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            .color-picker-input {
+                width: 36px;
+                height: 30px;
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                background: var(--surface2);
+                cursor: pointer;
+                padding: 2px;
+            }
+            .color-hex-input {
+                flex: 1;
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                padding: 5px 8px;
+                color: var(--text);
+                font-family: var(--mono);
+                font-size: 0.78rem;
+                outline: none;
+            }
+            .color-hex-input:focus {
+                border-color: var(--accent);
+            }
+
+            /* ── ROOMS ── */
+            .rooms-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 14px;
+            }
+            .room-card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            .room-header {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+            }
+            .room-info {
+            }
+            .room-name {
+                font-size: 1.05rem;
+                font-weight: 700;
+            }
+            .room-count {
+                font-family: var(--mono);
+                font-size: 0.7rem;
+                color: var(--text-muted);
+                margin-top: 2px;
+            }
+            .room-controls {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .room-actions {
+                display: flex;
+                gap: 8px;
+            }
+            .btn-sm {
+                border: none;
+                border-radius: 8px;
+                padding: 7px 12px;
+                cursor: pointer;
+                font-family: var(--sans);
+                font-size: 0.75rem;
+                font-weight: 600;
+                transition: all var(--transition);
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .btn-sm-on {
+                background: var(--accent);
+                color: #0c0c0f;
+            }
+            .btn-sm-on:hover {
+                background: #ffbc55;
+            }
+            .btn-sm-off {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                color: var(--text-dim);
+            }
+            .btn-sm-off:hover {
+                border-color: var(--border);
+                color: var(--text);
+            }
+
+            /* ── TOAST ── */
+            .toast-container {
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 1000;
+            }
+            .toast {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 10px;
+                padding: 10px 16px;
+                font-family: var(--mono);
+                font-size: 0.78rem;
+                color: var(--text);
+                animation: slideIn 0.25s ease;
+                max-width: 300px;
+            }
+            .toast.success {
+                border-color: var(--sync);
+                color: var(--sync);
+            }
+            .toast.error {
+                border-color: var(--danger);
+                color: var(--danger);
+            }
+            @keyframes slideIn {
+                from {
+                    transform: translateX(20px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+
+            /* ── EMPTY STATE ── */
+            .empty {
+                grid-column: 1/-1;
+                padding: 40px;
+                text-align: center;
+                color: var(--text-muted);
+                font-family: var(--mono);
+                font-size: 0.8rem;
+            }
+
+            /* ── SETUP SCREEN ── */
+            #setup-screen {
+                position: fixed;
+                inset: 0;
+                z-index: 200;
+                background: var(--bg);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .setup-card {
+                background: var(--surface);
+                border: 1px solid var(--border2);
+                border-radius: 20px;
+                padding: 36px;
+                width: 100%;
+                max-width: 420px;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            .setup-title {
+                font-size: 1.4rem;
+                font-weight: 800;
+            }
+            .setup-sub {
+                color: var(--text-dim);
+                font-size: 0.85rem;
+                line-height: 1.5;
+            }
+            .setup-steps {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .step {
+                display: flex;
+                gap: 12px;
+                align-items: flex-start;
+                background: var(--surface2);
+                border-radius: var(--radius);
+                padding: 12px;
+            }
+            .step-num {
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                background: var(--accent);
+                color: #0c0c0f;
+                font-size: 0.7rem;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                margin-top: 1px;
+            }
+            .step-text {
+                font-size: 0.82rem;
+                color: var(--text-dim);
+                line-height: 1.4;
+            }
+            .step-text strong {
+                color: var(--text);
+            }
+            .setup-inputs {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .setup-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            /* ── RESPONSIVE ── */
+            @media (max-width: 768px) {
+                .main {
+                    grid-template-columns: 1fr;
+                }
+                .sidebar {
+                    display: none;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- SETUP SCREEN -->
+        <div id="setup-screen" style="display: none">
+            <div class="setup-card">
+                <div>
+                    <div class="logo" style="margin-bottom: 16px">
+                        <div class="logo-dot"></div>
+                        Spectra Control
+                    </div>
+                    <div class="setup-title">Configuración inicial</div>
+                    <div class="setup-sub" style="margin-top: 6px">
+                        Conecta tu Hue Bridge para comenzar.
+                    </div>
+                </div>
+
+                <div class="setup-steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-text">
+                            Asegúrate de que tu <strong>Hue Bridge</strong> esté
+                            encendido y en la misma red local.
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-text">
+                            Descubre la IP automáticamente o ingrésala
+                            manualmente.
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-text">
+                            Presiona el <strong>botón físico</strong> del bridge
+                            y luego haz clic en "Vincular".
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setup-inputs">
+                    <input
+                        class="config-input"
+                        id="setup-ip"
+                        placeholder="IP del bridge (ej: 192.168.1.100)"
+                    />
+                    <input
+                        class="config-input"
+                        id="setup-key"
+                        placeholder="API Key (si ya la tienes)"
+                    />
+                </div>
+
+                <div class="setup-actions">
+                    <button class="btn btn-ghost" onclick="discoverBridge()">
+                        🔍 Descubrir automáticamente
+                    </button>
+                    <button class="btn btn-ghost" onclick="pairBridge()">
+                        🔗 Vincular (presiona botón del bridge primero)
+                    </button>
+                    <button class="btn btn-primary" onclick="saveSetup()">
+                        Guardar y continuar →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN APP -->
+        <div id="app">
+            <!-- TOPBAR -->
+            <div class="topbar">
+                <div class="logo">
+                    <div class="logo-dot"></div>
+                    Spectra Control
+                </div>
+                <div class="topbar-right">
+                    <div class="status-badge" id="bridge-status">
+                        Sin conexión
+                    </div>
+                    <button
+                        class="btn btn-ghost"
+                        style="
+                            width: auto;
+                            padding: 6px 12px;
+                            font-size: 0.75rem;
+                        "
+                        onclick="showSetup()"
+                    >
+                        ⚙ Config
+                    </button>
+                </div>
+            </div>
+
+            <div class="main">
+                <!-- SIDEBAR -->
+                <div class="sidebar">
+                    <!-- Bridge config -->
+                    <div class="sidebar-section">
+                        <div class="section-label">Bridge</div>
+                        <div class="config-panel">
+                            <input
+                                class="config-input"
+                                id="bridge-ip"
+                                placeholder="IP del bridge"
+                            />
+                            <input
+                                class="config-input"
+                                id="api-key"
+                                placeholder="API Key"
+                                type="password"
+                            />
+                            <button
+                                class="btn btn-ghost"
+                                onclick="saveConfig()"
+                            >
+                                Guardar
+                            </button>
+                            <button class="btn btn-ghost" onclick="loadAll()">
+                                ↺ Recargar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SYNC -->
+                    <div class="sidebar-section">
+                        <div class="section-label">Screen Sync</div>
+                        <div class="sync-panel">
+                            <div class="sync-indicator" id="sync-indicator">
+                                <span id="sync-status-text">Detenido</span>
+                                <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                                    <div id="sync-color-dot" style="width:14px;height:14px;border-radius:50%;background:#333;border:1px solid #ffffff18;flex-shrink:0"></div>
+                                    <span id="sync-color-hex" style="font-size:0.65rem;opacity:0.6"></span>
+                                </div>
+                            </div>
+
+                            <div class="sync-speed">
+                                <span class="speed-label"
+                                    >Velocidad:
+                                    <span id="sync-interval-val">0.3</span
+                                    >s</span
+                                >
+                            </div>
+                            <input
+                                type="range"
+                                id="sync-interval"
+                                min="0.1"
+                                max="2.0"
+                                step="0.1"
+                                value="0.3"
+                                oninput="
+                                    document.getElementById(
+                                        'sync-interval-val',
+                                    ).textContent = (+this.value).toFixed(1)
+                                "
+                            />
+
+                            <div class="section-label" style="margin-top: 4px">
+                                Habitaciones a sincronizar
+                            </div>
+                            <div class="light-checkboxes" id="sync-light-list">
+                                <span
+                                    style="
+                                        color: var(--text-muted);
+                                        font-size: 0.75rem;
+                                        font-family: var(--mono);
+                                    "
+                                    >Cargando luces...</span
+                                >
+                            </div>
+
+                            <!-- Asignación de posiciones en pantalla -->
+                            <div id="order-panel" style="display:none;margin-top:10px">
+                                <div
+                                    class="section-label"
+                                    style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px"
+                                    onclick="document.getElementById('order-grid-wrap').style.display=document.getElementById('order-grid-wrap').style.display==='none'?'':'none';this.querySelector('.order-chevron').textContent=document.getElementById('order-grid-wrap').style.display===''?'▾':'▸'"
+                                >
+                                    <span class="order-chevron">▸</span> Posición de luces
+                                </div>
+                                <div id="order-grid-wrap" style="display:none;margin-top:6px">
+                                    <div
+                                        style="font-size:0.65rem;color:var(--text-muted);margin-bottom:6px;font-family:var(--mono)"
+                                    >Asigna qué luz física va en cada zona de la pantalla</div>
+                                    <div id="order-grid" style="display:grid;gap:4px"></div>
+                                </div>
+                            </div>
+
+                            <button
+                                class="btn btn-sync"
+                                id="sync-btn"
+                                onclick="toggleSync()"
+                                style="margin-top:10px"
+                            >
+                                ▶ Iniciar Sync
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div
+                        class="sidebar-section"
+                        style="
+                            margin-top: auto;
+                            border-top: 1px solid var(--border);
+                            border-bottom: none;
+                        "
+                    >
+                        <div
+                            style="
+                                font-family: var(--mono);
+                                font-size: 0.65rem;
+                                color: var(--text-muted);
+                                line-height: 1.6;
+                            "
+                        >
+                            Screen Sync usa
+                            <strong style="color: var(--text-dim)"
+                                >getDisplayMedia()</strong
+                            ><br />
+                            Funciona en KDE Wayland
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTENT -->
+                <div class="content">
+                    <!-- TABS -->
+                    <div class="tabs">
+                        <button class="tab active" data-tab="all"   onclick="switchTab('all')">Todos</button>
+                        <button class="tab"         data-tab="rooms" onclick="switchTab('rooms')">Habitaciones</button>
+                        <button class="tab"         data-tab="zones" onclick="switchTab('zones')">Zonas</button>
+                        <button class="tab"         data-tab="lights" onclick="switchTab('lights')">Luces individuales</button>
+                    </div>
+
+                    <!-- ROOMS TAB -->
+                    <div id="tab-rooms">
+                        <div class="rooms-grid" id="rooms-grid">
+                            <div class="empty">Cargando habitaciones...</div>
+                        </div>
+                    </div>
+
+                    <!-- LIGHTS TAB -->
+                    <div id="tab-lights" style="display: none">
+                        <div class="cards-grid" id="lights-grid">
+                            <div class="empty">Cargando luces...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST -->
+        <div class="toast-container" id="toast-container"></div>
+
+        <script>
+            // ── CONFIG ──
+            const API = window.location.origin.includes(":5173")
+                ? "http://localhost:8000" // dev mode
+                : "";
+
+            let lights = [];
+            let groups = [];
+            let syncRunning = false;
+            let activeTab = "all";
+
+            let syncWs = null;
+            let syncStream = null;
+            let syncVideoEl = null;
+            let syncCanvas = null;
+            let syncCtx = null;
+            let syncTimerId = null;
+            let syncLightIds = []; // IDs individuales de luces para el sync por región
+
+            const COLOR_PRESETS = [
+                "#FF6A00",
+                "#FFB347",
+                "#FFFF66",
+                "#90EE90",
+                "#00BFFF",
+                "#9370DB",
+                "#FF69B4",
+                "#ffffff",
+                "#ffd4a0",
+                "#b0d4ff",
+            ];
+
+            // ── TOAST ──
+            function toast(msg, type = "info", ms = 2500) {
+                const c = document.getElementById("toast-container");
+                const t = document.createElement("div");
+                t.className = `toast ${type}`;
+                t.textContent = msg;
+                c.appendChild(t);
+                setTimeout(() => t.remove(), ms);
+            }
+
+            // ── SETUP ──
+            function showSetup() {
+                document.getElementById("setup-screen").style.display = "flex";
+            }
+            function hideSetup() {
+                document.getElementById("setup-screen").style.display = "none";
+            }
+
+            async function discoverBridge() {
+                toast("Buscando bridge en la red...", "info", 4000);
+                try {
+                    const r = await fetch(`${API}/api/discover`, {
+                        method: "POST",
+                    });
+                    const data = await r.json();
+                    if (data.bridges && data.bridges.length > 0) {
+                        const ip = data.bridges[0].internalipaddress;
+                        document.getElementById("setup-ip").value = ip;
+                        document.getElementById("bridge-ip").value = ip;
+                        toast(`Bridge encontrado: ${ip}`, "success");
+                    } else {
+                        toast("No se encontró ningún bridge", "error");
+                    }
+                } catch (e) {
+                    toast("Error al buscar bridge", "error");
+                }
+            }
+
+            async function pairBridge() {
+                const ip = document.getElementById("setup-ip").value;
+                if (!ip) {
+                    toast("Ingresa la IP del bridge primero", "error");
+                    return;
+                }
+                toast(
+                    "Vinculando... (¿presionaste el botón del bridge?)",
+                    "info",
+                    4000,
+                );
+                try {
+                    const r = await fetch(`${API}/api/pair`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ip }),
+                    });
+                    const data = await r.json();
+                    if (data.api_key) {
+                        document.getElementById("setup-key").value =
+                            data.api_key;
+                        document.getElementById("api-key").value = data.api_key;
+                        toast(
+                            `Vinculado! API Key: ${data.api_key.substring(0, 8)}...`,
+                            "success",
+                            4000,
+                        );
+                    } else {
+                        toast(data.detail || "Error al vincular", "error");
+                    }
+                } catch (e) {
+                    toast("Error al vincular", "error");
+                }
+            }
+
+            async function saveSetup() {
+                const ip = document.getElementById("setup-ip").value;
+                const key = document.getElementById("setup-key").value;
+                if (!ip || !key) {
+                    toast("Completa IP y API Key", "error");
+                    return;
+                }
+                document.getElementById("bridge-ip").value = ip;
+                document.getElementById("api-key").value = key;
+                await saveConfig();
+                hideSetup();
+            }
+
+            // ── CONFIG ──
+            async function saveConfig() {
+                const ip = document.getElementById("bridge-ip").value.trim();
+                const key = document.getElementById("api-key").value.trim();
+                if (!ip || !key) {
+                    toast("IP y API Key requeridos", "error");
+                    return;
+                }
+                await fetch(`${API}/api/config`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ip, api_key: key }),
+                });
+                toast("Configuración guardada", "success");
+                await loadAll();
+            }
+
+            async function checkConfig() {
+                const r = await fetch(`${API}/api/config`);
+                const data = await r.json();
+                if (data.bridge_ip) {
+                    document.getElementById("bridge-ip").value = data.bridge_ip;
+                    document.getElementById("setup-ip").value = data.bridge_ip;
+                }
+                return data.configured;
+            }
+
+            // ── LOAD ALL ──
+            async function loadAll() {
+                const configured = await checkConfig();
+                const statusEl = document.getElementById("bridge-status");
+
+                if (!configured) {
+                    statusEl.textContent = "Sin conexión";
+                    statusEl.classList.remove("connected");
+                    document.getElementById("setup-screen").style.display =
+                        "flex";
+                    return;
+                }
+
+                try {
+                    await Promise.all([loadLights(), loadGroups()]);
+                    statusEl.textContent = "Conectado";
+                    statusEl.classList.add("connected");
+                } catch (e) {
+                    statusEl.textContent = "Error";
+                    statusEl.classList.remove("connected");
+                    toast("No se pudo conectar al bridge", "error");
+                }
+                await loadSyncStatus();
+            }
+
+            // ── LIGHTS ──
+            async function loadLights() {
+                const r = await fetch(`${API}/api/lights`);
+                const data = await r.json();
+                lights = data.lights || [];
+                renderLights();
+            }
+
+            function renderLights() {
+                const grid = document.getElementById("lights-grid");
+                if (!lights.length) {
+                    grid.innerHTML =
+                        '<div class="empty">No se encontraron luces</div>';
+                    return;
+                }
+
+                grid.innerHTML = lights
+                    .map((l) => {
+                        const xyColor = xyToHex(l.xy || [0.3, 0.3]);
+                        const cardClass = l.reachable
+                            ? l.on
+                                ? "on"
+                                : "off"
+                            : "unreachable";
+                        return `
+    <div class="card ${cardClass}" id="card-${l.id}" style="--card-color:${l.on ? xyColor : "var(--border)"}">
+      <div class="card-header">
+        <div>
+          <div class="card-name">${l.name}</div>
+          <div class="card-type">${l.type} · ID ${l.id}</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${l.on ? "checked" : ""} onchange="toggleLight('${l.id}', this.checked)" />
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+
+      <div class="card-controls">
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">BRILLO</span>
+            <span class="slider-val" id="bri-val-${l.id}">${Math.round(((l.bri || 254) / 254) * 100)}%</span>
+          </div>
+          <input type="range" min="1" max="254" value="${l.bri || 254}"
+            oninput="updateSliderVal('bri-val-${l.id}', Math.round(this.value/254*100)+'%')"
+            onchange="setLightBri('${l.id}', +this.value)" />
+        </div>
+      </div>
+
+      <div class="color-section">
+        <div class="slider-label" style="margin-bottom:6px">COLOR</div>
+        <div class="color-presets">
+          ${COLOR_PRESETS.map(
+              (c) => `
+            <div class="color-preset" style="background:${c}"
+              onclick="setLightColor('${l.id}', '${c}')"></div>
+          `,
+          ).join("")}
+        </div>
+        <div class="color-custom-row" style="margin-top:8px">
+          <input type="color" class="color-picker-input" value="${xyColor}"
+            onchange="setLightColor('${l.id}', this.value)" />
+          <input class="color-hex-input" value="${xyColor}"
+            onchange="setLightColor('${l.id}', this.value)"
+            placeholder="#RRGGBB" />
+        </div>
+      </div>
+    </div>`;
+                    })
+                    .join("");
+            }
+
+            // ── GROUPS / ROOMS ──
+            async function loadGroups() {
+                const r = await fetch(`${API}/api/groups`);
+                const data = await r.json();
+                // Filtra solo las áreas de entretenimiento (protocolo Hue Sync, no son habitaciones)
+                groups = (data.groups || []).filter((g) => g.type !== "Entertainment");
+                renderGroups();
+                renderSyncGroupList();
+            }
+
+            function renderGroups() {
+                const grid = document.getElementById("rooms-grid");
+                const typeFilter = { rooms: "Room", zones: "Zone" };
+                const visible = typeFilter[activeTab]
+                    ? groups.filter((g) => g.type === typeFilter[activeTab])
+                    : groups;
+                if (!visible.length) {
+                    grid.innerHTML = '<div class="empty">No hay grupos en esta categoría</div>';
+                    return;
+                }
+
+                grid.innerHTML = visible
+                    .map((g) => {
+                        const xyColor = xyToHex(g.xy || [0.3, 0.3]);
+                        return `
+    <div class="room-card" id="room-${g.id}">
+      <div class="room-header">
+        <div class="room-info">
+          <div class="room-name">${g.name}</div>
+          <div class="room-count">${g.lights.length} luz${g.lights.length !== 1 ? "es" : ""} · ${g.type}</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${g.on ? "checked" : ""} onchange="toggleGroup('${g.id}', this.checked)" />
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+
+      <div class="room-controls">
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">BRILLO GLOBAL</span>
+            <span class="slider-val" id="rbri-val-${g.id}">${Math.round(((g.bri || 254) / 254) * 100)}%</span>
+          </div>
+          <input type="range" min="1" max="254" value="${g.bri || 254}"
+            oninput="updateSliderVal('rbri-val-${g.id}', Math.round(this.value/254*100)+'%')"
+            onchange="setGroupBri('${g.id}', +this.value)" />
+        </div>
+
+        <div class="color-section">
+          <div class="slider-label" style="margin-bottom:6px">COLOR</div>
+          <div class="color-presets">
+            ${COLOR_PRESETS.map(
+                (c) => `
+              <div class="color-preset" style="background:${c}"
+                onclick="setGroupColor('${g.id}', '${c}')"></div>
+            `,
+            ).join("")}
+          </div>
+          <div class="color-custom-row" style="margin-top:8px">
+            <input type="color" class="color-picker-input" value="${xyColor}"
+              onchange="setGroupColor('${g.id}', this.value)" />
+            <input class="color-hex-input" value="${xyColor}"
+              onchange="setGroupColor('${g.id}', this.value)"
+              placeholder="#RRGGBB" />
+          </div>
+        </div>
+
+        <div class="room-actions">
+          <button class="btn-sm btn-sm-on" onclick="toggleGroup('${g.id}', true)">💡 Encender</button>
+          <button class="btn-sm btn-sm-off" onclick="toggleGroup('${g.id}', false)">🌙 Apagar</button>
+        </div>
+      </div>
+    </div>`;
+                    })
+                    .join("");
+            }
+
+            // ── LIGHT ACTIONS ──
+            async function toggleLight(id, on) {
+                await fetch(`${API}/api/lights/${id}/state`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ on }),
+                });
+                updateCardState(id, on);
+            }
+
+            async function setLightBri(id, bri) {
+                await fetch(`${API}/api/lights/${id}/state`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ bri }),
+                });
+            }
+
+            async function setLightColor(id, hex) {
+                await fetch(`${API}/api/lights/${id}/color`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        hex_color: hex.startsWith("#") ? hex : "#" + hex,
+                        bri: 200,
+                    }),
+                });
+                const card = document.getElementById(`card-${id}`);
+                if (card) card.style.setProperty("--card-color", hex);
+            }
+
+            function updateCardState(id, on) {
+                const card = document.getElementById(`card-${id}`);
+                if (!card) return;
+                card.classList.toggle("on", on);
+                card.classList.toggle("off", !on);
+            }
+
+            // ── GROUP ACTIONS ──
+            async function toggleGroup(id, on) {
+                await fetch(`${API}/api/groups/${id}/action`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ on }),
+                });
+                toast(
+                    `${on ? "💡 Encendido" : "🌙 Apagado"}`,
+                    on ? "success" : "info",
+                    1500,
+                );
+            }
+
+            async function setGroupBri(id, bri) {
+                await fetch(`${API}/api/groups/${id}/action`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ bri }),
+                });
+            }
+
+            async function setGroupColor(id, hex) {
+                await fetch(`${API}/api/groups/${id}/color`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        hex_color: hex.startsWith("#") ? hex : "#" + hex,
+                        bri: 200,
+                    }),
+                });
+            }
+
+            // ── SYNC ──
+            function renderSyncLightList() {
+                const container = document.getElementById("sync-light-list");
+                if (!lights.length) {
+                    container.innerHTML =
+                        '<span style="color:var(--text-muted);font-size:0.75rem;font-family:var(--mono)">Sin luces disponibles</span>';
+                    return;
+                }
+                container.innerHTML = lights
+                    .filter((l) => l.reachable)
+                    .map(
+                        (l) => `
+    <label class="light-check">
+      <input type="checkbox" id="sync-light-${l.id}" value="${l.id}" />
+      <span class="light-check-label">${l.name}</span>
+    </label>
+  `,
+                    )
+                    .join("");
+            }
+            function renderSyncGroupList() {
+                const container = document.getElementById("sync-light-list"); // mismo ID, mismo div
+                if (!groups.length) {
+                    container.innerHTML =
+                        '<span style="color:var(--text-muted);font-size:0.75rem;font-family:var(--mono)">Sin habitaciones</span>';
+                    return;
+                }
+                container.innerHTML = groups
+                    .map(
+                        (g) => `
+    <label class="light-check">
+      <input type="checkbox" id="sync-group-${g.id}" value="${g.id}" onchange="onGroupChecked()" />
+      <span class="light-check-label">${g.name}
+        <span style="color:var(--text-muted);font-size:0.65rem"> · ${g.type} · ${g.lights.length} luz${g.lights.length !== 1 ? "es" : ""}</span>
+      </span>
+    </label>
+  `,
+                    )
+                    .join("");
+            }
+
+            function onGroupChecked() {
+                renderOrderPanel();
+            }
+
+            function getLightsForSelectedGroups() {
+                const checked = [...document.querySelectorAll("#sync-light-list input:checked")].map((cb) => cb.value);
+                const ids = [];
+                for (const gid of checked) {
+                    const g = groups.find((gr) => gr.id === gid);
+                    if (g) for (const lid of g.lights) if (!ids.includes(lid)) ids.push(lid);
+                }
+                return ids;
+            }
+
+            function getPositionLabel(idx, cols, rows) {
+                const colMap = { 1: [""], 2: ["Izq", "Der"], 3: ["Izq", "Centro", "Der"] };
+                const rowMap = { 1: [""], 2: ["Sup", "Inf"] };
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const c = colMap[cols] ? colMap[cols][col] : `Col ${col + 1}`;
+                const r = rowMap[rows] ? rowMap[rows][row] : `Fila ${row + 1}`;
+                return [r, c].filter(Boolean).join(" ");
+            }
+
+            function renderOrderPanel() {
+                const allIds = getLightsForSelectedGroups();
+                const panel = document.getElementById("order-panel");
+                const grid = document.getElementById("order-grid");
+                if (!allIds.length) {
+                    panel.style.display = "none";
+                    return;
+                }
+                panel.style.display = "";
+                const n = allIds.length;
+                const cols = Math.min(n, 3);
+                const rows = Math.ceil(n / cols);
+                const saved = loadSyncOrder(allIds);
+                const lightById = Object.fromEntries(lights.map((l) => [l.id, l]));
+
+                grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                grid.innerHTML = Array.from({ length: n }, (_, idx) => {
+                    const label = getPositionLabel(idx, cols, rows);
+                    const options = allIds.map((lid) => {
+                        const name = lightById[lid] ? lightById[lid].name : lid;
+                        const sel = saved[idx] === lid ? " selected" : "";
+                        return `<option value="${lid}"${sel}>${name}</option>`;
+                    }).join("");
+                    return `
+                        <div style="text-align:center">
+                          <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:2px;font-family:var(--mono)">${label}</div>
+                          <select id="order-slot-${idx}" onchange="saveSyncOrder()"
+                            style="width:100%;font-size:0.68rem;background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 0">
+                            ${options}
+                          </select>
+                        </div>`;
+                }).join("");
+                // Inicializar disabled para evitar duplicados desde el inicio
+                _refreshOrderDisabled(saved, n);
+            }
+
+            function loadSyncOrder(lightIds) {
+                const key = `syncOrder:${[...lightIds].sort().join(",")}`;
+                try {
+                    const saved = JSON.parse(localStorage.getItem(key) || "null");
+                    if (
+                        Array.isArray(saved) &&
+                        saved.length === lightIds.length &&
+                        saved.every((id) => lightIds.includes(id)) &&
+                        new Set(saved).size === saved.length   // sin duplicados
+                    ) return saved;
+                } catch {}
+                return [...lightIds];
+            }
+
+            function saveSyncOrder() {
+                const allIds = getLightsForSelectedGroups();
+                if (!allIds.length) return;
+                const n = allIds.length;
+                const order = Array.from({ length: n }, (_, i) => {
+                    const sel = document.getElementById(`order-slot-${i}`);
+                    return sel ? sel.value : allIds[i];
+                });
+                const key = `syncOrder:${[...allIds].sort().join(",")}`;
+                localStorage.setItem(key, JSON.stringify(order));
+                if (syncRunning) syncLightIds = order;
+                _refreshOrderDisabled(order, n);
+            }
+
+            // Marca como disabled las opciones ya usadas en otros slots
+            function _refreshOrderDisabled(order, n) {
+                for (let i = 0; i < n; i++) {
+                    const sel = document.getElementById(`order-slot-${i}`);
+                    if (!sel) continue;
+                    const usedElsewhere = new Set(order.filter((_, j) => j !== i));
+                    for (const opt of sel.options) {
+                        opt.disabled = usedElsewhere.has(opt.value);
+                    }
+                }
+            }
+
+            async function loadSyncStatus() {
+                syncRunning = false;
+                updateSyncUI();
+            }
+
+            function updateSyncUI() {
+                const btn = document.getElementById("sync-btn");
+                const ind = document.getElementById("sync-indicator");
+                const txt = document.getElementById("sync-status-text");
+                if (syncRunning) {
+                    btn.textContent = "⏹ Detener Sync";
+                    btn.classList.add("active");
+                    ind.classList.add("active");
+                    txt.textContent = "● Sincronizando pantalla";
+                } else {
+                    btn.textContent = "▶ Iniciar Sync";
+                    btn.classList.remove("active");
+                    ind.classList.remove("active");
+                    txt.textContent = "Detenido";
+                }
+            }
+
+            function toggleSync() {
+                if (syncRunning) {
+                    stopSync();
+                    return;
+                }
+                const selectedGroups = [
+                    ...document.querySelectorAll("#sync-light-list input:checked"),
+                ].map((cb) => cb.value);
+                if (!selectedGroups.length) {
+                    toast("Selecciona al menos una habitación", "error");
+                    return;
+                }
+                // getDisplayMedia debe llamarse sincrónicamente desde el onclick.
+                // WebKitGTK pierde la "transient user activation" al cruzar un await.
+                navigator.mediaDevices
+                    .getDisplayMedia({ video: true })
+                    .then((stream) => _startSyncWithStream(stream, selectedGroups))
+                    .catch((e) => {
+                        console.error("[sync] getDisplayMedia falló:", e);
+                        toast(`Captura falló: ${e.name} — ${e.message}`, "error", 6000);
+                    });
+            }
+
+            function _startSyncWithStream(stream, selectedGroups) {
+                syncStream = stream;
+                // Recopilar IDs de luces y aplicar el orden guardado por el usuario
+                const allIds = [];
+                for (const gid of selectedGroups) {
+                    const g = groups.find((gr) => gr.id === gid);
+                    if (g) for (const lid of g.lights) if (!allIds.includes(lid)) allIds.push(lid);
+                }
+                syncLightIds = loadSyncOrder(allIds);
+
+                syncVideoEl = document.createElement("video");
+                syncVideoEl.srcObject = stream;
+                syncVideoEl.muted = true;
+                syncVideoEl.playsInline = true;
+                // Debe estar en el DOM para reproducir en Firefox/WebKit
+                syncVideoEl.style.cssText =
+                    "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none";
+                document.body.appendChild(syncVideoEl);
+                syncVideoEl.play().catch((e) => console.error("[sync] play():", e));
+
+                syncCanvas = document.createElement("canvas");
+                syncCanvas.width = 64;
+                syncCanvas.height = 36;
+                syncCtx = syncCanvas.getContext("2d", { willReadFrequently: true });
+
+                const wsBase = API
+                    ? API.replace(/^http/, "ws")
+                    : `ws://${location.host}`;
+                syncWs = new WebSocket(`${wsBase}/ws/color`);
+
+                syncWs.onopen = () => {
+                    syncWs.send(JSON.stringify({ group_ids: selectedGroups, bri: 200 }));
+                    syncRunning = true;
+                    updateSyncUI();
+                    toast("Sync iniciado", "success");
+                    scheduleSample();
+                };
+                syncWs.onerror = (e) => {
+                    console.error("[sync] WebSocket error", e);
+                    toast(`WebSocket falló: ${wsBase}/ws/color`, "error", 6000);
+                    stopSync();
+                };
+                syncWs.onclose = () => {
+                    if (syncRunning) stopSync();
+                };
+                stream.getVideoTracks()[0].addEventListener("ended", stopSync);
+            }
+
+            function scheduleSample() {
+                const interval = Math.round(
+                    parseFloat(document.getElementById("sync-interval").value) *
+                        1000,
+                );
+                syncTimerId = setTimeout(function sample() {
+                    if (
+                        !syncRunning ||
+                        !syncWs ||
+                        syncWs.readyState !== WebSocket.OPEN
+                    )
+                        return;
+                    if (syncVideoEl && syncVideoEl.readyState >= 2) {
+                        try {
+                            syncCtx.drawImage(syncVideoEl, 0, 0, syncCanvas.width, syncCanvas.height);
+                            const lightsPayload = sampleRegions();
+                            // Actualizar dot con el color promedio
+                            const avg = lightsPayload.reduce(
+                                (a, l) => { a[0]+=l.r; a[1]+=l.g; a[2]+=l.b; return a; },
+                                [0, 0, 0]
+                            ).map((v) => (v / lightsPayload.length) | 0);
+                            const hex = "#" + avg.map((v) => v.toString(16).padStart(2, "0")).join("");
+                            document.getElementById("sync-color-dot").style.background = hex;
+                            document.getElementById("sync-color-hex").textContent = hex;
+                            // tt < interval → luz alcanza el color antes del próximo sample → menos lag
+                            const tt = Math.max(1, Math.round(interval / 200));
+                            syncWs.send(JSON.stringify({ lights: lightsPayload, bri: 200, transitiontime: tt }));
+                        } catch (e) {
+                            console.error("[sync] canvas error:", e.name, e.message);
+                            document.getElementById("sync-color-hex").textContent = `err:${e.name}`;
+                        }
+                    }
+                    syncTimerId = setTimeout(sample, interval);
+                }, interval);
+            }
+
+            function stopSync() {
+                syncRunning = false;
+                if (syncTimerId) {
+                    clearTimeout(syncTimerId);
+                    syncTimerId = null;
+                }
+                if (syncWs) {
+                    syncWs.close();
+                    syncWs = null;
+                }
+                if (syncVideoEl) {
+                    syncVideoEl.remove();
+                    syncVideoEl = null;
+                }
+                if (syncStream) {
+                    syncStream.getTracks().forEach((t) => t.stop());
+                    syncStream = null;
+                }
+                updateSyncUI();
+                toast("Sync detenido", "info");
+            }
+
+            // ── TABS ──
+            function switchTab(tab) {
+                activeTab = tab;
+                const isGroups = tab !== "lights";
+                document.getElementById("tab-rooms").style.display = isGroups ? "" : "none";
+                document.getElementById("tab-lights").style.display = isGroups ? "none" : "";
+                document.querySelectorAll(".tab").forEach((t) =>
+                    t.classList.toggle("active", t.dataset.tab === tab)
+                );
+                if (isGroups) renderGroups();
+            }
+
+            // ── REGION SAMPLING ──
+            // Muestrea cuadrados pequeños centrados en cada posición de la grilla.
+            // En lugar de promediar toda la celda (muy grande en pantallas 32:9), se toman
+            // ~8×8 px del canvas (≈640×320 px reales en 5120×1440), mucho más preciso.
+            function sampleRegions() {
+                const n = syncLightIds.length || 1;
+                const cols = Math.min(n, 3);
+                const rows = Math.ceil(n / cols);
+                const W = syncCanvas.width;
+                const H = syncCanvas.height;
+                // Cuadrado de muestra: ~12% del ancho del canvas
+                const sw = Math.max(4, Math.round(W * 0.12));
+                const sh = sw; // cuadrado
+                return syncLightIds.map((id, idx) => {
+                    const col = idx % cols;
+                    const row = Math.floor(idx / cols);
+                    // Centro de la posición como fracción del canvas
+                    const cx = cols === 1 ? 0.5 : (col + 0.5) / cols;
+                    const cy = rows === 1 ? 0.5 : (row + 0.5) / rows;
+                    const x = Math.max(0, Math.round(cx * W - sw / 2));
+                    const y = Math.max(0, Math.round(cy * H - sh / 2));
+                    const pw = Math.min(sw, W - x);
+                    const ph = Math.min(sh, H - y);
+                    const px = syncCtx.getImageData(x, y, pw, ph).data;
+                    let r = 0, g = 0, b = 0;
+                    const cnt = px.length / 4;
+                    for (let i = 0; i < px.length; i += 4) {
+                        r += px[i]; g += px[i + 1]; b += px[i + 2];
+                    }
+                    const [rb, gb, bb] = boostSaturation((r / cnt) | 0, (g / cnt) | 0, (b / cnt) | 0);
+                    return { id, r: rb, g: gb, b: bb };
+                });
+            }
+
+            // ── COLOR BOOST ──
+            // Aumenta la saturación del color detectado para que las luces respondan de forma vivida.
+            // Conserva el matiz (hue) y el brillo; empuja la saturación hacia 1.
+            function boostSaturation(r, g, b) {
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                if (max === 0) return [0, 0, 0];
+                const delta = max - min;
+                if (delta < 4) return [r, g, b]; // gris puro o negro — sin boost
+
+                // HSV
+                const s = Math.min(1, (delta / max) * 4); // boost ×4
+                const v = max / 255;
+                let h;
+                if (max === r) h = ((g - b) / delta + 6) % 6;
+                else if (max === g) h = (b - r) / delta + 2;
+                else h = (r - g) / delta + 4;
+
+                // HSV → RGB
+                const i = Math.floor(h);
+                const f = h - i;
+                const p = v * (1 - s);
+                const q = v * (1 - f * s);
+                const t = v * (1 - (1 - f) * s);
+                let rr, gg, bb;
+                switch (i % 6) {
+                    case 0: rr=v; gg=t; bb=p; break;
+                    case 1: rr=q; gg=v; bb=p; break;
+                    case 2: rr=p; gg=v; bb=t; break;
+                    case 3: rr=p; gg=q; bb=v; break;
+                    case 4: rr=t; gg=p; bb=v; break;
+                    default: rr=v; gg=p; bb=q;
+                }
+                return [Math.round(rr * 255), Math.round(gg * 255), Math.round(bb * 255)];
+            }
+
+            // ── HELPERS ──
+            function updateSliderVal(id, val) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            }
+
+            function xyToHex(xy) {
+                // Approximation CIE XY → RGB
+                if (!xy || xy.length < 2) return "#ffffff";
+                const x = xy[0],
+                    y = xy[1];
+                const z = 1.0 - x - y;
+                const Y = 1.0;
+                const X = (Y / y) * x;
+                const Z = (Y / y) * z;
+                let r = X * 1.656492 - Y * 0.354851 - Z * 0.255038;
+                let g = -X * 0.707196 + Y * 1.655397 + Z * 0.036152;
+                let b = X * 0.051713 - Y * 0.121364 + Z * 1.01153;
+                [r, g, b] = [r, g, b].map((v) => (v < 0 ? 0 : v > 1 ? 1 : v));
+                const max = Math.max(r, g, b, 1);
+                r /= max;
+                g /= max;
+                b /= max;
+                const toHex = (v) =>
+                    Math.round(v * 255)
+                        .toString(16)
+                        .padStart(2, "0");
+                return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+            }
+
+            // ── INIT ──
+            window.addEventListener("DOMContentLoaded", () => {
+                loadAll();
+            });
+
+            window.addEventListener("beforeunload", () => {
+                if (syncStream) syncStream.getTracks().forEach((t) => t.stop());
+            });
+        </script>
+    </body>
+</html>

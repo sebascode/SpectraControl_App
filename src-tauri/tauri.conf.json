@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SpectraControl",
+  "version": "0.1.0",
+  "identifier": "dev.spectracontrol",
+  "build": {
+    "devUrl": "http://localhost:8000",
+    "frontendDist": "http://localhost:8000",
+    "beforeDevCommand": "uv run python -m uvicorn --app-dir backend main:app --host 0.0.0.0 --port 8000 --reload"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "SpectraControl",
+        "width": 1280,
+        "height": 800,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": {
+      "../backend/*": "backend/",
+      "../backend/**/*": "backend/",
+      "../frontend/*": "frontend/",
+      "../frontend/**/*": "frontend/",
+      "../pyproject.toml": "pyproject.toml",
+      "../uv.lock": "uv.lock"
+    }
+  }
+}

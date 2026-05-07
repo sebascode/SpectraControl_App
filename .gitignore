@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Rust / Tauri
+src-tauri/target/
+
+# Bridge config (contains API key)
+backend/.hue_config
+.hue_config
