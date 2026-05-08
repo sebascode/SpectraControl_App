@@ -28,22 +28,16 @@ fn main() {
         .setup(|app| {
             #[cfg(not(debug_assertions))]
             {
-                let project_root = std::env::current_dir()
-                    .expect("cannot determine working directory");
-                let child = std::process::Command::new("uv")
-                    .args([
-                        "run", "uvicorn",
-                        "--app-dir", "backend",
-                        "main:app",
-                        "--host", "127.0.0.1",
-                        "--port", "8000",
-                    ])
-                    .current_dir(&project_root)
+                let resource_dir = app.path().resource_dir()
+                    .expect("cannot determine resource directory");
+                let backend_bin = resource_dir.join("backend").join("spectractl");
+                let child = std::process::Command::new(&backend_bin)
+                    .args(["--addr", "127.0.0.1:8000"])
                     .spawn()
-                    .expect("failed to start backend — is uv installed and in PATH?");
+                    .expect("failed to start backend");
                 *app.state::<BackendProcess>().0.lock().unwrap() = Some(child);
-                // Give uvicorn time to bind before the webview loads
-                std::thread::sleep(std::time::Duration::from_millis(1500));
+                // Go arranca mucho más rápido que uvicorn
+                std::thread::sleep(std::time::Duration::from_millis(300));
             }
             #[cfg(target_os = "linux")]
             allow_display_capture(app);
