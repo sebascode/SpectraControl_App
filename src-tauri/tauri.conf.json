@@ -6,15 +6,19 @@
   "build": {
     "devUrl": "http://localhost:8000",
     "frontendDist": "http://localhost:8000",
-    "beforeDevCommand": "uv run python -m uvicorn --app-dir backend main:app --host 0.0.0.0 --port 8000 --reload"
+    "beforeDevCommand": "./backend/spectractl -addr :8000",
+    "beforeBuildCommand": "export PATH=/home/linuxbrew/.linuxbrew/bin:$PATH && cd backend && go build -ldflags='-s -w' -o spectractl ."
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "SpectraControl",
-        "width": 1280,
-        "height": 800,
-        "resizable": true
+        "width": 420,
+        "height": 700,
+        "resizable": true,
+        "minWidth": 360,
+        "minHeight": 500
       }
     ],
     "security": {
@@ -25,12 +29,9 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "../backend/*": "backend/",
-      "../backend/**/*": "backend/",
+      "../backend/spectractl": "backend/spectractl",
       "../frontend/*": "frontend/",
-      "../frontend/**/*": "frontend/",
-      "../pyproject.toml": "pyproject.toml",
-      "../uv.lock": "uv.lock"
+      "../frontend/**/*": "frontend/"
     }
   }
 }
