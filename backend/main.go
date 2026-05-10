@@ -99,9 +99,11 @@ func isConfigured() bool {
 
 // exeDir returns the directory of the running binary.
 // Falls back to "backend" (relative to CWD) when running via `go run`.
+// `go run` compila a $TMPDIR/go-build*. Match exacto sobre "go-build" para no
+// confundir con AppImage, que se monta en /tmp/.mount_<random>/...
 func exeDir() string {
 	exe, err := os.Executable()
-	if err != nil || strings.Contains(exe, os.TempDir()) {
+	if err != nil || strings.Contains(exe, "/go-build") {
 		return "backend"
 	}
 	return filepath.Dir(exe)
