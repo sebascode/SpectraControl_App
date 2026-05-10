@@ -82,16 +82,77 @@
 
             /* ── TOPBAR ── */
             .topbar {
-                display: flex;
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
                 align-items: center;
-                justify-content: space-between;
-                padding: 18px 28px;
-                border-bottom: 1px solid var(--border);
+                padding: 14px 24px 14px 18px;
                 background: #0c0c0fcc;
                 backdrop-filter: blur(12px);
                 position: sticky;
                 top: 0;
                 z-index: 100;
+            }
+            .topbar .logo {
+                justify-self: start;
+            }
+            .topbar #bridge-status {
+                justify-self: center;
+            }
+            .topbar .theme-btn {
+                justify-self: end;
+            }
+            .zone-bri-section {
+                margin-top: 16px;
+                padding: 12px 14px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+            }
+            .zone-bri-label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.78rem;
+                color: var(--text-dim);
+                margin-bottom: 10px;
+            }
+            .zone-bri-label svg {
+                color: var(--accent);
+                flex-shrink: 0;
+            }
+            .zone-bri-value {
+                margin-left: auto;
+                font-family: var(--mono);
+                font-size: 0.72rem;
+                color: var(--text);
+            }
+            .zone-bri-section input[type="range"] {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 100%;
+                height: 4px;
+                background: var(--border2);
+                border-radius: 2px;
+                outline: none;
+            }
+            .zone-bri-section input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: var(--accent);
+                cursor: pointer;
+                box-shadow: 0 0 6px var(--accent);
+            }
+            .zone-bri-section input[type="range"]::-moz-range-thumb {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: var(--accent);
+                cursor: pointer;
+                border: none;
+                box-shadow: 0 0 6px var(--accent);
             }
             .logo {
                 display: flex;
@@ -123,6 +184,41 @@
                 display: flex;
                 align-items: center;
                 gap: 12px;
+            }
+            .window-controls {
+                position: fixed;
+                top: 8px;
+                right: 8px;
+                display: flex;
+                gap: 6px;
+                z-index: 200;
+            }
+            .window-btn {
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                border: 1px solid var(--border2);
+                background: var(--surface);
+                color: var(--text-dim);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                padding: 0;
+                font-size: 1rem;
+                line-height: 1;
+                transition: color 0.15s, border-color 0.15s, background 0.15s;
+                -webkit-app-region: no-drag;
+            }
+            .window-btn:hover {
+                color: var(--text);
+                border-color: var(--accent);
+                background: color-mix(in srgb, var(--accent) 14%, transparent);
+            }
+            .window-btn.close:hover {
+                color: #ff6b6b;
+                border-color: #ff6b6b;
+                background: color-mix(in srgb, #ff6b6b 14%, transparent);
             }
             .status-badge {
                 font-family: var(--mono);
@@ -1146,50 +1242,28 @@
         <!-- MAIN APP -->
         <div id="app">
             <!-- TOPBAR -->
-            <div class="topbar">
-                <div class="logo">
+            <div class="topbar" data-tauri-drag-region>
+                <div class="logo" data-tauri-drag-region>
                     <div class="logo-dot"></div>
                     Spectra Control
                 </div>
-                <div class="topbar-right">
-                    <div class="bri-control" title="Brillo global">
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <circle cx="12" cy="12" r="4" />
-                            <path
-                                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
-                            />
-                        </svg>
-                        <input
-                            type="range"
-                            id="bri-slider"
-                            min="1"
-                            max="255"
-                            value="200"
-                            oninput="onBrightnessInput(this.value)"
-                            onchange="onBrightnessCommit(this.value)"
-                        />
-                        <span class="bri-value" id="bri-value">200</span>
-                    </div>
-                    <button
-                        class="theme-btn"
-                        id="theme-btn"
-                        onclick="toggleTheme()"
-                    >
-                        ☀
-                    </button>
-                    <div class="status-badge" id="bridge-status">
-                        Sin conexión
-                    </div>
+                <div class="status-badge" id="bridge-status">
+                    Sin conexión
                 </div>
+                <div data-tauri-drag-region></div>
+            </div>
+
+            <div class="window-controls">
+                <button
+                    class="window-btn"
+                    title="Minimizar"
+                    onclick="minimizeWindow()"
+                >−</button>
+                <button
+                    class="window-btn close"
+                    title="Cerrar"
+                    onclick="closeWindow()"
+                >×</button>
             </div>
 
             <div class="main">
@@ -1298,6 +1372,37 @@
                             touch-action: none;
                         "
                     ></div>
+
+                    <div class="zone-bri-section">
+                        <div class="zone-bri-label">
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <circle cx="12" cy="12" r="4" />
+                                <path
+                                    d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                                />
+                            </svg>
+                            Brillo del sync
+                            <span class="zone-bri-value" id="zone-bri-value">200</span>
+                        </div>
+                        <input
+                            type="range"
+                            id="zone-bri-slider"
+                            min="1"
+                            max="255"
+                            value="200"
+                            oninput="onZoneBriInput(this.value)"
+                        />
+                    </div>
+
                     <div
                         style="
                             margin-top: 14px;
@@ -1412,6 +1517,19 @@
                 Ajustes
                 <button class="drawer-close" onclick="closeSettings()">
                     ✕
+                </button>
+            </div>
+
+            <!-- Apariencia -->
+            <div class="drawer-section">
+                <div class="section-label">Apariencia</div>
+                <button
+                    class="btn btn-ghost"
+                    id="theme-btn"
+                    style="font-size: 0.8rem; padding: 8px"
+                    onclick="toggleTheme()"
+                >
+                    ☀ Cambiar tema
                 </button>
             </div>
 
@@ -1783,7 +1901,7 @@
 
                 try {
                     await Promise.all([loadLights(), loadGroups()]);
-                    statusEl.textContent = "Conectado";
+                    statusEl.textContent = "Sync";
                     statusEl.classList.add("connected");
                 } catch (e) {
                     statusEl.textContent = "Error";
@@ -2123,6 +2241,7 @@
                 document.getElementById("zone-config-name").textContent =
                     cfg.name;
                 renderZoneLayout(lightsForZone(zoneID));
+                applyZoneBriUI(zoneID);
                 switchPage("zone-config");
             }
 
@@ -2259,34 +2378,32 @@
                 }
             }
 
-            function applyBrightnessUI(v) {
-                const slider = document.getElementById("bri-slider");
-                const label = document.getElementById("bri-value");
-                if (slider && parseInt(slider.value, 10) !== v) slider.value = v;
-                if (label) label.textContent = v;
-            }
-
-            function onBrightnessInput(v) {
-                v = parseInt(v, 10);
-                if (isNaN(v)) return;
-                globalBri = v;
-                document.getElementById("bri-value").textContent = v;
-                // Si sync está activo, actualizamos en vivo por WS (cada input).
-                if (syncRunning && syncWs && syncWs.readyState === WebSocket.OPEN) {
-                    try {
-                        syncWs.send(JSON.stringify({ bri: v }));
-                    } catch (e) {}
+            // Per-zone brightness: each zone stores its own value. globalBri tracks the
+            // brightness currently in flight to the backend (i.e. the active zone's value).
+            const ZONE_BRI_KEY = "zoneBri";
+            function loadZoneBri() {
+                try {
+                    const v = JSON.parse(
+                        localStorage.getItem(ZONE_BRI_KEY) || "{}",
+                    );
+                    return v && typeof v === "object" ? v : {};
+                } catch {
+                    return {};
                 }
-                // El POST al backend va con debounce para no inundar.
-                clearTimeout(briCommitTimer);
-                briCommitTimer = setTimeout(() => onBrightnessCommit(v), 150);
+            }
+            function getZoneBri(zoneID) {
+                const map = loadZoneBri();
+                if (typeof map[zoneID] === "number") return map[zoneID];
+                // Fallback: legacy global value during migration.
+                return globalBri || 200;
+            }
+            function setZoneBri(zoneID, v) {
+                const map = loadZoneBri();
+                map[zoneID] = v;
+                localStorage.setItem(ZONE_BRI_KEY, JSON.stringify(map));
             }
 
-            async function onBrightnessCommit(v) {
-                v = parseInt(v, 10);
-                if (isNaN(v)) return;
-                globalBri = v;
-                localStorage.setItem(BRI_KEY, String(v));
+            async function pushBriToBackend(v) {
                 try {
                     await fetch(API + "/api/brightness", {
                         method: "POST",
@@ -2296,9 +2413,34 @@
                 } catch (e) {}
             }
 
+            function onZoneBriInput(v) {
+                v = parseInt(v, 10);
+                if (isNaN(v) || !selectedZoneID) return;
+                document.getElementById("zone-bri-value").textContent = v;
+                setZoneBri(selectedZoneID, v);
+                // Si esta zona es la que está sincronizando ahora, aplicar en vivo.
+                if (selectedZoneID === activeZoneID && syncRunning) {
+                    globalBri = v;
+                    if (syncWs && syncWs.readyState === WebSocket.OPEN) {
+                        try {
+                            syncWs.send(JSON.stringify({ bri: v }));
+                        } catch (e) {}
+                    }
+                    clearTimeout(briCommitTimer);
+                    briCommitTimer = setTimeout(() => pushBriToBackend(v), 150);
+                }
+            }
+
+            function applyZoneBriUI(zoneID) {
+                const v = getZoneBri(zoneID);
+                const slider = document.getElementById("zone-bri-slider");
+                const label = document.getElementById("zone-bri-value");
+                if (slider) slider.value = v;
+                if (label) label.textContent = v;
+            }
+
+            // Stub kept so any stale callers don't crash. Real bri now lives per-zone.
             async function initBrightness() {
-                applyBrightnessUI(globalBri);
-                // Empuja el valor persistido al backend (sin esperar al primer drag).
                 try {
                     await fetch(API + "/api/brightness", {
                         method: "POST",
@@ -2479,7 +2621,7 @@
                             syncWs.send(
                                 JSON.stringify({
                                     lights: lightsPayload,
-                                    bri: 200,
+                                    bri: globalBri,
                                     transitiontime: tt,
                                 }),
                             );
@@ -2616,6 +2758,12 @@
                 }
                 // Ignore double-tap while already loading
                 if (loadingZoneID) return;
+
+                // Cargar el brillo guardado para esta zona y empujarlo al backend
+                // antes de que arranque el stream, así getBri() ya retorna el valor
+                // correcto cuando llegan los primeros frames DTLS.
+                globalBri = getZoneBri(configID);
+                pushBriToBackend(globalBri);
 
                 // Stop existing sync immediately (synchronous, no awaits)
                 if (syncRunning) {
@@ -2885,7 +3033,7 @@
                             syncWs.send(
                                 JSON.stringify({
                                     lights: lightsPayload,
-                                    bri: 200,
+                                    bri: globalBri,
                                     transitiontime: tt,
                                 }),
                             );
@@ -2991,6 +3139,45 @@
                     ? "🌙"
                     : "☀";
                 localStorage.setItem("spectra-theme", html.dataset.theme);
+            }
+
+            // ── WINDOW CONTROLS (custom titlebar, decorations off) ──
+            async function minimizeWindow() {
+                if (!window.__TAURI__) return;
+                try {
+                    await window.__TAURI__.window.getCurrentWindow().minimize();
+                } catch (e) {
+                    console.error("minimize failed:", e);
+                }
+            }
+            async function closeWindow() {
+                if (!window.__TAURI__) return;
+                try {
+                    await window.__TAURI__.window.getCurrentWindow().close();
+                } catch (e) {
+                    console.error("close failed:", e);
+                }
+            }
+
+            // Drag-to-move: data-tauri-drag-region is unreliable on Linux/Wayland in
+            // Tauri 2, so we wire startDragging() ourselves on mousedown.
+            if (window.__TAURI__) {
+                document.addEventListener("mousedown", (e) => {
+                    if (e.button !== 0) return;
+                    const region = e.target.closest("[data-tauri-drag-region]");
+                    if (!region) return;
+                    // Bail on interactive controls inside a drag region.
+                    if (e.target.closest("button, input, select, textarea, a")) {
+                        return;
+                    }
+                    e.preventDefault();
+                    window.__TAURI__.window
+                        .getCurrentWindow()
+                        .startDragging()
+                        .catch((err) =>
+                            console.error("startDragging:", err),
+                        );
+                });
             }
 
             // ── ENTERTAINMENT API ──
