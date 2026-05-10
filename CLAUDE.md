@@ -134,3 +134,23 @@ RGB (0–255)
 - **Rust/Tauri** — install via `rustup` on Bazzite (not rpm-ostree); `tauri-cli` via `cargo install tauri-cli`
 - Icons not yet generated — run `cargo tauri icon path/to/source.png` to create `src-tauri/icons/`
 - `src-tauri/main.rs` still launches the Python backend in release mode — needs updating to launch `spectractl`
+
+## Git workflow
+
+GitHub Flow with these conventions:
+
+- **`master`** is always stable and deployable. Never commit directly to it.
+- **One branch per change**, named `<type>/<short-name>`:
+  - `feature/light-positions`, `feature/zone-presets` — new functionality
+  - `fix/dtls-reconnect`, `fix/sync-flicker` — bug fixes
+  - `chore/git-workflow`, `chore/update-deps` — refactors, tooling, docs
+- **Commit messages** use Conventional Commits-lite (subject in lowercase, no period):
+  - `feat: add per-light position-based screen sampling`
+  - `fix: clear ent.conn on DTLS write error to avoid stale state`
+  - `docs: document HueStream v2 packet layout`
+  - `refactor: extract color sampling into its own module`
+  - `chore: bump xcap to 0.9.4`
+  - Body (optional): explain *why* when the diff doesn't make it obvious. Reference incidents/decisions, not the obvious "what".
+- **Merging to master**: always `--no-ff` (preserves the branch event for auditing). After merge, delete the branch local + remote.
+- **Releases**: tag `v0.X.Y` on master at functional milestones. Annotated tags (`git tag -a vX.Y.Z -m "..."`).
+- **No force-pushing master**, ever. Force-push only your own feature branches when needed.
