@@ -21,6 +21,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Version se inyecta en build con -ldflags "-X main.Version=<tag>".
+// "dev" indica build local / sin tag.
+var Version = "dev"
+
 // ── CONFIG ───────────────────────────────────────────────────────────────────
 
 var (
@@ -681,6 +685,11 @@ func main() {
 	r.Get("/api/brightness", handleGetBrightness)
 	r.Post("/api/brightness", handleSetBrightness)
 
+	// Updater (consulta GitHub Releases y reemplaza el AppImage in-place)
+	r.Get("/api/version", handleGetVersion)
+	r.Get("/api/update/check", handleCheckUpdate)
+	r.Post("/api/update/install", handleInstallUpdate)
+
 	// WebSocket
 	r.Get("/ws/color", handleWsColor)
 
@@ -693,6 +702,6 @@ func main() {
 		fileServer.ServeHTTP(w, r)
 	}))
 
-	log.Printf("SpectraControl escuchando en http://localhost%s", *addr)
+	log.Printf("SpectraControl %s (%s) escuchando en http://localhost%s", Version, runningChannel(), *addr)
 	log.Fatal(http.ListenAndServe(*addr, r))
 }
