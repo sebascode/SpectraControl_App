@@ -13,3 +13,8 @@ backend/.hue_config
 __pycache__/
 *.py[oc]
 .venv
+
+# Claude Code local context
+CLAUDE.md
+CONTEXT.md
+.claude/
