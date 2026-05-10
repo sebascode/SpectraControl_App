@@ -164,28 +164,35 @@
             .settings-overlay {
                 position: fixed;
                 inset: 0;
-                background: rgba(0,0,0,0.55);
+                background: rgba(0, 0, 0, 0.55);
                 backdrop-filter: blur(3px);
                 z-index: 200;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 250ms;
             }
-            .settings-overlay.open { opacity: 1; pointer-events: all; }
+            .settings-overlay.open {
+                opacity: 1;
+                pointer-events: all;
+            }
             .settings-drawer {
                 position: fixed;
-                top: 0; right: 0; bottom: 0;
+                top: 0;
+                right: 0;
+                bottom: 0;
                 width: 300px;
                 background: var(--surface);
                 border-left: 1px solid var(--border);
                 z-index: 201;
                 transform: translateX(100%);
-                transition: transform 250ms cubic-bezier(0.4,0,0.2,1);
+                transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
                 overflow-y: auto;
                 display: flex;
                 flex-direction: column;
             }
-            .settings-drawer.open { transform: translateX(0); }
+            .settings-drawer.open {
+                transform: translateX(0);
+            }
             .drawer-header {
                 display: flex;
                 align-items: center;
@@ -209,7 +216,9 @@
                 border-radius: 6px;
                 transition: color var(--transition);
             }
-            .drawer-close:hover { color: var(--text); }
+            .drawer-close:hover {
+                color: var(--text);
+            }
             .drawer-section {
                 padding: 20px;
                 border-bottom: 1px solid var(--border);
@@ -225,7 +234,9 @@
                 background: #0c0c0fee;
                 backdrop-filter: blur(16px);
                 position: fixed;
-                bottom: 0; left: 0; right: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;
                 z-index: 50;
             }
             .nav-item {
@@ -247,11 +258,24 @@
                 text-transform: uppercase;
                 letter-spacing: 0.06em;
             }
-            .nav-item:hover { color: var(--text-dim); }
-            .nav-item.active { color: var(--accent); }
-            .nav-item.sync-active { color: var(--sync); }
-            .nav-icon { line-height: 1; display: flex; align-items: center; justify-content: center; }
-            .nav-icon svg { display: block; }
+            .nav-item:hover {
+                color: var(--text-dim);
+            }
+            .nav-item.active {
+                color: var(--accent);
+            }
+            .nav-item.sync-active {
+                color: var(--sync);
+            }
+            .nav-icon {
+                line-height: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .nav-icon svg {
+                display: block;
+            }
 
             .section-label {
                 font-family: var(--mono);
@@ -622,9 +646,11 @@
                 flex-direction: column;
                 gap: 14px;
                 transition: opacity var(--transition);
-                border: 1px solid rgba(255,255,255,0.06);
+                border: 1px solid rgba(255, 255, 255, 0.06);
             }
-            .room-row.off { opacity: 0.5; }
+            .room-row.off {
+                opacity: 0.5;
+            }
             .room-row-top {
                 display: flex;
                 align-items: center;
@@ -639,7 +665,7 @@
             .room-row-meta {
                 font-family: var(--mono);
                 font-size: 0.65rem;
-                color: rgba(255,255,255,0.45);
+                color: rgba(255, 255, 255, 0.45);
                 margin-top: 3px;
             }
             /* Toggle per-room color via CSS var */
@@ -663,7 +689,7 @@
                 border-radius: 50%;
                 background: #fff;
                 cursor: pointer;
-                box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+                box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
             }
 
             /* ── TOAST ── */
@@ -794,7 +820,9 @@
 
             /* ── RESPONSIVE ── */
             @media (max-width: 600px) {
-                .settings-drawer { width: 100%; }
+                .settings-drawer {
+                    width: 100%;
+                }
             }
 
             /* ── LIGHT THEME ── */
@@ -814,12 +842,22 @@
                 --danger: #d83044;
                 --room-base: #e0e0ee;
             }
-            :root { --room-base: #1c1c26; }
+            :root {
+                --room-base: #1c1c26;
+            }
 
-            [data-theme="light"] body::before { opacity: 0.3; }
-            [data-theme="light"] .topbar { background: rgba(239,239,245,0.85); }
-            [data-theme="light"] .bottom-nav { background: rgba(239,239,245,0.92); }
-            [data-theme="light"] .toggle input:checked + .toggle-track::after { background: #fff; }
+            [data-theme="light"] body::before {
+                opacity: 0.3;
+            }
+            [data-theme="light"] .topbar {
+                background: rgba(239, 239, 245, 0.85);
+            }
+            [data-theme="light"] .bottom-nav {
+                background: rgba(239, 239, 245, 0.92);
+            }
+            [data-theme="light"] .toggle input:checked + .toggle-track::after {
+                background: #fff;
+            }
 
             /* ── THEME BUTTON ── */
             .theme-btn {
@@ -876,10 +914,16 @@
                 border-color: var(--border2);
                 transform: translateY(-1px);
             }
-            .zone-card:active { transform: translateY(0) scale(0.98); }
+            .zone-card:active {
+                transform: translateY(0) scale(0.98);
+            }
             .zone-card.active {
                 border-color: var(--sync);
-                background: linear-gradient(135deg, var(--surface) 0%, var(--sync-dim) 100%);
+                background: linear-gradient(
+                    135deg,
+                    var(--surface) 0%,
+                    var(--sync-dim) 100%
+                );
             }
             .zone-card-icon {
                 font-size: 1.4rem;
@@ -902,13 +946,17 @@
                 color: var(--text-muted);
                 margin-top: auto;
             }
-            .zone-card.active .zone-card-status { color: var(--sync); }
+            .zone-card.active .zone-card-status {
+                color: var(--sync);
+            }
             .zone-card.loading {
                 border-color: var(--accent);
                 opacity: 0.75;
                 pointer-events: none;
             }
-            .zone-card.loading .zone-card-status { color: var(--accent); }
+            .zone-card.loading .zone-card-status {
+                color: var(--accent);
+            }
             .zone-spinner {
                 display: inline-block;
                 width: 1.3rem;
@@ -919,7 +967,11 @@
                 animation: zspin 0.65s linear infinite;
                 vertical-align: middle;
             }
-            @keyframes zspin { to { transform: rotate(360deg); } }
+            @keyframes zspin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
         </style>
     </head>
     <body>
@@ -997,27 +1049,135 @@
                     Spectra Control
                 </div>
                 <div class="topbar-right">
-                    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀</button>
-                    <div class="status-badge" id="bridge-status">Sin conexión</div>
+                    <button
+                        class="theme-btn"
+                        id="theme-btn"
+                        onclick="toggleTheme()"
+                    >
+                        ☀
+                    </button>
+                    <div class="status-badge" id="bridge-status">
+                        Sin conexión
+                    </div>
                 </div>
             </div>
 
             <div class="main">
                 <!-- HOME PAGE (sync zones) -->
                 <div id="page-home">
-                    <div class="section-label" style="margin-bottom:14px">Zonas de Entretenimiento</div>
+                    <div class="section-label" style="margin-bottom: 14px">
+                        Zonas de Entretenimiento
+                    </div>
                     <div class="zones-grid" id="zones-grid">
-                        <div class="empty" style="grid-column:1/-1">Cargando...</div>
+                        <div class="empty" style="grid-column: 1/-1">
+                            Cargando...
+                        </div>
+                    </div>
+                    <div
+                        id="zone-actions"
+                        style="
+                            display: none;
+                            margin-top: 18px;
+                            flex-direction: column;
+                            gap: 8px;
+                            align-items: stretch;
+                        "
+                    >
+                        <button
+                            class="btn btn-ghost"
+                            style="padding: 10px 16px; font-size: 0.85rem"
+                            onclick="openZoneConfig(selectedZoneID)"
+                        >
+                            ⚙ Configurar luces
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ZONE CONFIG PAGE -->
+                <div id="page-zone-config" style="display: none">
+                    <div
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            margin-bottom: 14px;
+                        "
+                    >
+                        <button
+                            class="btn btn-ghost"
+                            style="padding: 6px 10px; font-size: 0.8rem"
+                            onclick="switchPage('home')"
+                        >
+                            ← Volver
+                        </button>
+                        <div class="section-label" style="margin: 0">
+                            Configuración:
+                            <span
+                                id="zone-config-name"
+                                style="color: var(--text)"
+                            ></span>
+                        </div>
+                    </div>
+                    <div
+                        style="
+                            font-size: 0.7rem;
+                            color: var(--text-muted);
+                            margin-bottom: 8px;
+                            font-family: var(--mono);
+                        "
+                    >
+                        Posiciones · Arrastra cada luz a su ubicación frente al
+                        monitor
+                    </div>
+                    <div
+                        id="zone-config-monitor"
+                        style="
+                            position: relative;
+                            width: 100%;
+                            aspect-ratio: 16/9;
+                            background: var(--surface2);
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background-image:
+                                linear-gradient(
+                                    to right,
+                                    rgba(255, 255, 255, 0.05) 1px,
+                                    transparent 1px
+                                ),
+                                linear-gradient(
+                                    to bottom,
+                                    rgba(255, 255, 255, 0.05) 1px,
+                                    transparent 1px
+                                );
+                            background-size: calc(100% / 12) calc(100% / 8);
+                            overflow: hidden;
+                            touch-action: none;
+                        "
+                    ></div>
+                    <div
+                        style="
+                            margin-top: 14px;
+                            font-size: 0.65rem;
+                            color: var(--text-muted);
+                            font-family: var(--mono);
+                            line-height: 1.6;
+                        "
+                    >
+                        Próximamente:<br />
+                        · Secciones por luz · Escenas dinámicas · Sync con audio
+                        · Perfiles
                     </div>
                 </div>
 
                 <!-- LIGHTS PAGE -->
-                <div id="page-lights" style="display:none">
+                <div id="page-lights" style="display: none">
                     <div class="page-section-title">Habitaciones</div>
                     <div class="rooms-list" id="rooms-grid">
                         <div class="empty">Cargando...</div>
                     </div>
-                    <div class="page-section-title" style="margin-top:20px">Luces individuales</div>
+                    <div class="page-section-title" style="margin-top: 20px">
+                        Luces individuales
+                    </div>
                     <div class="cards-grid" id="lights-grid">
                         <div class="empty">Cargando luces...</div>
                     </div>
@@ -1027,18 +1187,39 @@
 
         <!-- BOTTOM NAV -->
         <nav class="bottom-nav">
-            <button class="nav-item active" data-page="home" onclick="switchPage('home')">
+            <button
+                class="nav-item active"
+                data-page="home"
+                onclick="switchPage('home')"
+            >
                 <span class="nav-icon" id="nav-icon-home"></span>
                 <span>Inicio</span>
             </button>
-            <button class="nav-item" data-page="lights" onclick="switchPage('lights')">
+            <button
+                class="nav-item"
+                data-page="lights"
+                onclick="switchPage('lights')"
+            >
                 <span class="nav-icon" id="nav-icon-lights"></span>
                 <span>Luces</span>
             </button>
             <button class="nav-item" id="nav-sync" onclick="toggleSync()">
-                <div style="position:relative;line-height:1;display:flex">
+                <div style="position: relative; line-height: 1; display: flex">
                     <span class="nav-icon" id="sync-nav-icon"></span>
-                    <div id="sync-color-dot" style="position:absolute;top:-2px;right:-6px;width:7px;height:7px;border-radius:50%;background:var(--sync);display:none;transition:background 0.3s"></div>
+                    <div
+                        id="sync-color-dot"
+                        style="
+                            position: absolute;
+                            top: -2px;
+                            right: -6px;
+                            width: 7px;
+                            height: 7px;
+                            border-radius: 50%;
+                            background: var(--sync);
+                            display: none;
+                            transition: background 0.3s;
+                        "
+                    ></div>
                 </div>
                 <span>Sync</span>
             </button>
@@ -1049,74 +1230,198 @@
         </nav>
 
         <!-- SETTINGS OVERLAY + DRAWER -->
-        <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+        <div
+            class="settings-overlay"
+            id="settings-overlay"
+            onclick="closeSettings()"
+        ></div>
         <div class="settings-drawer" id="settings-drawer">
             <div class="drawer-header">
                 Ajustes
-                <button class="drawer-close" onclick="closeSettings()">✕</button>
+                <button class="drawer-close" onclick="closeSettings()">
+                    ✕
+                </button>
             </div>
 
             <!-- Conexión -->
             <div class="drawer-section">
                 <div class="section-label">Conexión</div>
-                <input class="config-input" id="bridge-ip" placeholder="IP del bridge" />
-                <input class="config-input" id="api-key" placeholder="API Key" type="password" />
-                <div style="display:flex;gap:8px">
-                    <button class="btn btn-ghost" style="flex:1" onclick="saveConfig()">Guardar</button>
-                    <button class="btn btn-ghost" style="flex:1" onclick="loadAll()">↺</button>
+                <input
+                    class="config-input"
+                    id="bridge-ip"
+                    placeholder="IP del bridge"
+                />
+                <input
+                    class="config-input"
+                    id="api-key"
+                    placeholder="API Key"
+                    type="password"
+                />
+                <div style="display: flex; gap: 8px">
+                    <button
+                        class="btn btn-ghost"
+                        style="flex: 1"
+                        onclick="saveConfig()"
+                    >
+                        Guardar
+                    </button>
+                    <button
+                        class="btn btn-ghost"
+                        style="flex: 1"
+                        onclick="loadAll()"
+                    >
+                        ↺
+                    </button>
                 </div>
-                <button class="btn btn-ghost" style="font-size:0.75rem;padding:7px" onclick="showSetup()">Re-vincular bridge</button>
+                <button
+                    class="btn btn-ghost"
+                    style="font-size: 0.75rem; padding: 7px"
+                    onclick="showSetup()"
+                >
+                    Re-vincular bridge
+                </button>
             </div>
 
             <!-- Screen Sync -->
             <div class="drawer-section">
                 <div class="section-label">Screen Sync</div>
                 <div class="sync-speed">
-                    <span class="speed-label">Velocidad: <span id="sync-interval-val">0.3</span>s</span>
+                    <span class="speed-label"
+                        >Velocidad:
+                        <span id="sync-interval-val">0.3</span>s</span
+                    >
                 </div>
-                <input type="range" id="sync-interval" min="0.1" max="2.0" step="0.1" value="0.3"
-                    oninput="document.getElementById('sync-interval-val').textContent=(+this.value).toFixed(1)" />
-                <div class="section-label" style="margin-top:6px">Habitaciones</div>
+                <input
+                    type="range"
+                    id="sync-interval"
+                    min="0.1"
+                    max="2.0"
+                    step="0.1"
+                    value="0.3"
+                    oninput="
+                        document.getElementById(
+                            'sync-interval-val',
+                        ).textContent = (+this.value).toFixed(1)
+                    "
+                />
+                <div class="section-label" style="margin-top: 6px">
+                    Habitaciones
+                </div>
                 <div class="light-checkboxes" id="sync-light-list">
-                    <span style="color:var(--text-muted);font-size:0.75rem;font-family:var(--mono)">Cargando...</span>
+                    <span
+                        style="
+                            color: var(--text-muted);
+                            font-size: 0.75rem;
+                            font-family: var(--mono);
+                        "
+                        >Cargando...</span
+                    >
                 </div>
-                <div id="order-panel" style="display:none;margin-top:6px">
-                    <div class="section-label" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px"
-                        onclick="document.getElementById('order-grid-wrap').style.display=document.getElementById('order-grid-wrap').style.display==='none'?'':'none';this.querySelector('.order-chevron').textContent=document.getElementById('order-grid-wrap').style.display===''?'▾':'▸'">
-                        <span class="order-chevron">▸</span> Posición de luces
-                    </div>
-                    <div id="order-grid-wrap" style="display:none;margin-top:6px">
-                        <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:6px;font-family:var(--mono)">Asigna qué luz va en cada zona de la pantalla</div>
-                        <div id="order-grid" style="display:grid;gap:4px"></div>
-                    </div>
-                </div>
-                <div class="sync-indicator" id="sync-indicator" style="margin-top:4px">
+                <div
+                    class="sync-indicator"
+                    id="sync-indicator"
+                    style="margin-top: 4px"
+                >
                     <span id="sync-status-text">Detenido</span>
-                    <span id="sync-color-hex" style="font-size:0.65rem;opacity:0.6;margin-top:2px"></span>
+                    <span
+                        id="sync-color-hex"
+                        style="
+                            font-size: 0.65rem;
+                            opacity: 0.6;
+                            margin-top: 2px;
+                        "
+                    ></span>
                 </div>
             </div>
 
             <!-- Entertainment -->
             <div class="drawer-section">
-                <div class="section-label" style="display:flex;align-items:center;gap:6px">
+                <div
+                    class="section-label"
+                    style="display: flex; align-items: center; gap: 6px"
+                >
                     Entertainment
-                    <span id="ent-badge" style="display:none;font-size:0.6rem;background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:4px;padding:1px 5px">ACTIVO</span>
+                    <span
+                        id="ent-badge"
+                        style="
+                            display: none;
+                            font-size: 0.6rem;
+                            background: #22c55e22;
+                            color: #22c55e;
+                            border: 1px solid #22c55e55;
+                            border-radius: 4px;
+                            padding: 1px 5px;
+                        "
+                        >ACTIVO</span
+                    >
                 </div>
-                <div style="font-size:0.7rem;color:var(--text-muted);font-family:var(--mono)">DTLS streaming — aparece "sincronizado" en la app Hue</div>
-                <select id="ent-select" style="width:100%;font-size:0.75rem;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 6px">
+                <div
+                    style="
+                        font-size: 0.7rem;
+                        color: var(--text-muted);
+                        font-family: var(--mono);
+                    "
+                >
+                    DTLS streaming — aparece "sincronizado" en la app Hue
+                </div>
+                <select
+                    id="ent-select"
+                    style="
+                        width: 100%;
+                        font-size: 0.75rem;
+                        background: var(--surface2);
+                        color: var(--text);
+                        border: 1px solid var(--border);
+                        border-radius: 6px;
+                        padding: 5px 6px;
+                    "
+                >
                     <option value="">Cargando áreas...</option>
                 </select>
-                <div style="display:flex;gap:6px">
-                    <button class="btn btn-sync" style="flex:1;font-size:0.75rem;padding:7px" onclick="startEntertainment()">Activar</button>
-                    <button class="btn btn-ghost" style="flex:1;font-size:0.75rem;padding:7px" onclick="stopEntertainment()">Detener</button>
+                <div style="display: flex; gap: 6px">
+                    <button
+                        class="btn btn-sync"
+                        style="flex: 1; font-size: 0.75rem; padding: 7px"
+                        onclick="startEntertainment()"
+                    >
+                        Activar
+                    </button>
+                    <button
+                        class="btn btn-ghost"
+                        style="flex: 1; font-size: 0.75rem; padding: 7px"
+                        onclick="stopEntertainment()"
+                    >
+                        Detener
+                    </button>
                 </div>
-                <div id="ent-status" style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);min-height:1em"></div>
+                <div
+                    id="ent-status"
+                    style="
+                        font-size: 0.65rem;
+                        color: var(--text-muted);
+                        font-family: var(--mono);
+                        min-height: 1em;
+                    "
+                ></div>
             </div>
 
             <!-- Footer -->
-            <div class="drawer-section" style="margin-top:auto;border-bottom:none">
-                <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);line-height:1.6">
-                    Screen Sync usa <strong style="color:var(--text-dim)">getDisplayMedia()</strong><br/>
+            <div
+                class="drawer-section"
+                style="margin-top: auto; border-bottom: none"
+            >
+                <div
+                    style="
+                        font-family: var(--mono);
+                        font-size: 0.65rem;
+                        color: var(--text-muted);
+                        line-height: 1.6;
+                    "
+                >
+                    Screen Sync usa
+                    <strong style="color: var(--text-dim)"
+                        >getDisplayMedia()</strong
+                    ><br />
                     Funciona en KDE Wayland
                 </div>
             </div>
@@ -1144,15 +1449,16 @@
             let syncTimerId = null;
             let syncLightIds = []; // IDs individuales de luces para el sync por región
 
-            let entConfigs = [];       // zonas de entretenimiento cargadas del bridge
-            let activeZoneID = null;  // zona actualmente activa (entertainment + sync)
+            let entConfigs = []; // zonas de entretenimiento cargadas del bridge
+            let activeZoneID = null; // zona actualmente activa (entertainment + sync)
             let loadingZoneID = null; // zona en proceso de activación (spinner)
+            let selectedZoneID = null; // última zona elegida (sticky aunque sync se detenga)
 
             const SVG = {
-                home:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2 21 9v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>`,
-                bulb:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21h6M12 3a6 6 0 0 1 6 6c0 2.5-1.5 4.7-3.5 6V17H9.5v-2C7.5 13.7 6 11.5 6 9a6 6 0 0 1 6-6z"/><line x1="9.5" y1="17" x2="14.5" y2="17"/></svg>`,
-                play:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21"/></svg>`,
-                stop:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`,
+                home: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2 21 9v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>`,
+                bulb: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21h6M12 3a6 6 0 0 1 6 6c0 2.5-1.5 4.7-3.5 6V17H9.5v-2C7.5 13.7 6 11.5 6 9a6 6 0 0 1 6-6z"/><line x1="9.5" y1="17" x2="14.5" y2="17"/></svg>`,
+                play: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21"/></svg>`,
+                stop: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`,
                 sliders: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="8" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="10" cy="18" r="2"/></svg>`,
             };
 
@@ -1385,13 +1691,15 @@
                 const r = await fetch(`${API}/api/groups`);
                 const data = await r.json();
                 // Filtra solo las áreas de entretenimiento (protocolo Hue Sync, no son habitaciones)
-                groups = (data.groups || []).filter((g) => g.type !== "Entertainment");
+                groups = (data.groups || []).filter(
+                    (g) => g.type !== "Entertainment",
+                );
                 renderGroups();
                 renderSyncGroupList();
             }
 
             function briGradient(bri) {
-                const pct = (bri / 254 * 100).toFixed(1);
+                const pct = ((bri / 254) * 100).toFixed(1);
                 return `linear-gradient(to right, rgba(255,255,255,0.75) ${pct}%, rgba(255,255,255,0.12) ${pct}%)`;
             }
 
@@ -1403,26 +1711,28 @@
             function renderGroups() {
                 const grid = document.getElementById("rooms-grid");
                 if (!groups.length) {
-                    grid.innerHTML = '<div class="empty">Sin habitaciones</div>';
+                    grid.innerHTML =
+                        '<div class="empty">Sin habitaciones</div>';
                     return;
                 }
-                grid.innerHTML = groups.map((g) => {
-                    const hex = xyToHex(g.xy);
-                    const r = parseInt(hex.slice(1,3),16);
-                    const gv = parseInt(hex.slice(3,5),16);
-                    const b = parseInt(hex.slice(5,7),16);
-                    const grad = `linear-gradient(135deg, var(--room-base) 0%, rgba(${r},${gv},${b},0.28) 100%)`;
-                    const bri = g.bri || 254;
-                    return `
-<div class="room-row ${g.on ? '' : 'off'}" id="room-${g.id}"
+                grid.innerHTML = groups
+                    .map((g) => {
+                        const hex = xyToHex(g.xy);
+                        const r = parseInt(hex.slice(1, 3), 16);
+                        const gv = parseInt(hex.slice(3, 5), 16);
+                        const b = parseInt(hex.slice(5, 7), 16);
+                        const grad = `linear-gradient(135deg, var(--room-base) 0%, rgba(${r},${gv},${b},0.28) 100%)`;
+                        const bri = g.bri || 254;
+                        return `
+<div class="room-row ${g.on ? "" : "off"}" id="room-${g.id}"
      style="background:${grad};--room-color:${hex}">
   <div class="room-row-top">
     <div>
       <div class="room-row-name">${g.name}</div>
-      <div class="room-row-meta">${g.lights.length} luz${g.lights.length!==1?'es':''}</div>
+      <div class="room-row-meta">${g.lights.length} luz${g.lights.length !== 1 ? "es" : ""}</div>
     </div>
     <label class="toggle" style="flex-shrink:0">
-      <input type="checkbox" ${g.on?'checked':''} onchange="toggleGroup('${g.id}',this.checked)">
+      <input type="checkbox" ${g.on ? "checked" : ""} onchange="toggleGroup('${g.id}',this.checked)">
       <span class="toggle-track"></span>
     </label>
   </div>
@@ -1430,7 +1740,8 @@
     oninput="updateRoomSlider(this,'${g.id}')"
     style="${briGradient(bri)}">
 </div>`;
-                }).join("");
+                    })
+                    .join("");
             }
 
             // ── LIGHT ACTIONS ──
@@ -1546,104 +1857,169 @@
             }
 
             function onGroupChecked() {
-                renderOrderPanel();
+                // Reservado: las habitaciones marcadas ya no controlan el editor.
+                // El editor vive ahora en page-zone-config (Inicio → zona → "Configurar luces").
             }
 
             function getLightsForSelectedGroups() {
-                const checked = [...document.querySelectorAll("#sync-light-list input:checked")].map((cb) => cb.value);
+                const checked = [
+                    ...document.querySelectorAll(
+                        "#sync-light-list input:checked",
+                    ),
+                ].map((cb) => cb.value);
                 const ids = [];
                 for (const gid of checked) {
                     const g = groups.find((gr) => gr.id === gid);
-                    if (g) for (const lid of g.lights) if (!ids.includes(lid)) ids.push(lid);
+                    if (g)
+                        for (const lid of g.lights)
+                            if (!ids.includes(lid)) ids.push(lid);
                 }
                 return ids;
             }
 
-            function getPositionLabel(idx, cols, rows) {
-                const colMap = { 1: [""], 2: ["Izq", "Der"], 3: ["Izq", "Centro", "Der"] };
-                const rowMap = { 1: [""], 2: ["Sup", "Inf"] };
-                const col = idx % cols;
-                const row = Math.floor(idx / cols);
-                const c = colMap[cols] ? colMap[cols][col] : `Col ${col + 1}`;
-                const r = rowMap[rows] ? rowMap[rows][row] : `Fila ${row + 1}`;
-                return [r, c].filter(Boolean).join(" ");
+            // ── LIGHT POSITIONS ──
+            const POSITIONS_KEY = "lightPositions";
+            const SNAP_COLS = 12;
+            const SNAP_ROWS = 8;
+
+            function loadLightPositions() {
+                try {
+                    const v = JSON.parse(
+                        localStorage.getItem(POSITIONS_KEY) || "{}",
+                    );
+                    return v && typeof v === "object" ? v : {};
+                } catch {
+                    return {};
+                }
+            }
+            function saveLightPositions(map) {
+                localStorage.setItem(POSITIONS_KEY, JSON.stringify(map));
             }
 
-            function renderOrderPanel() {
-                const allIds = getLightsForSelectedGroups();
-                const panel = document.getElementById("order-panel");
-                const grid = document.getElementById("order-grid");
-                if (!allIds.length) {
-                    panel.style.display = "none";
-                    return;
-                }
-                panel.style.display = "";
-                const n = allIds.length;
+            // Seed defaults using the legacy grid formula so first-time layouts feel familiar.
+            function ensurePositionsFor(lightIds) {
+                const map = loadLightPositions();
+                let dirty = false;
+                const n = lightIds.length;
                 const cols = Math.min(n, 3);
                 const rows = Math.ceil(n / cols);
-                const saved = loadSyncOrder(allIds);
-                const lightById = Object.fromEntries(lights.map((l) => [l.id, l]));
-
-                grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-                grid.innerHTML = Array.from({ length: n }, (_, idx) => {
-                    const label = getPositionLabel(idx, cols, rows);
-                    const options = allIds.map((lid) => {
-                        const name = lightById[lid] ? lightById[lid].name : lid;
-                        const sel = saved[idx] === lid ? " selected" : "";
-                        return `<option value="${lid}"${sel}>${name}</option>`;
-                    }).join("");
-                    return `
-                        <div style="text-align:center">
-                          <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:2px;font-family:var(--mono)">${label}</div>
-                          <select id="order-slot-${idx}" onchange="saveSyncOrder(${idx})"
-                            style="width:100%;font-size:0.68rem;background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 0">
-                            ${options}
-                          </select>
-                        </div>`;
-                }).join("");
-            }
-
-            function loadSyncOrder(lightIds) {
-                const key = `syncOrder:${[...lightIds].sort().join(",")}`;
-                try {
-                    const saved = JSON.parse(localStorage.getItem(key) || "null");
-                    if (
-                        Array.isArray(saved) &&
-                        saved.length === lightIds.length &&
-                        saved.every((id) => lightIds.includes(id)) &&
-                        new Set(saved).size === saved.length   // sin duplicados
-                    ) return saved;
-                } catch {}
-                return [...lightIds];
-            }
-
-            function saveSyncOrder(changedIdx) {
-                const allIds = getLightsForSelectedGroups();
-                if (!allIds.length) return;
-                const n = allIds.length;
-                const key = `syncOrder:${[...allIds].sort().join(",")}`;
-
-                const order = Array.from({ length: n }, (_, i) => {
-                    const sel = document.getElementById(`order-slot-${i}`);
-                    return sel ? sel.value : allIds[i];
+                lightIds.forEach((id, idx) => {
+                    if (map[id]) return;
+                    const col = idx % cols;
+                    const row = Math.floor(idx / cols);
+                    map[id] = {
+                        x: cols === 1 ? 0.5 : (col + 0.5) / cols,
+                        y: rows === 1 ? 0.5 : (row + 0.5) / rows,
+                    };
+                    dirty = true;
                 });
+                if (dirty) saveLightPositions(map);
+                return map;
+            }
 
-                // Si el slot cambiado duplica una luz ya asignada, intercambiá con ese slot
-                if (changedIdx !== undefined) {
-                    const newVal = order[changedIdx];
-                    const prev = JSON.parse(localStorage.getItem(key) || "null") || [...allIds];
-                    for (let i = 0; i < n; i++) {
-                        if (i !== changedIdx && order[i] === newVal) {
-                            order[i] = prev[changedIdx];
-                            const el = document.getElementById(`order-slot-${i}`);
-                            if (el) el.value = order[i];
-                            break;
-                        }
-                    }
+            function snap01(v, steps) {
+                const max = Math.max(1, steps - 1);
+                return Math.round(v * max) / max;
+            }
+
+            function lightsForZone(zoneID) {
+                const cfg = entConfigs.find((c) => c.id === zoneID);
+                if (!cfg) return [];
+                return [...new Set(cfg.channels.flatMap((ch) => ch.lights))];
+            }
+
+            function updateZoneActions() {
+                const wrap = document.getElementById("zone-actions");
+                if (!wrap) return;
+                wrap.style.display = selectedZoneID ? "flex" : "none";
+            }
+
+            function openZoneConfig(zoneID) {
+                if (!zoneID) return;
+                const cfg = entConfigs.find((c) => c.id === zoneID);
+                if (!cfg) return;
+                selectedZoneID = zoneID;
+                document.getElementById("zone-config-name").textContent =
+                    cfg.name;
+                renderZoneLayout(lightsForZone(zoneID));
+                switchPage("zone-config");
+            }
+
+            function renderZoneLayout(lightIds) {
+                const monitor = document.getElementById("zone-config-monitor");
+                if (!monitor) return;
+                if (!lightIds.length) {
+                    monitor.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-family:var(--mono);font-size:0.75rem">Esta zona no tiene luces asignadas</div>`;
+                    return;
                 }
+                const positions = ensurePositionsFor(lightIds);
+                const lightById = Object.fromEntries(
+                    lights.map((l) => [l.id, l]),
+                );
+                monitor.innerHTML = lightIds
+                    .map((id) => {
+                        const p = positions[id] || { x: 0.5, y: 0.5 };
+                        const name = lightById[id] ? lightById[id].name : id;
+                        const initials = (name.match(/\b\w/g) || ["·"])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase();
+                        return `<div class="layout-chip" data-id="${id}" title="${name}"
+                        style="position:absolute;left:${p.x * 100}%;top:${p.y * 100}%;transform:translate(-50%,-50%);
+                               width:34px;height:34px;border-radius:50%;
+                               background:var(--accent);color:#000;font-size:0.7rem;font-weight:700;
+                               display:flex;align-items:center;justify-content:center;
+                               border:1px solid var(--border);cursor:grab;user-select:none;
+                               font-family:var(--mono);box-shadow:0 1px 4px rgba(0,0,0,0.4);
+                               touch-action:none">${initials}</div>`;
+                    })
+                    .join("");
 
-                localStorage.setItem(key, JSON.stringify(order));
-                if (syncRunning) syncLightIds = order;
+                monitor.querySelectorAll(".layout-chip").forEach((chip) => {
+                    chip.addEventListener("pointerdown", (e) =>
+                        startChipDrag(e, chip, monitor),
+                    );
+                });
+            }
+
+            function startChipDrag(e, chip, monitor) {
+                e.preventDefault();
+                chip.setPointerCapture(e.pointerId);
+                chip.style.cursor = "grabbing";
+                const rect = monitor.getBoundingClientRect();
+                const id = chip.dataset.id;
+
+                const place = (clientX, clientY) => {
+                    const x = Math.max(
+                        0,
+                        Math.min(1, (clientX - rect.left) / rect.width),
+                    );
+                    const y = Math.max(
+                        0,
+                        Math.min(1, (clientY - rect.top) / rect.height),
+                    );
+                    chip.style.left = `${x * 100}%`;
+                    chip.style.top = `${y * 100}%`;
+                    return { x, y };
+                };
+                const onMove = (ev) => place(ev.clientX, ev.clientY);
+                const onUp = (ev) => {
+                    chip.removeEventListener("pointermove", onMove);
+                    chip.removeEventListener("pointerup", onUp);
+                    chip.removeEventListener("pointercancel", onUp);
+                    chip.style.cursor = "grab";
+                    const { x, y } = place(ev.clientX, ev.clientY);
+                    const sx = snap01(x, SNAP_COLS);
+                    const sy = snap01(y, SNAP_ROWS);
+                    chip.style.left = `${sx * 100}%`;
+                    chip.style.top = `${sy * 100}%`;
+                    const map = loadLightPositions();
+                    map[id] = { x: sx, y: sy };
+                    saveLightPositions(map);
+                };
+                chip.addEventListener("pointermove", onMove);
+                chip.addEventListener("pointerup", onUp);
+                chip.addEventListener("pointercancel", onUp);
             }
 
             async function loadSyncStatus() {
@@ -1653,10 +2029,10 @@
 
             function updateSyncUI() {
                 const navSync = document.getElementById("nav-sync");
-                const icon    = document.getElementById("sync-nav-icon");
-                const dot     = document.getElementById("sync-color-dot");
-                const ind     = document.getElementById("sync-indicator");
-                const txt     = document.getElementById("sync-status-text");
+                const icon = document.getElementById("sync-nav-icon");
+                const dot = document.getElementById("sync-color-dot");
+                const ind = document.getElementById("sync-indicator");
+                const txt = document.getElementById("sync-status-text");
                 if (syncRunning) {
                     navSync.classList.add("sync-active");
                     icon.innerHTML = SVG.stop;
@@ -1674,22 +2050,44 @@
 
             function switchPage(page) {
                 activePage = page;
-                document.getElementById("page-home").style.display   = page === "home"   ? "" : "none";
-                document.getElementById("page-lights").style.display = page === "lights" ? "" : "none";
-                document.querySelectorAll(".nav-item[data-page]").forEach(el =>
-                    el.classList.toggle("active", el.dataset.page === page)
-                );
-                if (page === "home")   renderZones();
-                if (page === "lights") { renderGroups(); renderLights(); }
+                document.getElementById("page-home").style.display =
+                    page === "home" ? "" : "none";
+                document.getElementById("page-lights").style.display =
+                    page === "lights" ? "" : "none";
+                document.getElementById("page-zone-config").style.display =
+                    page === "zone-config" ? "" : "none";
+                // Bottom nav active state: zone-config se muestra como Inicio.
+                const navPage = page === "zone-config" ? "home" : page;
+                document
+                    .querySelectorAll(".nav-item[data-page]")
+                    .forEach((el) =>
+                        el.classList.toggle(
+                            "active",
+                            el.dataset.page === navPage,
+                        ),
+                    );
+                if (page === "home") renderZones();
+                if (page === "lights") {
+                    renderGroups();
+                    renderLights();
+                }
             }
 
-            function openSettings()  {
-                document.getElementById("settings-drawer").classList.add("open");
-                document.getElementById("settings-overlay").classList.add("open");
+            function openSettings() {
+                document
+                    .getElementById("settings-drawer")
+                    .classList.add("open");
+                document
+                    .getElementById("settings-overlay")
+                    .classList.add("open");
             }
             function closeSettings() {
-                document.getElementById("settings-drawer").classList.remove("open");
-                document.getElementById("settings-overlay").classList.remove("open");
+                document
+                    .getElementById("settings-drawer")
+                    .classList.remove("open");
+                document
+                    .getElementById("settings-overlay")
+                    .classList.remove("open");
             }
 
             function toggleSync() {
@@ -1711,50 +2109,95 @@
                         !syncWs ||
                         syncWs.readyState !== WebSocket.OPEN
                     ) {
-                        console.warn("[sync] tick aborted",
-                            { syncRunning, ws: syncWs && syncWs.readyState });
+                        console.warn("[sync] tick aborted", {
+                            syncRunning,
+                            ws: syncWs && syncWs.readyState,
+                        });
                         return;
                     }
                     tickN++;
                     // Re-leer slider en cada tick para que los cambios en vivo tomen efecto.
                     // Con entertainment activo capamos a 50ms para alimentar el interpolador Go a su ritmo.
                     const sliderMs = Math.round(
-                        parseFloat(document.getElementById("sync-interval").value) * 1000
+                        parseFloat(
+                            document.getElementById("sync-interval").value,
+                        ) * 1000,
                     );
-                    const interval = entActive() ? Math.min(sliderMs, 50) : sliderMs;
+                    const interval = entActive()
+                        ? Math.min(sliderMs, 50)
+                        : sliderMs;
 
                     if (syncVideoEl && syncVideoEl.readyState >= 2) {
                         try {
-                            syncCtx.drawImage(syncVideoEl, 0, 0, syncCanvas.width, syncCanvas.height);
+                            syncCtx.drawImage(
+                                syncVideoEl,
+                                0,
+                                0,
+                                syncCanvas.width,
+                                syncCanvas.height,
+                            );
                             const lightsPayload = sampleRegions();
-                            const avg = lightsPayload.reduce(
-                                (a, l) => { a[0]+=l.r; a[1]+=l.g; a[2]+=l.b; return a; },
-                                [0, 0, 0]
-                            ).map((v) => (v / lightsPayload.length) | 0);
-                            const hex = "#" + avg.map((v) => v.toString(16).padStart(2, "0")).join("");
-                            document.getElementById("sync-color-dot").style.background = hex;
-                            document.getElementById("sync-color-hex").textContent = hex;
+                            const avg = lightsPayload
+                                .reduce(
+                                    (a, l) => {
+                                        a[0] += l.r;
+                                        a[1] += l.g;
+                                        a[2] += l.b;
+                                        return a;
+                                    },
+                                    [0, 0, 0],
+                                )
+                                .map((v) => (v / lightsPayload.length) | 0);
+                            const hex =
+                                "#" +
+                                avg
+                                    .map((v) => v.toString(16).padStart(2, "0"))
+                                    .join("");
+                            document.getElementById(
+                                "sync-color-dot",
+                            ).style.background = hex;
+                            document.getElementById(
+                                "sync-color-hex",
+                            ).textContent = hex;
                             // DTLS: tt=0 (interpolación smoothstep en Go)
                             // HTTP: fade del bridge dura un intervalo completo
-                            const tt = entActive() ? 0 : Math.max(1, Math.round(sliderMs / 100));
-                            syncWs.send(JSON.stringify({ lights: lightsPayload, bri: 200, transitiontime: tt }));
+                            const tt = entActive()
+                                ? 0
+                                : Math.max(1, Math.round(sliderMs / 100));
+                            syncWs.send(
+                                JSON.stringify({
+                                    lights: lightsPayload,
+                                    bri: 200,
+                                    transitiontime: tt,
+                                }),
+                            );
                             sentN++;
                             if (sentN === 1 || sentN % 50 === 0) {
-                                console.log(`[sync] sent #${sentN}`,
-                                    { lights: lightsPayload.length, hex, ws: syncWs.readyState });
+                                console.log(`[sync] sent #${sentN}`, {
+                                    lights: lightsPayload.length,
+                                    hex,
+                                    ws: syncWs.readyState,
+                                });
                             }
                         } catch (e) {
-                            console.error("[sync] canvas error:", e.name, e.message);
-                            document.getElementById("sync-color-hex").textContent = `err:${e.name}`;
+                            console.error(
+                                "[sync] canvas error:",
+                                e.name,
+                                e.message,
+                            );
+                            document.getElementById(
+                                "sync-color-hex",
+                            ).textContent = `err:${e.name}`;
                         }
                     } else if (tickN - lastLogTickN > 20) {
                         // Loguea cada ~1s cuando el video no está listo, en vez de spamear cada tick
                         lastLogTickN = tickN;
-                        console.warn(`[sync] tick #${tickN} — video no listo`,
-                            { hasVideo: !!syncVideoEl,
-                              readyState: syncVideoEl && syncVideoEl.readyState,
-                              videoW: syncVideoEl && syncVideoEl.videoWidth,
-                              videoH: syncVideoEl && syncVideoEl.videoHeight });
+                        console.warn(`[sync] tick #${tickN} — video no listo`, {
+                            hasVideo: !!syncVideoEl,
+                            readyState: syncVideoEl && syncVideoEl.readyState,
+                            videoW: syncVideoEl && syncVideoEl.videoWidth,
+                            videoH: syncVideoEl && syncVideoEl.videoHeight,
+                        });
                     }
                     syncTimerId = setTimeout(sample, interval);
                 }, 0);
@@ -1790,28 +2233,44 @@
 
             // ── ZONES ──
             function renderZones() {
+                updateZoneActions();
                 const grid = document.getElementById("zones-grid");
                 if (!grid) return;
                 if (!entConfigs.length) {
                     grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Sin zonas de entretenimiento.<br>Configura áreas en la app Hue primero.</div>`;
                     return;
                 }
-                grid.innerHTML = entConfigs.map((cfg) => {
-                    const lightIds = [...new Set(cfg.channels.flatMap((ch) => ch.lights))];
-                    const isActive  = activeZoneID === cfg.id && syncRunning;
-                    const isLoading = loadingZoneID === cfg.id;
-                    const cardClass = isActive ? " active" : isLoading ? " loading" : "";
-                    const icon = isActive
-                        ? SVG.stop
-                        : isLoading
-                            ? `<span class="zone-spinner"></span>`
-                            : SVG.play;
-                    const statusText = isActive
-                        ? "● Sincronizando"
-                        : isLoading
-                            ? "Activando..."
-                            : cfg.status === "active" ? "● Activo" : "○ Inactivo";
-                    return `
+                grid.innerHTML = entConfigs
+                    .map((cfg) => {
+                        const lightIds = [
+                            ...new Set(cfg.channels.flatMap((ch) => ch.lights)),
+                        ];
+                        const isActive = activeZoneID === cfg.id && syncRunning;
+                        const isLoading = loadingZoneID === cfg.id;
+                        const isSelected =
+                            selectedZoneID === cfg.id &&
+                            !isActive &&
+                            !isLoading;
+                        const cardClass = isActive
+                            ? " active"
+                            : isLoading
+                              ? " loading"
+                              : isSelected
+                                ? " selected"
+                                : "";
+                        const icon = isActive
+                            ? SVG.stop
+                            : isLoading
+                              ? `<span class="zone-spinner"></span>`
+                              : SVG.play;
+                        const statusText = isActive
+                            ? "● Sincronizando"
+                            : isLoading
+                              ? "Activando..."
+                              : cfg.status === "active"
+                                ? "● Activo"
+                                : "○ Inactivo";
+                        return `
 <div class="zone-card${cardClass}" onclick="activateZone('${cfg.id}')">
   <span class="zone-card-icon">${icon}</span>
   <div>
@@ -1820,16 +2279,24 @@
   </div>
   <div class="zone-card-status">${statusText}</div>
 </div>`;
-                }).join("");
+                    })
+                    .join("");
             }
 
             // Detecta si la app corre en Tauri (con captura nativa por Rust).
             // No usamos `isTauri` porque Tauri 2 inyecta una propiedad global no-configurable con ese nombre.
             function inTauri() {
-                return !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);
+                return !!(
+                    window.__TAURI__ &&
+                    window.__TAURI__.core &&
+                    window.__TAURI__.core.invoke
+                );
             }
 
             function activateZone(configID) {
+                // Recordar selección aunque luego se detenga el sync.
+                selectedZoneID = configID;
+                updateZoneActions();
                 // Toggle off same zone
                 if (activeZoneID === configID && syncRunning) {
                     stopSync();
@@ -1841,10 +2308,22 @@
                 // Stop existing sync immediately (synchronous, no awaits)
                 if (syncRunning) {
                     syncRunning = false;
-                    if (syncTimerId) { clearTimeout(syncTimerId); syncTimerId = null; }
-                    if (syncWs) { syncWs.close(); syncWs = null; }
-                    if (syncVideoEl) { syncVideoEl.remove(); syncVideoEl = null; }
-                    if (syncStream) { syncStream.getTracks().forEach((t) => t.stop()); syncStream = null; }
+                    if (syncTimerId) {
+                        clearTimeout(syncTimerId);
+                        syncTimerId = null;
+                    }
+                    if (syncWs) {
+                        syncWs.close();
+                        syncWs = null;
+                    }
+                    if (syncVideoEl) {
+                        syncVideoEl.remove();
+                        syncVideoEl = null;
+                    }
+                    if (syncStream) {
+                        syncStream.getTracks().forEach((t) => t.stop());
+                        syncStream = null;
+                    }
                 }
 
                 // Show spinner immediately
@@ -1856,9 +2335,15 @@
                 let capturePromise = null;
                 if (!inTauri()) {
                     try {
-                        capturePromise = navigator.mediaDevices.getDisplayMedia({ video: true });
+                        capturePromise = navigator.mediaDevices.getDisplayMedia(
+                            { video: true },
+                        );
                     } catch (e) {
-                        toast(`Captura no soportada: ${e.message}`, "error", 7000);
+                        toast(
+                            `Captura no soportada: ${e.message}`,
+                            "error",
+                            7000,
+                        );
                         loadingZoneID = null;
                         renderZones();
                         return;
@@ -1870,7 +2355,9 @@
                     try {
                         // Stop old entertainment if switching zones
                         if (activeZoneID && activeZoneID !== configID) {
-                            await fetch(`${API}/api/entertainment/stop`, { method: "POST" });
+                            await fetch(`${API}/api/entertainment/stop`, {
+                                method: "POST",
+                            });
                             updateEntBadge(false);
                         }
                         activeZoneID = null;
@@ -1878,11 +2365,18 @@
                         // Start new entertainment
                         let entOk = false;
                         try {
-                            const r = await fetch(`${API}/api/entertainment/start`, {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ config_id: configID }),
-                            });
+                            const r = await fetch(
+                                `${API}/api/entertainment/start`,
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        config_id: configID,
+                                    }),
+                                },
+                            );
                             const data = await r.json();
                             if (r.ok) {
                                 entOk = true;
@@ -1891,12 +2385,19 @@
                                 // the initial load may have had empty channels if buildEntIDMap
                                 // failed at startup (race with bridge CLIP v2 API).
                                 try {
-                                    const fr = await fetch(`${API}/api/entertainment`);
+                                    const fr = await fetch(
+                                        `${API}/api/entertainment`,
+                                    );
                                     const fd = await fr.json();
                                     entConfigs = fd.configs || [];
                                 } catch (_) {}
                             } else {
-                                toast(data.detail || "Error activando entertainment", "error", 5000);
+                                toast(
+                                    data.detail ||
+                                        "Error activando entertainment",
+                                    "error",
+                                    5000,
+                                );
                             }
                         } catch (e) {
                             toast(e.message, "error");
@@ -1904,7 +2405,11 @@
 
                         const cfg = entConfigs.find((c) => c.id === configID);
                         const lightIds = cfg
-                            ? [...new Set(cfg.channels.flatMap((ch) => ch.lights))]
+                            ? [
+                                  ...new Set(
+                                      cfg.channels.flatMap((ch) => ch.lights),
+                                  ),
+                              ]
                             : [];
 
                         if (inTauri()) {
@@ -1917,10 +2422,20 @@
                             try {
                                 stream = await capturePromise;
                             } catch (e) {
-                                console.error("[sync] getDisplayMedia falló:", e);
-                                toast(`Captura fallida: ${e.message}`, "error", 6000);
+                                console.error(
+                                    "[sync] getDisplayMedia falló:",
+                                    e,
+                                );
+                                toast(
+                                    `Captura fallida: ${e.message}`,
+                                    "error",
+                                    6000,
+                                );
                                 if (entOk) {
-                                    await fetch(`${API}/api/entertainment/stop`, { method: "POST" });
+                                    await fetch(
+                                        `${API}/api/entertainment/stop`,
+                                        { method: "POST" },
+                                    );
                                     updateEntBadge(false);
                                 }
                                 return;
@@ -1942,11 +2457,15 @@
             }
 
             // Tauri path: captura desde Rust (xcap) — sin getDisplayMedia, sin video, sin canvas.
-            // El sample loop invoca window.__TAURI__.core.invoke('sample_screen_regions', {cols, rows}).
+            // El sample loop invoca window.__TAURI__.core.invoke('sample_screen_regions', {positions}).
             function _startSyncTauri(lightIds) {
-                syncLightIds = lightIds.length ? lightIds : lights.map((l) => l.id);
+                syncLightIds = lightIds.length
+                    ? lightIds
+                    : lights.map((l) => l.id);
 
-                const wsBase = API ? API.replace(/^http/, "ws") : `ws://${location.host}`;
+                const wsBase = API
+                    ? API.replace(/^http/, "ws")
+                    : `ws://${location.host}`;
                 syncWs = new WebSocket(`${wsBase}/ws/color`);
 
                 syncWs.onopen = () => {
@@ -1978,47 +2497,97 @@
                         !syncWs ||
                         syncWs.readyState !== WebSocket.OPEN
                     ) {
-                        console.warn("[sync-tauri] tick aborted",
-                            { syncRunning, ws: syncWs && syncWs.readyState });
+                        console.warn("[sync-tauri] tick aborted", {
+                            syncRunning,
+                            ws: syncWs && syncWs.readyState,
+                        });
                         return;
                     }
                     const sliderMs = Math.round(
-                        parseFloat(document.getElementById("sync-interval").value) * 1000
+                        parseFloat(
+                            document.getElementById("sync-interval").value,
+                        ) * 1000,
                     );
-                    const interval = entActive() ? Math.min(sliderMs, 50) : sliderMs;
+                    const interval = entActive()
+                        ? Math.min(sliderMs, 50)
+                        : sliderMs;
 
                     // Skip si la captura previa todavía está en vuelo (Rust > intervalo).
                     if (!inflight) {
                         inflight = true;
                         try {
-                            const n = syncLightIds.length || 1;
-                            const cols = Math.min(n, 3);
-                            const rows = Math.ceil(n / cols);
-                            const regionColors = await invoke("sample_screen_regions", { cols, rows });
-
-                            const lightsPayload = syncLightIds.map((id, idx) => {
-                                const c = regionColors[idx] || [0, 0, 0];
-                                const [r, g, b] = boostSaturation(c[0], c[1], c[2]);
-                                return { id, r, g, b };
+                            const positions = ensurePositionsFor(syncLightIds);
+                            const positionList = syncLightIds.map((id) => {
+                                const p = positions[id] || { x: 0.5, y: 0.5 };
+                                return [p.x, p.y];
                             });
+                            const regionColors = await invoke(
+                                "sample_screen_regions",
+                                { positions: positionList },
+                            );
 
-                            const avg = lightsPayload.reduce(
-                                (a, l) => { a[0]+=l.r; a[1]+=l.g; a[2]+=l.b; return a; },
-                                [0, 0, 0]
-                            ).map((v) => (v / Math.max(1, lightsPayload.length)) | 0);
-                            const hex = "#" + avg.map((v) => v.toString(16).padStart(2, "0")).join("");
-                            document.getElementById("sync-color-dot").style.background = hex;
-                            document.getElementById("sync-color-hex").textContent = hex;
+                            const lightsPayload = syncLightIds.map(
+                                (id, idx) => {
+                                    const c = regionColors[idx] || [0, 0, 0];
+                                    const [r, g, b] = boostSaturation(
+                                        c[0],
+                                        c[1],
+                                        c[2],
+                                    );
+                                    return { id, r, g, b };
+                                },
+                            );
 
-                            const tt = entActive() ? 0 : Math.max(1, Math.round(sliderMs / 100));
-                            syncWs.send(JSON.stringify({ lights: lightsPayload, bri: 200, transitiontime: tt }));
+                            const avg = lightsPayload
+                                .reduce(
+                                    (a, l) => {
+                                        a[0] += l.r;
+                                        a[1] += l.g;
+                                        a[2] += l.b;
+                                        return a;
+                                    },
+                                    [0, 0, 0],
+                                )
+                                .map(
+                                    (v) =>
+                                        (v /
+                                            Math.max(1, lightsPayload.length)) |
+                                        0,
+                                );
+                            const hex =
+                                "#" +
+                                avg
+                                    .map((v) => v.toString(16).padStart(2, "0"))
+                                    .join("");
+                            document.getElementById(
+                                "sync-color-dot",
+                            ).style.background = hex;
+                            document.getElementById(
+                                "sync-color-hex",
+                            ).textContent = hex;
+
+                            const tt = entActive()
+                                ? 0
+                                : Math.max(1, Math.round(sliderMs / 100));
+                            syncWs.send(
+                                JSON.stringify({
+                                    lights: lightsPayload,
+                                    bri: 200,
+                                    transitiontime: tt,
+                                }),
+                            );
                             sentN++;
                             if (sentN === 1 || sentN % 50 === 0) {
-                                console.log(`[sync-tauri] sent #${sentN}`,
-                                    { lights: lightsPayload.length, hex });
+                                console.log(`[sync-tauri] sent #${sentN}`, {
+                                    lights: lightsPayload.length,
+                                    hex,
+                                });
                             }
                         } catch (e) {
-                            console.error("[sync-tauri] capture/send error:", e);
+                            console.error(
+                                "[sync-tauri] capture/send error:",
+                                e,
+                            );
                         } finally {
                             inflight = false;
                         }
@@ -2030,7 +2599,9 @@
             function _startSyncWithStreamLights(stream, lightIds) {
                 syncStream = stream;
                 // If zone has no mapped lights, send all lights — backend filters to channel map.
-                syncLightIds = lightIds.length ? lightIds : lights.map((l) => l.id);
+                syncLightIds = lightIds.length
+                    ? lightIds
+                    : lights.map((l) => l.id);
 
                 syncVideoEl = document.createElement("video");
                 syncVideoEl.srcObject = stream;
@@ -2047,24 +2618,35 @@
                         readyState: syncVideoEl.readyState,
                         w: syncVideoEl.videoWidth,
                         h: syncVideoEl.videoHeight,
-                    }));
+                    }),
+                );
                 syncVideoEl.addEventListener("canplay", () =>
-                    console.log("[sync] video canplay"));
+                    console.log("[sync] video canplay"),
+                );
                 syncVideoEl.addEventListener("playing", () =>
-                    console.log("[sync] video playing"));
+                    console.log("[sync] video playing"),
+                );
                 syncVideoEl.addEventListener("error", (e) =>
-                    console.error("[sync] video error", e));
+                    console.error("[sync] video error", e),
+                );
                 document.body.appendChild(syncVideoEl);
-                syncVideoEl.play()
+                syncVideoEl
+                    .play()
                     .then(() => console.log("[sync] video play() resolved"))
-                    .catch((e) => console.error("[sync] play():", e.name, e.message));
+                    .catch((e) =>
+                        console.error("[sync] play():", e.name, e.message),
+                    );
 
                 syncCanvas = document.createElement("canvas");
                 syncCanvas.width = 64;
                 syncCanvas.height = 36;
-                syncCtx = syncCanvas.getContext("2d", { willReadFrequently: true });
+                syncCtx = syncCanvas.getContext("2d", {
+                    willReadFrequently: true,
+                });
 
-                const wsBase = API ? API.replace(/^http/, "ws") : `ws://${location.host}`;
+                const wsBase = API
+                    ? API.replace(/^http/, "ws")
+                    : `ws://${location.host}`;
                 syncWs = new WebSocket(`${wsBase}/ws/color`);
 
                 syncWs.onopen = () => {
@@ -2091,7 +2673,9 @@
                 const html = document.documentElement;
                 const goLight = html.dataset.theme === "dark";
                 html.dataset.theme = goLight ? "light" : "dark";
-                document.getElementById("theme-btn").textContent = goLight ? "🌙" : "☀";
+                document.getElementById("theme-btn").textContent = goLight
+                    ? "🌙"
+                    : "☀";
                 localStorage.setItem("spectra-theme", html.dataset.theme);
             }
 
@@ -2102,7 +2686,8 @@
                     const r = await fetch(`${API}/api/entertainment`);
                     if (!r.ok) {
                         const e = await r.json();
-                        const msg = e.detail || "Sin clientkey — re-vincula el bridge";
+                        const msg =
+                            e.detail || "Sin clientkey — re-vincula el bridge";
                         sel.innerHTML = `<option value="">${msg}</option>`;
                         entConfigs = [];
                         renderZones();
@@ -2111,9 +2696,12 @@
                     const data = await r.json();
                     entConfigs = data.configs || [];
                     sel.innerHTML = entConfigs.length
-                        ? entConfigs.map((c) =>
-                            `<option value="${c.id}" ${c.id === data.active_id ? "selected" : ""}>${c.name} (${c.status})</option>`
-                          ).join("")
+                        ? entConfigs
+                              .map(
+                                  (c) =>
+                                      `<option value="${c.id}" ${c.id === data.active_id ? "selected" : ""}>${c.name} (${c.status})</option>`,
+                              )
+                              .join("")
                         : `<option value="">Sin áreas de entretenimiento</option>`;
                     if (data.active_id) {
                         updateEntBadge(true);
@@ -2128,16 +2716,24 @@
             }
 
             function updateEntBadge(active) {
-                document.getElementById("ent-badge").style.display = active ? "" : "none";
+                document.getElementById("ent-badge").style.display = active
+                    ? ""
+                    : "none";
             }
 
             function entActive() {
-                return document.getElementById("ent-badge").style.display !== "none";
+                return (
+                    document.getElementById("ent-badge").style.display !==
+                    "none"
+                );
             }
 
             async function startEntertainment() {
                 const configID = document.getElementById("ent-select").value;
-                if (!configID) { toast("Seleccioná un área de entretenimiento", "error"); return; }
+                if (!configID) {
+                    toast("Seleccioná un área de entretenimiento", "error");
+                    return;
+                }
                 const statusEl = document.getElementById("ent-status");
                 statusEl.textContent = "Conectando DTLS...";
                 try {
@@ -2147,10 +2743,18 @@
                         body: JSON.stringify({ config_id: configID }),
                     });
                     const data = await r.json();
-                    if (!r.ok) { toast(data.detail, "error", 6000); statusEl.textContent = data.detail; return; }
+                    if (!r.ok) {
+                        toast(data.detail, "error", 6000);
+                        statusEl.textContent = data.detail;
+                        return;
+                    }
                     updateEntBadge(true);
-                    statusEl.textContent = "Streaming DTLS activo — iniciá el sync ↑";
-                    toast("Entertainment activo — ahora iniciá el Sync", "success");
+                    statusEl.textContent =
+                        "Streaming DTLS activo — iniciá el sync ↑";
+                    toast(
+                        "Entertainment activo — ahora iniciá el Sync",
+                        "success",
+                    );
                 } catch (e) {
                     toast(e.message, "error");
                     statusEl.textContent = e.message;
@@ -2158,7 +2762,9 @@
             }
 
             async function stopEntertainment() {
-                await fetch(`${API}/api/entertainment/stop`, { method: "POST" });
+                await fetch(`${API}/api/entertainment/stop`, {
+                    method: "POST",
+                });
                 updateEntBadge(false);
                 document.getElementById("ent-status").textContent = "";
                 toast("Entertainment detenido", "info");
@@ -2166,35 +2772,35 @@
 
             // ── TABS ──
             // ── REGION SAMPLING ──
-            // Muestrea cuadrados pequeños centrados en cada posición de la grilla.
-            // En lugar de promediar toda la celda (muy grande en pantallas 32:9), se toman
-            // ~8×8 px del canvas (≈640×320 px reales en 5120×1440), mucho más preciso.
+            // Muestrea un cuadrado ~12% del ancho del canvas centrado en la posición
+            // configurada por el usuario para cada luz (lightPositions[id] = {x,y} en 0..1).
             function sampleRegions() {
-                const n = syncLightIds.length || 1;
-                const cols = Math.min(n, 3);
-                const rows = Math.ceil(n / cols);
                 const W = syncCanvas.width;
                 const H = syncCanvas.height;
-                // Cuadrado de muestra: ~12% del ancho del canvas
                 const sw = Math.max(4, Math.round(W * 0.12));
-                const sh = sw; // cuadrado
-                return syncLightIds.map((id, idx) => {
-                    const col = idx % cols;
-                    const row = Math.floor(idx / cols);
-                    // Centro de la posición como fracción del canvas
-                    const cx = cols === 1 ? 0.5 : (col + 0.5) / cols;
-                    const cy = rows === 1 ? 0.5 : (row + 0.5) / rows;
-                    const x = Math.max(0, Math.round(cx * W - sw / 2));
-                    const y = Math.max(0, Math.round(cy * H - sh / 2));
+                const sh = sw;
+                const positions = ensurePositionsFor(syncLightIds);
+                return syncLightIds.map((id) => {
+                    const p = positions[id] || { x: 0.5, y: 0.5 };
+                    const x = Math.max(0, Math.round(p.x * W - sw / 2));
+                    const y = Math.max(0, Math.round(p.y * H - sh / 2));
                     const pw = Math.min(sw, W - x);
                     const ph = Math.min(sh, H - y);
                     const px = syncCtx.getImageData(x, y, pw, ph).data;
-                    let r = 0, g = 0, b = 0;
+                    let r = 0,
+                        g = 0,
+                        b = 0;
                     const cnt = px.length / 4;
                     for (let i = 0; i < px.length; i += 4) {
-                        r += px[i]; g += px[i + 1]; b += px[i + 2];
+                        r += px[i];
+                        g += px[i + 1];
+                        b += px[i + 2];
                     }
-                    const [rb, gb, bb] = boostSaturation((r / cnt) | 0, (g / cnt) | 0, (b / cnt) | 0);
+                    const [rb, gb, bb] = boostSaturation(
+                        (r / cnt) | 0,
+                        (g / cnt) | 0,
+                        (b / cnt) | 0,
+                    );
                     return { id, r: rb, g: gb, b: bb };
                 });
             }
@@ -2225,14 +2831,41 @@
                 const t = v * (1 - (1 - f) * s);
                 let rr, gg, bb;
                 switch (i % 6) {
-                    case 0: rr=v; gg=t; bb=p; break;
-                    case 1: rr=q; gg=v; bb=p; break;
-                    case 2: rr=p; gg=v; bb=t; break;
-                    case 3: rr=p; gg=q; bb=v; break;
-                    case 4: rr=t; gg=p; bb=v; break;
-                    default: rr=v; gg=p; bb=q;
+                    case 0:
+                        rr = v;
+                        gg = t;
+                        bb = p;
+                        break;
+                    case 1:
+                        rr = q;
+                        gg = v;
+                        bb = p;
+                        break;
+                    case 2:
+                        rr = p;
+                        gg = v;
+                        bb = t;
+                        break;
+                    case 3:
+                        rr = p;
+                        gg = q;
+                        bb = v;
+                        break;
+                    case 4:
+                        rr = t;
+                        gg = p;
+                        bb = v;
+                        break;
+                    default:
+                        rr = v;
+                        gg = p;
+                        bb = q;
                 }
-                return [Math.round(rr * 255), Math.round(gg * 255), Math.round(bb * 255)];
+                return [
+                    Math.round(rr * 255),
+                    Math.round(gg * 255),
+                    Math.round(bb * 255),
+                ];
             }
 
             // ── HELPERS ──
@@ -2266,16 +2899,21 @@
             }
 
             // ── INIT ──
-            console.log("[boot] SpectraControl frontend v2 — sync diag enabled");
+            console.log(
+                "[boot] SpectraControl frontend v2 — sync diag enabled",
+            );
             window.addEventListener("DOMContentLoaded", () => {
-                const savedTheme = localStorage.getItem("spectra-theme") || "dark";
+                const savedTheme =
+                    localStorage.getItem("spectra-theme") || "dark";
                 document.documentElement.dataset.theme = savedTheme;
-                document.getElementById("theme-btn").textContent = savedTheme === "dark" ? "☀" : "🌙";
+                document.getElementById("theme-btn").textContent =
+                    savedTheme === "dark" ? "☀" : "🌙";
 
                 // Set outline SVG icons for the nav bar
                 document.getElementById("nav-icon-home").innerHTML = SVG.home;
                 document.getElementById("nav-icon-lights").innerHTML = SVG.bulb;
-                document.getElementById("nav-icon-settings").innerHTML = SVG.sliders;
+                document.getElementById("nav-icon-settings").innerHTML =
+                    SVG.sliders;
                 document.getElementById("sync-nav-icon").innerHTML = SVG.play;
 
                 loadAll();
