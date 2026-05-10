@@ -1,7 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// In dev mode (`cargo tauri dev`), beforeDevCommand in tauri.conf.json starts uvicorn.
-// In release builds, this binary spawns uvicorn itself and kills it on close.
+// In dev mode (`cargo tauri dev`), beforeDevCommand in tauri.conf.json starts the Go backend.
+// In release builds, this binary spawns the bundled `spectractl` from resource_dir
+// and kills it on window close.
 
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
@@ -219,11 +220,10 @@ fn main() {
                     .expect("cannot determine resource directory");
                 let backend_bin = resource_dir.join("backend").join("spectractl");
                 let child = std::process::Command::new(&backend_bin)
-                    .args(["--addr", "127.0.0.1:8000"])
+                    .args(["-addr", "127.0.0.1:8000"])
                     .spawn()
                     .expect("failed to start backend");
                 *app.state::<BackendProcess>().0.lock().unwrap() = Some(child);
-                // Go arranca mucho más rápido que uvicorn
                 std::thread::sleep(std::time::Duration::from_millis(300));
             }
             #[cfg(target_os = "linux")]

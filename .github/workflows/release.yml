@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (without leading v). Empty for dry-run only.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & publish (Linux x86_64)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            PUBLISH=true
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+            PUBLISH=false
+          else
+            VERSION="0.0.0-dev.${GITHUB_SHA::7}"
+            PUBLISH=false
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "→ Version: $VERSION (publish=$PUBLISH)"
+
+      - name: Patch tauri.conf.json with release version
+        run: |
+          jq --arg v "${{ steps.ver.outputs.version }}" \
+             '.version = $v' src-tauri/tauri.conf.json > /tmp/tauri.conf.json
+          mv /tmp/tauri.conf.json src-tauri/tauri.conf.json
+          echo "→ tauri.conf.json version=$(jq -r .version src-tauri/tauri.conf.json)"
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            patchelf \
+            build-essential \
+            file \
+            wget \
+            jq
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install tauri-cli
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build bundles
+        env:
+          SPECTRA_VERSION: ${{ steps.ver.outputs.version }}
+          NO_STRIP: 'true'
+        run: |
+          cargo tauri build --bundles appimage,deb,rpm
+
+      - name: Stage artifacts
+        id: stage
+        run: |
+          mkdir -p dist
+          shopt -s nullglob
+          for f in src-tauri/target/release/bundle/appimage/*.AppImage \
+                   src-tauri/target/release/bundle/deb/*.deb \
+                   src-tauri/target/release/bundle/rpm/*.rpm; do
+            cp "$f" dist/
+          done
+          echo "→ Artefactos:"
+          ls -lh dist/
+          (cd dist && sha256sum * > SHA256SUMS)
+          cat dist/SHA256SUMS
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spectracontrol-${{ steps.ver.outputs.version }}-linux-x86_64
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: steps.ver.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: SpectraControl ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/SHA256SUMS

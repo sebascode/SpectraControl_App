@@ -160,6 +160,52 @@
                 padding-bottom: 72px;
             }
 
+            /* ── UPDATE BANNER ── */
+            .update-banner {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 14px;
+                border: 1px solid var(--accent);
+                background: color-mix(in srgb, var(--accent) 14%, transparent);
+                border-radius: 10px;
+                font-size: 0.82rem;
+            }
+            .update-banner[hidden] {
+                display: none;
+            }
+            .update-banner-text {
+                flex: 1;
+                color: var(--text);
+            }
+            .update-banner-text b {
+                font-family: var(--mono);
+                color: var(--accent);
+                font-weight: 600;
+            }
+            .update-banner button {
+                padding: 6px 12px;
+                font-size: 0.78rem;
+                border-radius: 6px;
+                border: 1px solid var(--accent);
+                background: var(--accent);
+                color: #fff;
+                cursor: pointer;
+                font-weight: 600;
+            }
+            .update-banner button[disabled] {
+                opacity: 0.6;
+                cursor: progress;
+            }
+            .update-banner .update-banner-dismiss {
+                background: transparent;
+                color: var(--text-muted);
+                border-color: transparent;
+                padding: 4px 8px;
+                font-size: 1rem;
+                font-weight: 400;
+            }
+
             /* ── SETTINGS DRAWER ── */
             .settings-overlay {
                 position: fixed;
@@ -1147,6 +1193,20 @@
             </div>
 
             <div class="main">
+                <div class="update-banner" id="update-banner" hidden>
+                    <span class="update-banner-text" id="update-banner-text"></span>
+                    <button id="update-banner-btn" onclick="installUpdate()">
+                        Actualizar
+                    </button>
+                    <button
+                        class="update-banner-dismiss"
+                        onclick="dismissUpdate()"
+                        title="Ocultar"
+                    >
+                        ×
+                    </button>
+                </div>
+
                 <!-- HOME PAGE (sync zones) -->
                 <div id="page-home">
                     <div class="section-label" style="margin-bottom: 14px">
@@ -3173,7 +3233,72 @@
 
                 initBrightness();
                 loadAll();
+                checkForUpdate();
             });
+
+            // ── UPDATE CHECK ──
+            let pendingUpdate = null;
+            async function checkForUpdate() {
+                if (sessionStorage.getItem("spectra-update-dismissed") === "1") {
+                    return;
+                }
+                try {
+                    const r = await fetch(`${API}/api/update/check`);
+                    if (!r.ok) return;
+                    const data = await r.json();
+                    if (!data.has_update) return;
+                    pendingUpdate = data;
+                    const banner = document.getElementById("update-banner");
+                    const text = document.getElementById("update-banner-text");
+                    const btn = document.getElementById("update-banner-btn");
+                    text.innerHTML = `Nueva versión disponible: <b>${data.latest}</b> (actual: ${data.current})`;
+                    btn.textContent = data.can_install
+                        ? "Actualizar"
+                        : "Ver release";
+                    banner.hidden = false;
+                } catch (e) {
+                    console.warn("[update] check falló", e);
+                }
+            }
+
+            async function installUpdate() {
+                if (!pendingUpdate) return;
+                const btn = document.getElementById("update-banner-btn");
+                if (!pendingUpdate.can_install) {
+                    window.open(pendingUpdate.release_url, "_blank");
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = "Descargando...";
+                try {
+                    const r = await fetch(`${API}/api/update/install`, {
+                        method: "POST",
+                    });
+                    const data = await r.json();
+                    if (!r.ok || data.ok === false) {
+                        throw new Error(data.detail || data.message || "fallo");
+                    }
+                    if (data.already_latest) {
+                        toast("Ya estás en la última versión", "info");
+                        document.getElementById("update-banner").hidden = true;
+                        return;
+                    }
+                    btn.textContent = "Listo";
+                    document.getElementById(
+                        "update-banner-text",
+                    ).innerHTML = `Actualización <b>${data.installed}</b> instalada — reinicia la app para aplicar.`;
+                    toast("Reinicia la app para aplicar la actualización", "success", 6000);
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = "Reintentar";
+                    toast(`Error actualizando: ${e.message}`, "error", 4000);
+                }
+            }
+
+            function dismissUpdate() {
+                sessionStorage.setItem("spectra-update-dismissed", "1");
+                document.getElementById("update-banner").hidden = true;
+            }
 
             window.addEventListener("beforeunload", () => {
                 if (syncStream) syncStream.getTracks().forEach((t) => t.stop());

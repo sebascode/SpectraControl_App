@@ -7,7 +7,7 @@
     "devUrl": "http://localhost:8000",
     "frontendDist": "http://localhost:8000",
     "beforeDevCommand": "./backend/spectractl -addr :8000",
-    "beforeBuildCommand": "export PATH=/home/linuxbrew/.linuxbrew/bin:$PATH && cd backend && go build -ldflags='-s -w' -o spectractl ."
+    "beforeBuildCommand": "export PATH=/home/linuxbrew/.linuxbrew/bin:$PATH && cd backend && go build -ldflags=\"-s -w -X main.Version=${SPECTRA_VERSION:-dev}\" -o spectractl ."
   },
   "app": {
     "withGlobalTauri": true,
@@ -28,6 +28,15 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/64x64.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "resources": {
       "../backend/spectractl": "backend/spectractl",
       "../frontend/*": "frontend/",
