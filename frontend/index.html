@@ -2059,8 +2059,9 @@
 
             // ── LIGHT POSITIONS ──
             const POSITIONS_KEY = "lightPositions";
-            const SNAP_COLS = 12;
-            const SNAP_ROWS = 8;
+            // Odd counts so the exact center (0.5, 0.5) is a representable snap point.
+            const SNAP_COLS = 13;
+            const SNAP_ROWS = 9;
 
             function loadLightPositions() {
                 try {
