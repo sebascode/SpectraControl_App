@@ -18,7 +18,8 @@ use tauri::Manager;
 // 2) Spawn de gst-launch-1.0: pipewiresrc → videoscale → videoconvert RGB →
 //    fdsink stdout. Frames raw RGB caen en un pipe a 320×180 @ 30 fps.
 // 3) Un reader thread los empuja a un Mutex compartido (último gana).
-// 4) sample_screen_regions lee del Mutex y samplea — cero llamadas DBus.
+// 4) sample_screen_regions lee del Mutex y samplea en cada posición pedida —
+//    cero llamadas DBus.
 
 const CAP_W: u32 = 320;
 const CAP_H: u32 = 180;
@@ -138,7 +139,7 @@ async fn ensure_capture_initialized() -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn sample_screen_regions(cols: u32, rows: u32) -> Result<Vec<[u8; 3]>, String> {
+async fn sample_screen_regions(positions: Vec<[f32; 2]>) -> Result<Vec<[u8; 3]>, String> {
     ensure_capture_initialized().await?;
 
     // Esperar el primer frame (hasta 1.5s la primera vez tras negociar el portal)
@@ -155,17 +156,13 @@ async fn sample_screen_regions(cols: u32, rows: u32) -> Result<Vec<[u8; 3]>, Str
         tokio::time::sleep(Duration::from_millis(20)).await;
     };
 
-    let cols = cols.max(1);
-    let rows = rows.max(1);
     let sample_size = (CAP_W / 8).max(8);
     let half = sample_size / 2;
-    let mut colors: Vec<[u8; 3]> = Vec::with_capacity((cols * rows) as usize);
+    let mut colors: Vec<[u8; 3]> = Vec::with_capacity(positions.len());
 
-    for idx in 0..(cols * rows) {
-        let col = idx % cols;
-        let row = idx / cols;
-        let cx = ((col as f32 + 0.5) / cols as f32 * CAP_W as f32) as u32;
-        let cy = ((row as f32 + 0.5) / rows as f32 * CAP_H as f32) as u32;
+    for [px, py] in positions {
+        let cx = (px.clamp(0.0, 1.0) * CAP_W as f32) as u32;
+        let cy = (py.clamp(0.0, 1.0) * CAP_H as f32) as u32;
         let x0 = cx.saturating_sub(half);
         let y0 = cy.saturating_sub(half);
         let x1 = (cx + half).min(CAP_W);
