@@ -539,17 +539,19 @@ func pushToEntertainment(lights []lightCmd) bool {
 	}
 
 	colors := make([]chanColor, 0, len(lights))
+	briScale := float64(getBri()) / 255.0
 	for _, l := range lights {
 		chID, ok := chMap[l.ID]
 		if !ok {
 			continue
 		}
+		// HueStream v2 has no brightness channel — scale RGB pre-encoding.
 		// 0-255 → 0-65535 (×257 = 65535/255 exacto)
 		colors = append(colors, chanColor{
 			id: chID,
-			r:  uint16(l.R) * 257,
-			g:  uint16(l.G) * 257,
-			b:  uint16(l.B) * 257,
+			r:  uint16(l.R*briScale) * 257,
+			g:  uint16(l.G*briScale) * 257,
+			b:  uint16(l.B*briScale) * 257,
 		})
 	}
 

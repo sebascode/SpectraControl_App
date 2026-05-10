@@ -877,6 +877,63 @@
                 background: var(--surface2);
             }
 
+            /* ── BRIGHTNESS SLIDER (topbar) ── */
+            .bri-control {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 10px;
+                border: 1px solid var(--border2);
+                border-radius: 8px;
+                color: var(--text-dim);
+            }
+            .bri-control svg {
+                display: block;
+                flex-shrink: 0;
+            }
+            .bri-control input[type="range"] {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 90px;
+                height: 4px;
+                background: var(--border2);
+                border-radius: 2px;
+                outline: none;
+                cursor: pointer;
+            }
+            .bri-control input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: var(--accent);
+                cursor: pointer;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+            }
+            .bri-control input[type="range"]::-moz-range-thumb {
+                width: 14px;
+                height: 14px;
+                border: none;
+                border-radius: 50%;
+                background: var(--accent);
+                cursor: pointer;
+            }
+            .bri-control .bri-value {
+                font-family: var(--mono);
+                font-size: 0.7rem;
+                min-width: 28px;
+                text-align: right;
+            }
+            @media (max-width: 600px) {
+                .bri-control input[type="range"] {
+                    width: 60px;
+                }
+                .bri-control .bri-value {
+                    display: none;
+                }
+            }
+
             /* ── PAGE SECTION TITLE ── */
             .page-section-title {
                 font-family: var(--mono);
@@ -1049,6 +1106,33 @@
                     Spectra Control
                 </div>
                 <div class="topbar-right">
+                    <div class="bri-control" title="Brillo global">
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="4" />
+                            <path
+                                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                            />
+                        </svg>
+                        <input
+                            type="range"
+                            id="bri-slider"
+                            min="1"
+                            max="255"
+                            value="200"
+                            oninput="onBrightnessInput(this.value)"
+                            onchange="onBrightnessCommit(this.value)"
+                        />
+                        <span class="bri-value" id="bri-value">200</span>
+                    </div>
                     <button
                         class="theme-btn"
                         id="theme-btn"
@@ -1164,8 +1248,28 @@
                         "
                     >
                         Próximamente:<br />
-                        · Secciones por luz · Escenas dinámicas · Sync con audio
-                        · Perfiles
+                        · Secciones por luz · Sync con audio · Perfiles
+                    </div>
+                </div>
+
+                <!-- SCENES PAGE -->
+                <div id="page-scenes" style="display: none">
+                    <div class="page-section-title">Escenas dinámicas</div>
+                    <div
+                        style="
+                            font-size: 0.7rem;
+                            color: var(--text-muted);
+                            margin-bottom: 14px;
+                            font-family: var(--mono);
+                        "
+                    >
+                        Animaciones que recorren colores en bucle. Toca para
+                        iniciar; toca de nuevo para detener.
+                    </div>
+                    <div class="zones-grid" id="scenes-grid">
+                        <div class="empty" style="grid-column: 1/-1">
+                            Cargando...
+                        </div>
                     </div>
                 </div>
 
@@ -1202,6 +1306,14 @@
             >
                 <span class="nav-icon" id="nav-icon-lights"></span>
                 <span>Luces</span>
+            </button>
+            <button
+                class="nav-item"
+                data-page="scenes"
+                onclick="switchPage('scenes')"
+            >
+                <span class="nav-icon" id="nav-icon-scenes"></span>
+                <span>Escenas</span>
             </button>
             <button class="nav-item" id="nav-sync" onclick="toggleSync()">
                 <div style="position: relative; line-height: 1; display: flex">
@@ -1460,7 +1572,15 @@
                 play: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21"/></svg>`,
                 stop: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`,
                 sliders: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="8" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="10" cy="18" r="2"/></svg>`,
+                scenes: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/><path d="M3 12h18"/></svg>`,
             };
+
+            let scenes = [];
+            let activeSceneID = null;
+
+            const BRI_KEY = "globalBri";
+            let globalBri = parseInt(localStorage.getItem(BRI_KEY) || "200", 10);
+            let briCommitTimer = null;
 
             const COLOR_PRESETS = [
                 "#FF6A00",
@@ -2056,6 +2176,8 @@
                     page === "lights" ? "" : "none";
                 document.getElementById("page-zone-config").style.display =
                     page === "zone-config" ? "" : "none";
+                document.getElementById("page-scenes").style.display =
+                    page === "scenes" ? "" : "none";
                 // Bottom nav active state: zone-config se muestra como Inicio.
                 const navPage = page === "zone-config" ? "home" : page;
                 document
@@ -2071,6 +2193,135 @@
                     renderGroups();
                     renderLights();
                 }
+                if (page === "scenes") {
+                    loadScenes();
+                }
+            }
+
+            function applyBrightnessUI(v) {
+                const slider = document.getElementById("bri-slider");
+                const label = document.getElementById("bri-value");
+                if (slider && parseInt(slider.value, 10) !== v) slider.value = v;
+                if (label) label.textContent = v;
+            }
+
+            function onBrightnessInput(v) {
+                v = parseInt(v, 10);
+                if (isNaN(v)) return;
+                globalBri = v;
+                document.getElementById("bri-value").textContent = v;
+                // Si sync está activo, actualizamos en vivo por WS (cada input).
+                if (syncRunning && syncWs && syncWs.readyState === WebSocket.OPEN) {
+                    try {
+                        syncWs.send(JSON.stringify({ bri: v }));
+                    } catch (e) {}
+                }
+                // El POST al backend va con debounce para no inundar.
+                clearTimeout(briCommitTimer);
+                briCommitTimer = setTimeout(() => onBrightnessCommit(v), 150);
+            }
+
+            async function onBrightnessCommit(v) {
+                v = parseInt(v, 10);
+                if (isNaN(v)) return;
+                globalBri = v;
+                localStorage.setItem(BRI_KEY, String(v));
+                try {
+                    await fetch(API + "/api/brightness", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ value: v }),
+                    });
+                } catch (e) {}
+            }
+
+            async function initBrightness() {
+                applyBrightnessUI(globalBri);
+                // Empuja el valor persistido al backend (sin esperar al primer drag).
+                try {
+                    await fetch(API + "/api/brightness", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ value: globalBri }),
+                    });
+                } catch (e) {}
+            }
+
+            async function loadScenes() {
+                try {
+                    const r = await fetch(API + "/api/scenes");
+                    const d = await r.json();
+                    scenes = d.scenes || [];
+                    activeSceneID = d.active_id || null;
+                    renderScenes();
+                } catch (e) {
+                    document.getElementById("scenes-grid").innerHTML =
+                        '<div class="empty" style="grid-column:1/-1">Error cargando escenas</div>';
+                }
+            }
+
+            function renderScenes() {
+                const grid = document.getElementById("scenes-grid");
+                if (!scenes.length) {
+                    grid.innerHTML =
+                        '<div class="empty" style="grid-column:1/-1">No hay escenas</div>';
+                    return;
+                }
+                grid.innerHTML = scenes
+                    .map((s) => {
+                        const active = s.id === activeSceneID;
+                        const stops = (s.keyframes || [])
+                            .map(
+                                (k) =>
+                                    `rgb(${k.color[0]},${k.color[1]},${k.color[2]}) ${(k.t * 100).toFixed(0)}%`,
+                            )
+                            .join(", ");
+                        const gradient = `linear-gradient(90deg, ${stops || "#222, #444"})`;
+                        return `
+                            <div class="zone-card ${active ? "active" : ""}" onclick="toggleScene('${s.id}')">
+                                <div style="height:36px;border-radius:6px;background:${gradient};margin-bottom:10px;border:1px solid var(--border)"></div>
+                                <div class="zone-card-name">${s.name}</div>
+                                <div class="zone-card-meta">${s.duration}s · ${s.loop ? "loop" : "una vez"}</div>
+                                <div class="zone-card-status">${active ? "Reproduciendo" : "Tocar para iniciar"}</div>
+                            </div>`;
+                    })
+                    .join("");
+            }
+
+            async function toggleScene(id) {
+                if (activeSceneID === id) {
+                    await stopScene();
+                    return;
+                }
+                if (syncRunning) stopSync();
+                const lightIDs = lights.map((l) => l.id);
+                if (!lightIDs.length) {
+                    toast("No hay luces disponibles", "error", 2500);
+                    return;
+                }
+                try {
+                    const r = await fetch(API + "/api/scenes/start", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            scene_id: id,
+                            light_ids: lightIDs,
+                        }),
+                    });
+                    if (!r.ok) throw new Error(await r.text());
+                    activeSceneID = id;
+                    renderScenes();
+                } catch (e) {
+                    toast("No se pudo iniciar la escena", "error", 2500);
+                }
+            }
+
+            async function stopScene() {
+                try {
+                    await fetch(API + "/api/scenes/stop", { method: "POST" });
+                } catch (e) {}
+                activeSceneID = null;
+                renderScenes();
             }
 
             function openSettings() {
@@ -2469,8 +2720,9 @@
                 syncWs = new WebSocket(`${wsBase}/ws/color`);
 
                 syncWs.onopen = () => {
-                    syncWs.send(JSON.stringify({ bri: 200 }));
+                    syncWs.send(JSON.stringify({ bri: globalBri }));
                     syncRunning = true;
+                    activeSceneID = null;
                     updateSyncUI();
                     renderZones();
                     toast("Sync iniciado (Tauri)", "success");
@@ -2650,8 +2902,9 @@
                 syncWs = new WebSocket(`${wsBase}/ws/color`);
 
                 syncWs.onopen = () => {
-                    syncWs.send(JSON.stringify({ bri: 200 }));
+                    syncWs.send(JSON.stringify({ bri: globalBri }));
                     syncRunning = true;
+                    activeSceneID = null;
                     updateSyncUI();
                     renderZones();
                     toast("Sync iniciado", "success");
@@ -2912,10 +3165,13 @@
                 // Set outline SVG icons for the nav bar
                 document.getElementById("nav-icon-home").innerHTML = SVG.home;
                 document.getElementById("nav-icon-lights").innerHTML = SVG.bulb;
+                document.getElementById("nav-icon-scenes").innerHTML =
+                    SVG.scenes;
                 document.getElementById("nav-icon-settings").innerHTML =
                     SVG.sliders;
                 document.getElementById("sync-nav-icon").innerHTML = SVG.play;
 
+                initBrightness();
                 loadAll();
             });
 
