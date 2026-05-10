@@ -11,8 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 # Standalone (browser at http://localhost:8000)
 ./run.sh
-# or explicitly:
-uv run uvicorn --app-dir backend main:app --host 0.0.0.0 --port 8000 --reload
+# run.sh compiles the Go binary if needed, then runs it directly:
+#   cd backend && go build -o spectractl .
+#   ./backend/spectractl -addr :8000
 
 # Tauri dev mode (desktop window, auto-starts backend)
 cargo tauri dev   # from project root, requires Rust + tauri-cli
@@ -20,72 +21,116 @@ cargo tauri dev   # from project root, requires Rust + tauri-cli
 
 ## Stack
 
-- **Backend:** Python 3.14 · FastAPI · uvicorn · httpx — `backend/main.py`
+- **Backend:** Go · net/http · chi · gorilla/websocket · pion/dtls — `backend/main.go` + `backend/entertainment.go`
 - **Frontend:** Single `frontend/index.html` — vanilla HTML/CSS/JS, no framework, no bundler
 - **Desktop shell:** Tauri 2 (Rust) — `src-tauri/`
-- **Package manager:** `uv` (not pip/poetry)
-- **Hue API:** Philips Hue Bridge v2, local REST API v1 (`http://<ip>/api/<key>/...`)
+- **Hue API v1:** local REST `http://<ip>/api/<key>/...` (lights, groups, config)
+- **Hue API v2 (CLIP):** HTTPS `https://<ip>/clip/v2/resource/...` (entertainment configs)
+- **Entertainment streaming:** UDP/DTLS to bridge port 2100, HueStream v2 protocol
+
+> `backend/main.py` is the **legacy Python/FastAPI backend**. It is kept for reference but is NOT used. Do not modify or run it.
 
 ## Project structure
 
 ```
 SpectraControl/
 ├── backend/
-│   ├── main.py        ← entire FastAPI backend
-│   └── .hue_config    ← bridge IP + API key (gitignored)
+│   ├── main.go            ← entire Go backend (HTTP routes, WS, color conversion)
+│   ├── entertainment.go   ← Hue Entertainment API (DTLS streaming, CLIP v2)
+│   ├── go.mod / go.sum
+│   ├── spectractl         ← compiled binary (gitignored)
+│   └── main.py            ← legacy Python backend (unused)
 ├── frontend/
-│   └── index.html     ← entire UI (vanilla JS, no bundler)
+│   └── index.html         ← entire UI (vanilla JS, no bundler)
 ├── src-tauri/
-│   ├── src/main.rs    ← spawns uvicorn in release, handles shutdown
+│   ├── src/main.rs        ← spawns backend process in release, handles shutdown
 │   ├── tauri.conf.json
 │   └── Cargo.toml
-├── pyproject.toml     ← uv dependencies (Python)
-└── run.sh             ← standalone run script
+└── run.sh                 ← standalone run script (compiles + starts Go backend)
 ```
+
+## Config file
+
+Stored at `~/.config/spectracontrol/hue_config.json`:
+
+```json
+{
+  "ip": "192.168.x.x",
+  "api_key": "<hue v1 username>",
+  "client_key": "<PSK hex for DTLS, 32 bytes>"
+}
+```
+
+`client_key` is only populated if the bridge was paired with `generateclientkey: true`. Without it, Entertainment API (DTLS) is unavailable. If it's missing, re-pair by pressing the bridge button and calling `POST /api/pair`.
 
 ## Architecture
 
-### Backend (`backend/main.py`)
+### Backend (`backend/main.go`)
 
-All logic in one file. Key sections:
-- `_HERE` — absolute path to `backend/`, used for `.hue_config` and locating `frontend/`
-- `hue_request()` — thin async httpx wrapper that proxies to the local bridge
-- `sync_state` dict — mutable shared state for the screen sync background thread
-- Routes grouped by: `/api/config`, `/api/discover`, `/api/pair`, `/api/lights`, `/api/groups`, `/api/sync`
-- FastAPI serves `frontend/` as StaticFiles at `/`
+Key sections:
+- `loadPersistedConfig()` / `saveConfig()` — reads/writes `~/.config/spectracontrol/hue_config.json`; migrates from legacy `backend/.hue_config` on first run
+- `hueGet()` / `huePut()` — thin HTTP wrappers to Hue v1 API
+- `rgbToXY()` — sRGB → CIE XY via Philips color matrix
+- `handleWsColor()` — WebSocket `/ws/color`; receives `{lights:[{id,r,g,b}]}` frames from frontend, routes to DTLS or HTTP PUT
+- `sendColorUpdate()` — calls `pushToEntertainment()` first; falls back to HTTP PUT per light if entertainment is inactive
+- Routes: `/api/config`, `/api/discover`, `/api/pair`, `/api/lights`, `/api/groups`, `/api/sync` (compat stub), `/api/entertainment`, `/ws/color`
 
-Bridge config is persisted as JSON in `backend/.hue_config` and loaded at startup.
+### Entertainment API (`backend/entertainment.go`)
+
+Implements HueStream v2 over UDP/DTLS to bridge port 2100. Key parts:
+- `startEntertainmentStreaming(configID)` — activates streaming mode on bridge via CLIP v2 PUT, opens DTLS PSK connection, starts `entertainmentSender` goroutine
+- `stopEntertainmentStreaming()` — closes DTLS conn, resets all state, deactivates streaming on bridge
+- `entertainmentSender(colorCh)` — goroutine running at 20 fps; on write error **calls `stopEntertainmentStreaming()` before returning** to prevent stale `ent.conn` state
+- `pushToEntertainment(lights)` — maps v1 light IDs → DTLS channel IDs, sends frame; returns `false` if inactive so caller falls back to HTTP PUT
+- `buildHueStreamPacket()` — builds 16-byte header + 7 bytes/channel HueStream v2 packet
+
+**Critical:** if `ent.conn` is non-nil but the DTLS connection is dead, `pushToEntertainment` returns `true` and the colors are lost (no HTTP fallback). The `entertainmentSender` goroutine now auto-cleans on write error to prevent this. If the backend is restarted while entertainment was active, the bridge may still be in streaming mode — call `POST /api/entertainment/stop` to reset.
 
 ### Frontend (`frontend/index.html`)
 
-All UI in one file. The `const API` detection at the top handles dev (`:5173`) vs prod (same origin as FastAPI). State is kept in `lights[]` and `groups[]` module-level arrays.
+All UI in one file. Key sections:
+- `const API` — detects dev (`:5173`) vs prod (same origin)
+- `lights[]` / `groups[]` — module-level state; groups filtered to exclude `type === "Entertainment"`
+- **Sync flow:** `toggleSync()` → `getDisplayMedia()` → `_startSyncWithStream()` → WebSocket `/ws/color` → `scheduleSample()` → canvas sampling → `sampleRegions()` → send `{lights:[{id,r,g,b}]}`
+- `sampleRegions()` — divides canvas into a grid matching `syncLightIds`; samples ~8×8 px per region; applies `boostSaturation()` (×4 HSV saturation push)
+- `syncLightIds` — ordered list of light IDs for sync regions; user-configurable via the order panel; persisted to `localStorage`
+- Entertainment section: `loadEntertainmentConfigs()` / `startEntertainment()` / `stopEntertainment()` — must activate BEFORE starting sync for DTLS path
 
 ### Tauri shell (`src-tauri/`)
 
-- **Dev** (`cargo tauri dev`): `beforeDevCommand` in `tauri.conf.json` starts uvicorn; webview loads from `http://localhost:8000`
-- **Release**: `main.rs` spawns `uv run uvicorn --app-dir backend main:app` using `current_dir()`, waits 1.5s, then the webview opens; kills the process on window close
+- **Dev** (`cargo tauri dev`): `beforeDevCommand` in `tauri.conf.json` starts the Go backend; webview loads from `http://localhost:8000`
+- **Release**: `main.rs` needs updating — currently spawns `uv run uvicorn` (Python, legacy). Should spawn `./backend/spectractl` instead.
+
+## Screen sync flow
+
+```
+getDisplayMedia() → MediaStream
+  → <video> element (hidden, off-screen)
+  → <canvas> 64×36 px drawImage every N ms
+  → sampleRegions() per light → {id, r, g, b}
+  → WebSocket /ws/color  {lights:[...], bri:200, transitiontime:N}
+  → Go backend
+      ├── if Entertainment active → pushToEntertainment() → DTLS HueStream packet → bridge:2100
+      └── else → huePut /lights/{id}/state {xy:[x,y], bri, transitiontime} → bridge:80
+```
 
 ## Color pipeline
 
 ```
-RGB (0-255)
-  → sRGB gamma correction
-  → Philips Hue color matrix
-  → CIE XY  [rgb_to_xy() in backend/main.py]
+RGB (0–255)
+  → boostSaturation() in frontend (×4 HSV saturation)
+  → WebSocket to Go backend
+  → rgbToXY(): sRGB gamma → Philips Hue matrix → CIE XY
   → PUT /api/{key}/lights/{id}/state {"xy": [x, y]}
+  OR
+  → HueStream packet (channel_id + R/G/B as uint16 0–65535)
 ```
-
-## Screen sync — why `getDisplayMedia()`
-
-All native capture fails on KDE Wayland: `mss`, `scrot`, `ImageMagick import`, `grim` (wlroots only), `pywayland` (won't build on Python 3.14). The browser Web API `getDisplayMedia()` is the only capture path KDE Wayland permits. The planned implementation:
-- Frontend: `getDisplayMedia()` → `<canvas>` sampling → WebSocket `/ws/color`
-- Backend: receives RGB per light, converts to XY, pushes to bridge
-
-The current `sync_loop()` in `backend/main.py` is legacy (uses xrandr/mss, broken on Wayland). The WebSocket endpoint is not yet implemented.
 
 ## Key constraints
 
-- **Python 3.14** — check compatibility before adding deps (`pywayland` won't build)
-- **KDE Wayland** — X11-only tools don't work for screen capture
+- **KDE Wayland** — X11 screen capture tools don't work. `getDisplayMedia()` is the only viable capture path.
+- **Go backend** — use `go build` from `backend/`; do NOT use `uv`/Python for the backend.
+- **`client_key` required for Entertainment** — must pair with `generateclientkey: true`. Check `~/.config/spectracontrol/hue_config.json`.
 - **Rust/Tauri** — install via `rustup` on Bazzite (not rpm-ostree); `tauri-cli` via `cargo install tauri-cli`
 - Icons not yet generated — run `cargo tauri icon path/to/source.png` to create `src-tauri/icons/`
+- `src-tauri/main.rs` still launches the Python backend in release mode — needs updating to launch `spectractl`
