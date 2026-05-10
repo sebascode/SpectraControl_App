@@ -4,7 +4,7 @@
 // In release builds, this binary spawns the bundled `spectractl` from resource_dir
 // and kills it on window close.
 
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
@@ -12,6 +12,39 @@ use std::time::Duration;
 use ashpd::desktop::screencast::{CursorMode, Screencast, SourceType};
 use ashpd::desktop::PersistMode;
 use tauri::Manager;
+
+// linuxdeploy's AppRun prepends bundled lib/plugin paths to env vars before exec'ing
+// the app. Subprocesses we spawn that come from the *host* (gst-launch-1.0) inherit
+// these and end up dlopening AppImage-bundled glib/gstreamer libs that don't match
+// their build → symbol lookup errors. Strip the polluting vars before exec.
+fn sanitize_host_env(cmd: &mut Command) {
+    const VARS: &[&str] = &[
+        "LD_LIBRARY_PATH",
+        "LD_PRELOAD",
+        "GST_PLUGIN_PATH",
+        "GST_PLUGIN_PATH_1_0",
+        "GST_PLUGIN_SYSTEM_PATH",
+        "GST_PLUGIN_SYSTEM_PATH_1_0",
+        "GST_PLUGIN_SCANNER",
+        "GST_REGISTRY",
+        "GIO_MODULE_DIR",
+        "GIO_EXTRA_MODULES",
+        "GSETTINGS_SCHEMA_DIR",
+        "GTK_PATH",
+        "GTK_DATA_PREFIX",
+        "GTK_EXE_PREFIX",
+        "GTK_IM_MODULE_FILE",
+        "GDK_PIXBUF_MODULE_FILE",
+        "QT_PLUGIN_PATH",
+        "PYTHONHOME",
+        "PYTHONPATH",
+        "PERLLIB",
+        "XDG_DATA_DIRS",
+    ];
+    for var in VARS {
+        cmd.env_remove(var);
+    }
+}
 
 // ── SCREEN CAPTURE via ScreenCast portal + GStreamer ────────────────────────
 // 1) ashpd negocia la sesión Screencast con xdg-desktop-portal (UNA sola vez).
@@ -102,14 +135,23 @@ async fn ensure_capture_initialized() -> Result<(), String> {
         "fd=1",
         "sync=false",
     ];
-    let mut child = Command::new("gst-launch-1.0")
-        .args(pipeline_args.iter().map(|s| s.to_string()).collect::<Vec<_>>())
+    let mut cmd = Command::new("gst-launch-1.0");
+    cmd.args(pipeline_args.iter().map(|s| s.to_string()).collect::<Vec<_>>())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped());
+    sanitize_host_env(&mut cmd);
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("spawn gst-launch-1.0: {e}"))?;
 
     let mut stdout = child.stdout.take().ok_or_else(|| "sin stdout".to_string())?;
+    if let Some(stderr) = child.stderr.take() {
+        thread::spawn(move || {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                eprintln!("[capture/gst] {line}");
+            }
+        });
+    }
 
     // 3) Reader thread: lee frames completos y los publica
     let latest = state.latest.clone();
