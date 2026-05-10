@@ -2,6 +2,7 @@
 name = "spectra-control"
 version = "0.2.2"
 edition = "2021"
+license = "MIT"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

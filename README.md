@@ -169,3 +169,7 @@ SpectraControl/
 
 - Audio sync (#5) and per-light rectangular sections (#3) are not yet implemented.
 - The AppImage build needs `NO_STRIP=true` on Fedora 40+ (handled automatically by `build.sh`); other distros may not need it.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
