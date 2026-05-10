@@ -39,6 +39,27 @@ cargo tauri dev
 
 > Chromium-based browsers and the WebKitGTK webview don't deliver frames from `getDisplayMedia()` on Wayland. Use Tauri (native portal capture) or Firefox (which uses pipewire correctly).
 
+## Installation (AppImage)
+
+```bash
+# From the repo root
+./build.sh
+# → src-tauri/target/release/bundle/appimage/SpectraControl_<version>_amd64.AppImage
+```
+
+`build.sh` runs `cargo tauri build --bundles appimage` with `NO_STRIP=true`, which is required on Fedora 40+ — Fedora's shared libraries use packed relocations (`.relr.dyn` / `DT_RELR`) that the `strip` bundled in `linuxdeploy` does not recognise.
+
+Run the resulting AppImage from anywhere:
+
+```bash
+chmod +x SpectraControl_*_amd64.AppImage
+./SpectraControl_*_amd64.AppImage
+```
+
+The AppImage embeds the Go backend (`spectractl`) and the frontend, so no separate install is needed. Config is still written to `~/.config/spectracontrol/hue_config.json`. User scenes are picked up from `~/.config/spectracontrol/scenes/*.json` (override built-ins by `id`).
+
+> AppImages need `libfuse2` to mount themselves. On modern Fedora that is provided by `fuse-libs`; install via `rpm-ostree` if missing. Alternatively, run with `--appimage-extract-and-run`.
+
 ## First-time setup
 
 1. Launch the app.
@@ -77,6 +98,9 @@ SpectraControl/
 ├── backend/
 │   ├── main.go            ← HTTP routes, WebSocket, color conversion
 │   ├── entertainment.go   ← DTLS streaming, CLIP v2, HueStream packet builder
+│   ├── scenes.go          ← dynamic scene runner (JSON-loaded presets)
+│   ├── scenes/*.json      ← built-in scene presets (embedded via go:embed)
+│   ├── brightness.go      ← global brightness state, applied to sync + scenes
 │   └── go.mod / go.sum
 ├── frontend/
 │   └── index.html         ← entire UI
@@ -85,8 +109,8 @@ SpectraControl/
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── docs/                  ← Hue API v2 reference (offline copy of docs)
-├── CLAUDE.md              ← architecture + dev internals
-└── run.sh                 ← build + run the Go backend standalone
+├── run.sh                 ← build + run the Go backend standalone
+└── build.sh               ← build the AppImage (release)
 ```
 
 ## Troubleshooting
@@ -98,6 +122,5 @@ SpectraControl/
 
 ## Known limitations
 
-- `src-tauri/main.rs` still references launching a legacy Python backend in release builds — pending update to spawn `spectractl` directly.
-- App icons not generated. Run `cargo tauri icon <source.png>` to create them.
-- Light positions inside an entertainment area are not yet honored — sampling currently uses a generic grid based on light count, not the `{x, y, z}` positions defined in the Hue app.
+- Audio sync (#5) and per-light rectangular sections (#3) are not yet implemented.
+- The AppImage build needs `NO_STRIP=true` on Fedora 40+ (handled automatically by `build.sh`); other distros may not need it.
