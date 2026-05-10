@@ -581,7 +581,6 @@ func handleWsColor(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	var groupIDs []string
-	bri := 200
 
 	for {
 		_, raw, err := conn.ReadMessage()
@@ -599,25 +598,26 @@ func handleWsColor(w http.ResponseWriter, r *http.Request) {
 			groupIDs = msg.GroupIDs
 		}
 		if msg.Bri != nil {
-			bri = *msg.Bri
+			setBri(*msg.Bri)
 		}
 
 		if len(msg.Lights) == 0 && msg.R == nil {
 			continue // mensaje de configuración, sin color
 		}
 
+		// Sync arranca → detener cualquier escena dinámica activa.
+		if id, _ := sceneStatus(); id != "" {
+			stopScene()
+		}
+
 		tt := 2
 		if msg.TT != nil {
 			tt = *msg.TT
 		}
-		lightBri := bri
-		if msg.Bri != nil {
-			lightBri = *msg.Bri
-		}
 
 		u := colorUpdate{
 			lights: msg.Lights, groupIDs: groupIDs,
-			bri: lightBri, tt: tt,
+			bri: int(getBri()), tt: tt,
 			r: msg.R, g: msg.G, b: msg.B,
 		}
 		// Descarta el frame pendiente si el sender aún no lo procesó,
@@ -669,6 +669,15 @@ func main() {
 	r.Get("/api/entertainment", handleListEntertainment)
 	r.Post("/api/entertainment/start", handleStartEntertainment)
 	r.Post("/api/entertainment/stop", handleStopEntertainment)
+
+	// Dynamic scenes
+	r.Get("/api/scenes", handleListScenes)
+	r.Post("/api/scenes/start", handleStartScene)
+	r.Post("/api/scenes/stop", handleStopScene)
+
+	// Global brightness (compartido por sync y escenas)
+	r.Get("/api/brightness", handleGetBrightness)
+	r.Post("/api/brightness", handleSetBrightness)
 
 	// WebSocket
 	r.Get("/ws/color", handleWsColor)

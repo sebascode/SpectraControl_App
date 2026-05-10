@@ -1,0 +1,14 @@
+{
+    "id": "tropical-twilight",
+    "name": "Tropical Twilight",
+    "duration": 30,
+    "loop": true,
+    "stagger": 0.25,
+    "keyframes": [
+        { "t": 0.00, "color": [255, 100, 40] },
+        { "t": 0.25, "color": [220, 60, 130] },
+        { "t": 0.50, "color": [90, 50, 180] },
+        { "t": 0.75, "color": [40, 80, 200] },
+        { "t": 1.00, "color": [255, 100, 40] }
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "id": "northern-lights",
+    "name": "Northern Lights",
+    "duration": 20,
+    "loop": true,
+    "stagger": 0.4,
+    "keyframes": [
+        { "t": 0.00, "color": [40, 200, 130] },
+        { "t": 0.40, "color": [60, 100, 220] },
+        { "t": 0.70, "color": [170, 60, 220] },
+        { "t": 1.00, "color": [40, 200, 130] }
+    ]
+}
