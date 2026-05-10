@@ -1,13 +1,6 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
+# Go
+backend/spectractl
+backend/spectractl.exe
 
 # Rust / Tauri
 src-tauri/target/
@@ -15,3 +8,8 @@ src-tauri/target/
 # Bridge config (contains API key)
 backend/.hue_config
 .hue_config
+
+# Python (legacy, mantenido por si acaso)
+__pycache__/
+*.py[oc]
+.venv

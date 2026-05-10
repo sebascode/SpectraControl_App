@@ -10,6 +10,7 @@
     "beforeBuildCommand": "export PATH=/home/linuxbrew/.linuxbrew/bin:$PATH && cd backend && go build -ldflags='-s -w' -o spectractl ."
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "SpectraControl",
