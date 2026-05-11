@@ -81,7 +81,7 @@ A maintainer will review and squash-merge once it's green.
 
 ## Release flow
 
-Maintainers only. See the "Releasing" section of `README.md` for the full procedure. Short version:
+Maintainers only. See the "Releasing" section of `README.md` for the full procedure. For signing-key handling specifically (including rotation), see [`docs/release-keys.md`](docs/release-keys.md). Short version:
 
 1. Bump version in `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` (Cargo.lock regenerates).
 2. Commit `chore: bump version to X.Y.Z`.
