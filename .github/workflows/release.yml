@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Resolve version
         id: ver
@@ -65,16 +65,16 @@ jobs:
             jq
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.22'
           cache-dependency-path: backend/go.sum
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable as of pinning
 
       - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           workspaces: src-tauri
 
@@ -138,7 +138,7 @@ jobs:
           cat dist/SHA256SUMS
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: spectracontrol-${{ steps.ver.outputs.version }}-linux-x86_64
           path: dist/*
@@ -146,7 +146,7 @@ jobs:
 
       - name: Publish GitHub Release
         if: steps.ver.outputs.publish == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ github.ref_name }}
           name: SpectraControl ${{ steps.ver.outputs.version }}

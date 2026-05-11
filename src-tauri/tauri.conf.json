@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SpectraControl",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "identifier": "dev.spectracontrol",
   "build": {
     "devUrl": "http://localhost:8000",
     "frontendDist": "http://localhost:8000",
-    "beforeDevCommand": "./backend/spectractl -addr :8000",
+    "beforeDevCommand": "./backend/spectractl -addr 127.0.0.1:8000",
     "beforeBuildCommand": "export PATH=/home/linuxbrew/.linuxbrew/bin:$PATH && cd backend && go build -ldflags=\"-s -w -X main.Version=${SPECTRA_VERSION:-dev}\" -o spectractl ."
   },
   "app": {
@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws://localhost:8000 ws://127.0.0.1:8000"
     }
   },
   "bundle": {

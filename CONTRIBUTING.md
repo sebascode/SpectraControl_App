@@ -81,12 +81,19 @@ A maintainer will review and squash-merge once it's green.
 
 ## Release flow
 
-Maintainers only. See the "Releasing" section of `README.md` for the full procedure. Short version:
+Maintainers only. See the "Releasing" section of `README.md` for the full procedure. For signing-key handling specifically (including rotation), see [`docs/release-keys.md`](docs/release-keys.md). Short version:
 
 1. Bump version in `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` (Cargo.lock regenerates).
 2. Commit `chore: bump version to X.Y.Z`.
 3. Tag `vX.Y.Z` (or `vX.Y.Z-betaN` for prereleases).
 4. Push tag → `.github/workflows/release.yml` builds and publishes the bundles + signed `latest.json`.
+
+## Security policy
+
+- **Vulnerabilities**: do **not** open a public issue. Use GitHub's [private security advisories](https://github.com/sebascode/SpectraControl_App/security/advisories/new) so we can coordinate a fix before disclosure.
+- **External PRs are not processed with autonomous AI agents.** Maintainers may use AI as a research assistant while reviewing, but every line that lands in `master` from an outside contribution is read and approved by a human. If you suspect a PR is adversarial (prompt injection in description, hidden control characters, unusual binary blobs), flag it in the PR thread.
+- **Supply chain**: third-party GitHub Actions are pinned to commit SHAs. If you bump one in a PR, include the SHA → tag mapping in the commit body so the reviewer can verify against the action's release notes.
+- **Dependencies**: `cargo audit` and `govulncheck` run on every PR that touches lockfiles. They block merge on findings; fix the dep or document why the advisory does not apply.
 
 ## Reporting bugs
 

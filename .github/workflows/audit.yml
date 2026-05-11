@@ -1,0 +1,66 @@
+name: Audit
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "backend/go.sum"
+      - "backend/go.mod"
+      - "src-tauri/Cargo.lock"
+      - "src-tauri/Cargo.toml"
+      - ".github/workflows/audit.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "backend/go.sum"
+      - "backend/go.mod"
+      - "src-tauri/Cargo.lock"
+      - "src-tauri/Cargo.toml"
+      - ".github/workflows/audit.yml"
+  schedule:
+    # Weekly Monday 07:00 UTC — surfaces new advisories without needing a push.
+    - cron: "0 7 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-audit:
+    name: cargo audit (src-tauri)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable as of pinning
+
+      - name: Cache cargo-audit binary
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        working-directory: src-tauri
+        run: cargo audit --deny warnings
+
+  govulncheck:
+    name: govulncheck (backend)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: backend/go.sum
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        working-directory: backend
+        run: govulncheck ./...
