@@ -62,9 +62,16 @@ type persistedCfg struct {
 }
 
 func loadPersistedConfig() {
-	data, err := os.ReadFile(configFilePath())
+	path := configFilePath()
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return
+	}
+	// Defensive chmod: 0.2.x ≤ 0.2.5 wrote this file with 0o644 (mode default
+	// of WriteFile). Existing installs may still have the loose perms even
+	// after upgrading — tighten on every load.
+	if err := os.Chmod(path, 0o600); err != nil {
+		logWarnf("no pude ajustar permisos de %s a 0600: %v", path, err)
 	}
 	var cfg persistedCfg
 	if json.Unmarshal(data, &cfg) != nil {
@@ -695,7 +702,7 @@ func main() {
 		defaultLogLevel = "info"
 	}
 	var (
-		addr        = flag.String("addr", ":8000", "dirección de escucha")
+		addr        = flag.String("addr", "127.0.0.1:8000", "dirección de escucha (default localhost-only; usá 0.0.0.0:8000 para exponer en LAN)")
 		frontendDir = flag.String("frontend", "", "ruta al directorio frontend (auto-detectada si vacía)")
 		logLevel    = flag.String("log-level", defaultLogLevel, "verbosidad: debug | info | warn | error")
 	)
