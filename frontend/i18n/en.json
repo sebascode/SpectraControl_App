@@ -101,6 +101,10 @@
   "settings.export": "Export",
   "settings.import": "Import",
   "settings.profileHint": "Includes bridge credentials. Treat the file like a password.",
+  "settings.aboutSection": "About",
+  "settings.version": "Version {version}",
+  "settings.checkUpdates": "Check for updates",
+  "settings.checkUpdatesBusy": "Checking...",
 
   "sync.stopped": "Stopped",
   "sync.running": "Syncing",
@@ -129,6 +133,9 @@
   "toasts.profileImportConfirm": "This will overwrite your current bridge credentials and preferences. Continue?",
   "toasts.profileSchemaInvalid": "File is not a valid SpectraControl profile",
   "toasts.autostartError": "Couldn't change autostart: {err}",
+  "toasts.updateUpToDate": "You're on the latest version (v{version})",
+  "toasts.updateCheckError": "Update check failed: {err}",
+  "toasts.updateUnavailable": "Updates are only available in the installed app",
   "toasts.logoutConfirm": "Sign out from the bridge? You'll need to re-pair it next time.",
   "toasts.logoutError": "Sign-out failed: {err}"
 }

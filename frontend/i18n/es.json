@@ -101,6 +101,10 @@
   "settings.export": "Exportar",
   "settings.import": "Importar",
   "settings.profileHint": "Incluye las credenciales del bridge. Trátalo como una contraseña.",
+  "settings.aboutSection": "Acerca de",
+  "settings.version": "Versión {version}",
+  "settings.checkUpdates": "Chequear actualizaciones",
+  "settings.checkUpdatesBusy": "Buscando...",
 
   "sync.stopped": "Detenido",
   "sync.running": "Sincronizando",
@@ -129,6 +133,9 @@
   "toasts.profileImportConfirm": "Esto sobrescribirá las credenciales del bridge y tus preferencias actuales. ¿Continuar?",
   "toasts.profileSchemaInvalid": "El archivo no es un perfil válido de SpectraControl",
   "toasts.autostartError": "No se pudo cambiar el inicio automático: {err}",
+  "toasts.updateUpToDate": "Estás en la última versión (v{version})",
+  "toasts.updateCheckError": "Error al chequear actualizaciones: {err}",
+  "toasts.updateUnavailable": "Las actualizaciones solo están disponibles en la app instalada",
   "toasts.logoutConfirm": "¿Cerrar sesión del bridge? Tendrás que volver a vincularlo.",
   "toasts.logoutError": "No se pudo cerrar sesión: {err}"
 }

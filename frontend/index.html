@@ -1991,6 +1991,33 @@
                 </div>
             </div>
 
+            <!-- About / Updates -->
+            <div class="drawer-section">
+                <div class="section-label" data-i18n="settings.aboutSection">
+                    Acerca de
+                </div>
+                <div
+                    id="app-version-line"
+                    style="
+                        font-family: var(--mono);
+                        font-size: 0.7rem;
+                        color: var(--text-muted);
+                        margin-bottom: 8px;
+                    "
+                >
+                    —
+                </div>
+                <button
+                    class="btn btn-ghost"
+                    style="width: 100%; font-size: 0.75rem; padding: 7px"
+                    id="check-updates-btn"
+                    onclick="triggerManualUpdateCheck()"
+                    data-i18n="settings.checkUpdates"
+                >
+                    Chequear actualizaciones
+                </button>
+            </div>
+
             <!-- Logout -->
             <div class="drawer-section">
                 <button
@@ -2119,6 +2146,7 @@
                 if (typeof renderZones === "function") renderZones();
                 if (typeof renderScenes === "function") renderScenes();
                 if (typeof updateSyncUI === "function") updateSyncUI();
+                if (typeof renderAppVersionLine === "function") renderAppVersionLine();
                 if (
                     typeof renderZoneLayout === "function" &&
                     typeof selectedZoneID !== "undefined" &&
@@ -4047,6 +4075,7 @@
                 initBrightness();
                 loadAll();
                 checkForUpdate();
+                getCurrentAppVersion().then(renderAppVersionLine);
                 document.getElementById("notifications-toggle").checked =
                     notificationsEnabled();
                 document.getElementById("quit-on-close-toggle").checked =
@@ -4376,13 +4405,59 @@
             // `tauri dev` window.__TAURI__ existe pero no hay endpoint válido
             // hasta que se publique un release.
             let pendingUpdate = null;
-            async function checkForUpdate() {
-                if (sessionStorage.getItem("spectra-update-dismissed") === "1") return;
+
+            // Lee la versión del binario empacado vía Tauri. Fuera de Tauri
+            // (dev en browser) no hay forma confiable; devolvemos null.
+            let appVersionCache = null;
+            async function getCurrentAppVersion() {
+                if (appVersionCache !== null) return appVersionCache;
+                try {
+                    const app = window.__TAURI__?.app;
+                    if (app?.getVersion) {
+                        appVersionCache = await app.getVersion();
+                        return appVersionCache;
+                    }
+                } catch (e) {
+                    console.warn("[version] getVersion falló", e);
+                }
+                return null;
+            }
+
+            function renderAppVersionLine() {
+                const el = document.getElementById("app-version-line");
+                if (!el) return;
+                el.textContent = tf("settings.version", {
+                    version: appVersionCache || "—",
+                });
+            }
+
+            // opts.manual=true → ignora el flag dismissed, da feedback explícito
+            // en cada outcome (sin update / error / fuera de Tauri). El chequeo
+            // automático del boot mantiene el comportamiento silencioso.
+            async function checkForUpdate(opts) {
+                const manual = !!(opts && opts.manual);
+                if (!manual && sessionStorage.getItem("spectra-update-dismissed") === "1") return;
                 const tauri = window.__TAURI__;
-                if (!tauri?.updater?.check) return; // no estamos dentro de Tauri
+                if (!tauri?.updater?.check) {
+                    if (manual) toast(t("toasts.updateUnavailable"), "info", 3500);
+                    return;
+                }
                 try {
                     const update = await tauri.updater.check();
-                    if (!update) return;
+                    if (!update) {
+                        if (manual) {
+                            const v = await getCurrentAppVersion();
+                            toast(
+                                tf("toasts.updateUpToDate", { version: v || "?" }),
+                                "success",
+                                3000,
+                            );
+                        }
+                        return;
+                    }
+                    // Si el usuario lo había ocultado pero ahora pide chequeo
+                    // manual, mostrar el banner de nuevo.
+                    if (manual) sessionStorage.removeItem("spectra-update-dismissed");
                     pendingUpdate = update;
                     const banner = document.getElementById("update-banner");
                     const text = document.getElementById("update-banner-text");
@@ -4396,6 +4471,26 @@
                     );
                 } catch (e) {
                     console.warn("[update] check falló", e);
+                    if (manual) {
+                        toast(
+                            tf("toasts.updateCheckError", { err: e.message || e }),
+                            "error",
+                            4000,
+                        );
+                    }
+                }
+            }
+
+            async function triggerManualUpdateCheck() {
+                const btn = document.getElementById("check-updates-btn");
+                if (!btn || btn.disabled) return;
+                btn.disabled = true;
+                btn.textContent = t("settings.checkUpdatesBusy");
+                try {
+                    await checkForUpdate({ manual: true });
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = t("settings.checkUpdates");
                 }
             }
 
