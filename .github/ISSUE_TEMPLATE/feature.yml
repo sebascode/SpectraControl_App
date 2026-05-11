@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a new capability or enhancement.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: What can't you do today, or what's friction in the current flow?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would the feature work from the user's perspective? Sketch the UX in plain language.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to solve the same problem, and why this one's preferable.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Implementation notes
+      description: Optional — relevant code paths, plugins, or constraints.

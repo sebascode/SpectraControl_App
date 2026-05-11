@@ -1,0 +1,69 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill in as much detail
+        as you can — it makes triage much faster.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Found in Settings → Acerca de. Or run the AppImage from a terminal and read the first log line.
+      placeholder: "0.2.7"
+    validations:
+      required: true
+
+  - type: input
+    id: distro
+    attributes:
+      label: Distro + compositor
+      description: Distro name + version, plus your desktop environment / compositor.
+      placeholder: "Bazzite 44 · GNOME Wayland · NVIDIA"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - AppImage
+        - .deb
+        - .rpm
+        - Built from source (cargo tauri dev / build.sh)
+        - Browser mode (Firefox + run.sh)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what did you see instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Launch the app
+        2. Open Settings
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / stderr
+      description: |
+        If possible, run the AppImage from a terminal and paste the relevant lines.
+        Look for `[capture]`, `[sync]`, `[update]`, or any error before the bug.
+      render: shell
