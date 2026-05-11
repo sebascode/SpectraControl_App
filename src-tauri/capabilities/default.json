@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for SpectraControl's custom titlebar (drag, minimize, close) and in-app updater.",
+  "description": "Minimal permission set: custom titlebar, in-app updater (check + signed download), graceful exit on update install, system notifications, save-dialog for profile export, and autostart toggle.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -11,7 +11,7 @@
     "updater:default",
     "process:allow-exit",
     "notification:default",
-    "dialog:default",
+    "dialog:allow-save",
     "autostart:default"
   ]
 }
