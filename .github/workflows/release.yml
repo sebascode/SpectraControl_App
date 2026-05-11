@@ -85,22 +85,56 @@ jobs:
         env:
           SPECTRA_VERSION: ${{ steps.ver.outputs.version }}
           NO_STRIP: 'true'
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           cargo tauri build --bundles appimage,deb,rpm
 
       - name: Stage artifacts
         id: stage
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
           mkdir -p dist
           shopt -s nullglob
           for f in src-tauri/target/release/bundle/appimage/*.AppImage \
+                   src-tauri/target/release/bundle/appimage/*.AppImage.sig \
                    src-tauri/target/release/bundle/deb/*.deb \
                    src-tauri/target/release/bundle/rpm/*.rpm; do
             cp "$f" dist/
           done
           echo "→ Artefactos:"
           ls -lh dist/
-          (cd dist && sha256sum * > SHA256SUMS)
+
+          # Construir latest.json para tauri-plugin-updater.
+          # GitHub redirige /releases/latest/download/<file> al asset del tag actual,
+          # así que apuntar la URL con /v$VERSION/ deja constancia exacta del release.
+          APPIMAGE=$(ls dist/*.AppImage | head -n1)
+          SIG=$(ls dist/*.AppImage.sig | head -n1)
+          if [[ -z "$APPIMAGE" || -z "$SIG" ]]; then
+            echo "❌ Falta AppImage o .sig (¿se configuró TAURI_SIGNING_PRIVATE_KEY?)" >&2
+            exit 1
+          fi
+          ASSET=$(basename "$APPIMAGE")
+          SIGNATURE=$(cat "$SIG")
+          PUBDATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$PUBDATE" \
+            --arg url "https://github.com/${{ github.repository }}/releases/download/v$VERSION/$ASSET" \
+            --arg signature "$SIGNATURE" \
+            '{
+              version: $version,
+              notes: "See release notes on GitHub",
+              pub_date: $pub_date,
+              platforms: {
+                "linux-x86_64": { signature: $signature, url: $url }
+              }
+            }' > dist/latest.json
+          echo "→ latest.json:"
+          cat dist/latest.json
+
+          (cd dist && sha256sum *.AppImage *.deb *.rpm > SHA256SUMS)
           cat dist/SHA256SUMS
 
       - name: Upload build artifacts
@@ -120,6 +154,8 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/*.AppImage
+            dist/*.AppImage.sig
             dist/*.deb
             dist/*.rpm
+            dist/latest.json
             dist/SHA256SUMS

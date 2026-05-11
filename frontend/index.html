@@ -12,6 +12,7 @@
         <style>
             /* ── VARIABLES ── */
             :root {
+                color-scheme: dark;
                 --bg: #0c0c0f;
                 --surface: #13131a;
                 --surface2: #1a1a25;
@@ -170,6 +171,17 @@
                 box-shadow: 0 0 12px var(--accent);
                 animation: pulse 2s infinite;
             }
+            .logo-img {
+                width: 32px;
+                height: 32px;
+                object-fit: contain;
+                /* El logo es vertical y deja aire arriba/abajo; este margen
+                   negativo compensa para que ópticamente alinee con el texto. */
+                margin: -4px 0;
+                user-select: none;
+                -webkit-user-drag: none;
+                pointer-events: none;
+            }
             @keyframes pulse {
                 0%,
                 100% {
@@ -300,6 +312,53 @@
                 padding: 4px 8px;
                 font-size: 1rem;
                 font-weight: 400;
+            }
+
+            /* Checkboxes alineados dentro del drawer de Ajustes. */
+            .settings-check {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 8px;
+                font-size: 0.75rem;
+                font-family: var(--mono);
+                color: var(--text-dim);
+                cursor: pointer;
+                line-height: 1.3;
+            }
+            .settings-check input {
+                flex-shrink: 0;
+            }
+
+            /* ── SCENE TARGET PICKER (setup + settings) ── */
+            .setup-target-list {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                max-height: 45vh;
+                overflow-y: auto;
+            }
+            .setup-target-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 14px;
+                background: var(--surface2);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                color: var(--text);
+                font-family: var(--mono);
+                font-size: 0.8rem;
+                cursor: pointer;
+                transition: var(--transition);
+            }
+            .setup-target-item:hover {
+                border-color: var(--accent);
+                background: #1f1f2c;
+            }
+            .setup-target-item-meta {
+                color: var(--text-muted);
+                font-size: 0.65rem;
             }
 
             /* ── SETTINGS DRAWER ── */
@@ -914,6 +973,25 @@
                 font-size: 0.85rem;
                 line-height: 1.5;
             }
+            .setup-lang {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .setup-lang-label {
+                font-size: 0.75rem;
+                color: var(--text-dim);
+                font-family: var(--mono);
+            }
+            .setup-lang-select {
+                flex: 1;
+                background: var(--surface2);
+                color: var(--text);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 6px 8px;
+                font-size: 0.8rem;
+            }
             .setup-steps {
                 display: flex;
                 flex-direction: column;
@@ -988,8 +1066,18 @@
                 --room-base: #1c1c26;
             }
 
+            [data-theme="light"] {
+                color-scheme: light;
+            }
             [data-theme="light"] body::before {
                 opacity: 0.3;
+            }
+
+            /* Force option list to follow our palette in case the WebView
+               ignores color-scheme for the native dropdown menu. */
+            select option {
+                background: var(--surface2);
+                color: var(--text);
             }
             [data-theme="light"] .topbar {
                 background: rgba(239, 239, 245, 0.85);
@@ -1179,62 +1267,122 @@
             <div class="setup-card">
                 <div>
                     <div class="logo" style="margin-bottom: 16px">
-                        <div class="logo-dot"></div>
+                        <img class="logo-img" src="logo.png" alt="" />
                         Spectra Control
                     </div>
-                    <div class="setup-title">Configuración inicial</div>
-                    <div class="setup-sub" style="margin-top: 6px">
+                    <div class="setup-title" data-i18n="setup.title">
+                        Configuración inicial
+                    </div>
+                    <div
+                        class="setup-sub"
+                        style="margin-top: 6px"
+                        data-i18n="setup.sub"
+                    >
                         Conecta tu Hue Bridge para comenzar.
                     </div>
                 </div>
 
-                <div class="setup-steps">
-                    <div class="step">
-                        <div class="step-num">1</div>
-                        <div class="step-text">
-                            Asegúrate de que tu <strong>Hue Bridge</strong> esté
-                            encendido y en la misma red local.
+                <div class="setup-lang">
+                    <label
+                        class="setup-lang-label"
+                        for="setup-locale"
+                        data-i18n="setup.languageLabel"
+                        >Idioma</label
+                    >
+                    <select
+                        id="setup-locale"
+                        class="setup-lang-select"
+                        onchange="setLocale(this.value)"
+                    ></select>
+                </div>
+
+                <div id="setup-step-bridge">
+                    <div class="setup-steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div
+                                class="step-text"
+                                data-i18n-html="setup.step1"
+                            >
+                                Asegúrate de que tu <strong>Hue Bridge</strong> esté
+                                encendido y en la misma red local.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div
+                                class="step-text"
+                                data-i18n-html="setup.step2"
+                            >
+                                Descubre la IP automáticamente o ingrésala
+                                manualmente.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div
+                                class="step-text"
+                                data-i18n-html="setup.step3"
+                            >
+                                Presiona el <strong>botón físico</strong> del bridge
+                                y luego haz clic en "Vincular".
+                            </div>
                         </div>
                     </div>
-                    <div class="step">
-                        <div class="step-num">2</div>
-                        <div class="step-text">
-                            Descubre la IP automáticamente o ingrésala
-                            manualmente.
-                        </div>
+
+                    <div class="setup-inputs">
+                        <input
+                            class="config-input"
+                            id="setup-ip"
+                            placeholder="IP del bridge (ej: 192.168.1.100)"
+                            data-i18n-placeholder="setup.ipPlaceholder"
+                        />
+                        <input
+                            class="config-input"
+                            id="setup-key"
+                            placeholder="API Key (si ya la tienes)"
+                            data-i18n-placeholder="setup.keyPlaceholder"
+                        />
                     </div>
-                    <div class="step">
-                        <div class="step-num">3</div>
-                        <div class="step-text">
-                            Presiona el <strong>botón físico</strong> del bridge
-                            y luego haz clic en "Vincular".
-                        </div>
+
+                    <div class="setup-actions">
+                        <button
+                            class="btn btn-ghost"
+                            onclick="discoverBridge()"
+                            data-i18n="setup.discover"
+                        >
+                            🔍 Descubrir automáticamente
+                        </button>
+                        <button
+                            class="btn btn-ghost"
+                            onclick="pairBridge()"
+                            data-i18n="setup.pair"
+                        >
+                            🔗 Vincular (presiona botón del bridge primero)
+                        </button>
+                        <button
+                            class="btn btn-primary"
+                            onclick="saveSetup()"
+                            data-i18n="setup.save"
+                        >
+                            Guardar y continuar →
+                        </button>
                     </div>
                 </div>
 
-                <div class="setup-inputs">
-                    <input
-                        class="config-input"
-                        id="setup-ip"
-                        placeholder="IP del bridge (ej: 192.168.1.100)"
-                    />
-                    <input
-                        class="config-input"
-                        id="setup-key"
-                        placeholder="API Key (si ya la tienes)"
-                    />
-                </div>
-
-                <div class="setup-actions">
-                    <button class="btn btn-ghost" onclick="discoverBridge()">
-                        🔍 Descubrir automáticamente
-                    </button>
-                    <button class="btn btn-ghost" onclick="pairBridge()">
-                        🔗 Vincular (presiona botón del bridge primero)
-                    </button>
-                    <button class="btn btn-primary" onclick="saveSetup()">
-                        Guardar y continuar →
-                    </button>
+                <div id="setup-step-target" style="display: none">
+                    <div
+                        class="setup-sub"
+                        style="margin: 0 0 12px"
+                        data-i18n="setup.targetSub"
+                    >
+                        ¿En qué habitación quieres que se reproduzcan las
+                        escenas dinámicas?
+                    </div>
+                    <div
+                        class="setup-target-list"
+                        id="setup-target-list"
+                    ></div>
                 </div>
             </div>
         </div>
@@ -1244,7 +1392,7 @@
             <!-- TOPBAR -->
             <div class="topbar" data-tauri-drag-region>
                 <div class="logo" data-tauri-drag-region>
-                    <div class="logo-dot"></div>
+                    <img class="logo-img" src="logo.png" alt="" />
                     Spectra Control
                 </div>
                 <div class="status-badge" id="bridge-status">
@@ -1256,11 +1404,13 @@
             <div class="window-controls">
                 <button
                     class="window-btn"
+                    data-i18n-title="window.minimize"
                     title="Minimizar"
                     onclick="minimizeWindow()"
                 >−</button>
                 <button
                     class="window-btn close"
+                    data-i18n-title="window.close"
                     title="Cerrar"
                     onclick="closeWindow()"
                 >×</button>
@@ -1269,12 +1419,17 @@
             <div class="main">
                 <div class="update-banner" id="update-banner" hidden>
                     <span class="update-banner-text" id="update-banner-text"></span>
-                    <button id="update-banner-btn" onclick="installUpdate()">
+                    <button
+                        id="update-banner-btn"
+                        onclick="installUpdate()"
+                        data-i18n="update.install"
+                    >
                         Actualizar
                     </button>
                     <button
                         class="update-banner-dismiss"
                         onclick="dismissUpdate()"
+                        data-i18n-title="update.dismiss"
                         title="Ocultar"
                     >
                         ×
@@ -1283,11 +1438,19 @@
 
                 <!-- HOME PAGE (sync zones) -->
                 <div id="page-home">
-                    <div class="section-label" style="margin-bottom: 14px">
+                    <div
+                        class="section-label"
+                        style="margin-bottom: 14px"
+                        data-i18n="home.title"
+                    >
                         Zonas de Entretenimiento
                     </div>
                     <div class="zones-grid" id="zones-grid">
-                        <div class="empty" style="grid-column: 1/-1">
+                        <div
+                            class="empty"
+                            style="grid-column: 1/-1"
+                            data-i18n="common.loading"
+                        >
                             Cargando...
                         </div>
                     </div>
@@ -1305,6 +1468,7 @@
                             class="btn btn-ghost"
                             style="padding: 10px 16px; font-size: 0.85rem"
                             onclick="openZoneConfig(selectedZoneID)"
+                            data-i18n="home.configureLights"
                         >
                             ⚙ Configurar luces
                         </button>
@@ -1325,11 +1489,14 @@
                             class="btn btn-ghost"
                             style="padding: 6px 10px; font-size: 0.8rem"
                             onclick="switchPage('home')"
+                            data-i18n="common.back"
                         >
                             ← Volver
                         </button>
                         <div class="section-label" style="margin: 0">
-                            Configuración:
+                            <span data-i18n="zoneConfig.title"
+                                >Configuración:</span
+                            >
                             <span
                                 id="zone-config-name"
                                 style="color: var(--text)"
@@ -1343,6 +1510,7 @@
                             margin-bottom: 8px;
                             font-family: var(--mono);
                         "
+                        data-i18n="zoneConfig.positionsHint"
                     >
                         Posiciones · Arrastra cada luz a su ubicación frente al
                         monitor
@@ -1390,7 +1558,9 @@
                                     d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
                                 />
                             </svg>
-                            Brillo del sync
+                            <span data-i18n="zoneConfig.brightness"
+                                >Brillo del sync</span
+                            >
                             <span class="zone-bri-value" id="zone-bri-value">200</span>
                         </div>
                         <input
@@ -1411,6 +1581,7 @@
                             font-family: var(--mono);
                             line-height: 1.6;
                         "
+                        data-i18n-html="zoneConfig.upcoming"
                     >
                         Próximamente:<br />
                         · Secciones por luz · Sync con audio · Perfiles
@@ -1419,7 +1590,12 @@
 
                 <!-- SCENES PAGE -->
                 <div id="page-scenes" style="display: none">
-                    <div class="page-section-title">Escenas dinámicas</div>
+                    <div
+                        class="page-section-title"
+                        data-i18n="scenes.title"
+                    >
+                        Escenas dinámicas
+                    </div>
                     <div
                         style="
                             font-size: 0.7rem;
@@ -1427,12 +1603,17 @@
                             margin-bottom: 14px;
                             font-family: var(--mono);
                         "
+                        data-i18n="scenes.description"
                     >
                         Animaciones que recorren colores en bucle. Toca para
                         iniciar; toca de nuevo para detener.
                     </div>
                     <div class="zones-grid" id="scenes-grid">
-                        <div class="empty" style="grid-column: 1/-1">
+                        <div
+                            class="empty"
+                            style="grid-column: 1/-1"
+                            data-i18n="common.loading"
+                        >
                             Cargando...
                         </div>
                     </div>
@@ -1440,15 +1621,28 @@
 
                 <!-- LIGHTS PAGE -->
                 <div id="page-lights" style="display: none">
-                    <div class="page-section-title">Habitaciones</div>
-                    <div class="rooms-list" id="rooms-grid">
-                        <div class="empty">Cargando...</div>
+                    <div
+                        class="page-section-title"
+                        data-i18n="lights.rooms"
+                    >
+                        Habitaciones
                     </div>
-                    <div class="page-section-title" style="margin-top: 20px">
+                    <div class="rooms-list" id="rooms-grid">
+                        <div class="empty" data-i18n="common.loading">
+                            Cargando...
+                        </div>
+                    </div>
+                    <div
+                        class="page-section-title"
+                        style="margin-top: 20px"
+                        data-i18n="lights.individual"
+                    >
                         Luces individuales
                     </div>
                     <div class="cards-grid" id="lights-grid">
-                        <div class="empty">Cargando luces...</div>
+                        <div class="empty" data-i18n="lights.loading">
+                            Cargando luces...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1462,7 +1656,7 @@
                 onclick="switchPage('home')"
             >
                 <span class="nav-icon" id="nav-icon-home"></span>
-                <span>Inicio</span>
+                <span data-i18n="nav.home">Inicio</span>
             </button>
             <button
                 class="nav-item"
@@ -1470,7 +1664,7 @@
                 onclick="switchPage('lights')"
             >
                 <span class="nav-icon" id="nav-icon-lights"></span>
-                <span>Luces</span>
+                <span data-i18n="nav.lights">Luces</span>
             </button>
             <button
                 class="nav-item"
@@ -1478,7 +1672,7 @@
                 onclick="switchPage('scenes')"
             >
                 <span class="nav-icon" id="nav-icon-scenes"></span>
-                <span>Escenas</span>
+                <span data-i18n="nav.scenes">Escenas</span>
             </button>
             <button class="nav-item" id="nav-sync" onclick="toggleSync()">
                 <div style="position: relative; line-height: 1; display: flex">
@@ -1498,11 +1692,11 @@
                         "
                     ></div>
                 </div>
-                <span>Sync</span>
+                <span data-i18n="nav.sync">Sync</span>
             </button>
             <button class="nav-item" onclick="openSettings()">
                 <span class="nav-icon" id="nav-icon-settings"></span>
-                <span>Ajustes</span>
+                <span data-i18n="nav.settings">Ajustes</span>
             </button>
         </nav>
 
@@ -1514,7 +1708,7 @@
         ></div>
         <div class="settings-drawer" id="settings-drawer">
             <div class="drawer-header">
-                Ajustes
+                <span data-i18n="nav.settings">Ajustes</span>
                 <button class="drawer-close" onclick="closeSettings()">
                     ✕
                 </button>
@@ -1522,24 +1716,66 @@
 
             <!-- Apariencia -->
             <div class="drawer-section">
-                <div class="section-label">Apariencia</div>
+                <div class="section-label" data-i18n="settings.appearance">
+                    Apariencia
+                </div>
                 <button
                     class="btn btn-ghost"
                     id="theme-btn"
                     style="font-size: 0.8rem; padding: 8px"
                     onclick="toggleTheme()"
                 >
-                    ☀ Cambiar tema
+                    <span class="theme-icon">☀</span>
+                    <span data-i18n="settings.toggleTheme"
+                        >Cambiar tema</span
+                    >
                 </button>
+                <select
+                    id="settings-locale"
+                    class="setup-lang-select"
+                    style="margin-top: 4px"
+                    onchange="setLocale(this.value); populateLocaleSelector(); populateSettingsLocaleSelector();"
+                ></select>
+                <label class="settings-check">
+                    <input
+                        type="checkbox"
+                        id="notifications-toggle"
+                        onchange="setNotificationsEnabled(this.checked)"
+                    />
+                    <span data-i18n="settings.notifications">
+                        Notificaciones del sistema
+                    </span>
+                </label>
+                <label class="settings-check">
+                    <input
+                        type="checkbox"
+                        id="quit-on-close-toggle"
+                        onchange="setQuitOnClose(this.checked)"
+                    />
+                    <span data-i18n="settings.quitOnClose">
+                        Al cerrar, salir de la app (en vez de minimizar al tray)
+                    </span>
+                </label>
+                <label class="settings-check">
+                    <input
+                        type="checkbox"
+                        id="autostart-toggle"
+                        onchange="setAutostart(this.checked)"
+                    />
+                    <span data-i18n="settings.autostart">
+                        Iniciar con el sistema
+                    </span>
+                </label>
             </div>
 
-            <!-- Conexión -->
-            <div class="drawer-section">
-                <div class="section-label">Conexión</div>
+            <!-- Conexión (oculta — los inputs siguen en DOM para el setup
+                 flow que los lee, pero ya no se exponen aquí). -->
+            <div class="drawer-section" style="display: none">
                 <input
                     class="config-input"
                     id="bridge-ip"
                     placeholder="IP del bridge"
+                    data-i18n-placeholder="settings.bridgeIp"
                 />
                 <input
                     class="config-input"
@@ -1547,90 +1783,85 @@
                     placeholder="API Key"
                     type="password"
                 />
-                <div style="display: flex; gap: 8px">
-                    <button
-                        class="btn btn-ghost"
-                        style="flex: 1"
-                        onclick="saveConfig()"
-                    >
-                        Guardar
-                    </button>
-                    <button
-                        class="btn btn-ghost"
-                        style="flex: 1"
-                        onclick="loadAll()"
-                    >
-                        ↺
-                    </button>
-                </div>
-                <button
-                    class="btn btn-ghost"
-                    style="font-size: 0.75rem; padding: 7px"
-                    onclick="showSetup()"
-                >
-                    Re-vincular bridge
-                </button>
             </div>
 
             <!-- Screen Sync -->
             <div class="drawer-section">
-                <div class="section-label">Screen Sync</div>
-                <div class="sync-speed">
-                    <span class="speed-label"
-                        >Velocidad:
-                        <span id="sync-interval-val">0.3</span>s</span
-                    >
-                </div>
-                <input
-                    type="range"
-                    id="sync-interval"
-                    min="0.1"
-                    max="2.0"
-                    step="0.1"
-                    value="0.3"
-                    oninput="
-                        document.getElementById(
-                            'sync-interval-val',
-                        ).textContent = (+this.value).toFixed(1)
-                    "
-                />
-                <div class="section-label" style="margin-top: 6px">
-                    Habitaciones
-                </div>
-                <div class="light-checkboxes" id="sync-light-list">
-                    <span
-                        style="
-                            color: var(--text-muted);
-                            font-size: 0.75rem;
-                            font-family: var(--mono);
-                        "
-                        >Cargando...</span
-                    >
+                <div class="section-label" data-i18n="settings.screenSync">
+                    Screen Sync
                 </div>
                 <div
-                    class="sync-indicator"
-                    id="sync-indicator"
-                    style="margin-top: 4px"
+                    style="
+                        font-family: var(--mono);
+                        font-size: 0.7rem;
+                        color: var(--text-muted);
+                        margin-bottom: 6px;
+                    "
+                    data-i18n="settings.syncTargetHint"
                 >
-                    <span id="sync-status-text">Detenido</span>
-                    <span
-                        id="sync-color-hex"
-                        style="
-                            font-size: 0.65rem;
-                            opacity: 0.6;
-                            margin-top: 2px;
-                        "
-                    ></span>
+                    Entertainment area que usa el botón Sync
+                </div>
+                <select
+                    id="sync-target-select"
+                    class="setup-lang-select"
+                    onchange="setSyncTargetZone(this.value)"
+                ></select>
+                <!-- Slider de velocidad, lista de habitaciones y status quedan
+                     ocultos: los lee la lógica de sync con su valor default.
+                     Si en el futuro queremos exponerlos otra vez, basta con
+                     quitar el display:none. -->
+                <div style="display: none">
+                    <input
+                        type="range"
+                        id="sync-interval"
+                        min="0.1"
+                        max="2.0"
+                        step="0.1"
+                        value="0.3"
+                    />
+                    <span id="sync-interval-val">0.3</span>
+                    <div class="light-checkboxes" id="sync-light-list"></div>
+                    <div class="sync-indicator" id="sync-indicator">
+                        <span id="sync-status-text"></span>
+                        <span id="sync-color-hex"></span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Entertainment -->
+            <!-- Dynamic scenes target -->
             <div class="drawer-section">
+                <div class="section-label" data-i18n="settings.scenesSection">
+                    Escenas dinámicas
+                </div>
+                <div
+                    style="
+                        font-family: var(--mono);
+                        font-size: 0.7rem;
+                        color: var(--text-muted);
+                        margin-bottom: 6px;
+                    "
+                    data-i18n="settings.scenesTargetHint"
+                >
+                    Habitación donde se reproducen
+                </div>
+                <select
+                    id="scenes-target-select"
+                    class="setup-lang-select"
+                    onchange="setSceneTargetGroup(this.value)"
+                ></select>
+            </div>
+
+            <!-- Entertainment (oculto — controles internos del DTLS streaming,
+                 cubiertos por el flujo de Sync. Los elementos siguen en DOM
+                 para que las funciones que los leen no rompan). -->
+            <div class="drawer-section" style="display: none">
                 <div
                     class="section-label"
                     style="display: flex; align-items: center; gap: 6px"
                 >
-                    Entertainment
+                    <span data-i18n="settings.entertainment"
+                        >Entertainment</span
+                    >
                     <span
                         id="ent-badge"
                         style="
@@ -1642,6 +1873,7 @@
                             border-radius: 4px;
                             padding: 1px 5px;
                         "
+                        data-i18n="settings.entActive"
                         >ACTIVO</span
                     >
                 </div>
@@ -1651,6 +1883,7 @@
                         color: var(--text-muted);
                         font-family: var(--mono);
                     "
+                    data-i18n="settings.entDescription"
                 >
                     DTLS streaming — aparece "sincronizado" en la app Hue
                 </div>
@@ -1666,13 +1899,16 @@
                         padding: 5px 6px;
                     "
                 >
-                    <option value="">Cargando áreas...</option>
+                    <option value="" data-i18n="settings.loadingAreas">
+                        Cargando áreas...
+                    </option>
                 </select>
                 <div style="display: flex; gap: 6px">
                     <button
                         class="btn btn-sync"
                         style="flex: 1; font-size: 0.75rem; padding: 7px"
                         onclick="startEntertainment()"
+                        data-i18n="settings.activate"
                     >
                         Activar
                     </button>
@@ -1680,6 +1916,7 @@
                         class="btn btn-ghost"
                         style="flex: 1; font-size: 0.75rem; padding: 7px"
                         onclick="stopEntertainment()"
+                        data-i18n="settings.stop"
                     >
                         Detener
                     </button>
@@ -1695,6 +1932,62 @@
                 ></div>
             </div>
 
+            <!-- Profile -->
+            <div class="drawer-section">
+                <div class="section-label" data-i18n="settings.profile">
+                    Perfil
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                    <button
+                        class="btn btn-ghost"
+                        style="flex: 1; font-size: 0.75rem; padding: 7px"
+                        onclick="exportProfile()"
+                        data-i18n="settings.export"
+                    >
+                        Exportar
+                    </button>
+                    <button
+                        class="btn btn-ghost"
+                        style="flex: 1; font-size: 0.75rem; padding: 7px"
+                        onclick="document.getElementById('profile-import-input').click()"
+                        data-i18n="settings.import"
+                    >
+                        Importar
+                    </button>
+                </div>
+                <input
+                    type="file"
+                    id="profile-import-input"
+                    accept="application/json,.json"
+                    style="display: none"
+                    onchange="importProfile(this.files[0]); this.value=''"
+                />
+                <div
+                    style="
+                        font-family: var(--mono);
+                        font-size: 0.6rem;
+                        color: var(--text-muted);
+                        line-height: 1.5;
+                        margin-top: 6px;
+                    "
+                    data-i18n="settings.profileHint"
+                >
+                    Incluye las credenciales del bridge. Trátalo como una contraseña.
+                </div>
+            </div>
+
+            <!-- Logout -->
+            <div class="drawer-section">
+                <button
+                    class="btn btn-ghost"
+                    style="color: var(--danger); border-color: #ff475744"
+                    onclick="logoutBridge()"
+                    data-i18n="settings.logout"
+                >
+                    Cerrar sesión del bridge
+                </button>
+            </div>
+
             <!-- Footer -->
             <div
                 class="drawer-section"
@@ -1707,6 +2000,7 @@
                         color: var(--text-muted);
                         line-height: 1.6;
                     "
+                    data-i18n-html="settings.footerNote"
                 >
                     Screen Sync usa
                     <strong style="color: var(--text-dim)"
@@ -1725,6 +2019,151 @@
             const API = window.location.origin.includes(":5173")
                 ? "http://localhost:8000" // dev mode
                 : "";
+
+            // ── I18N ──
+            // Locale chosen by user (persisted). Fallback dict is the canonical
+            // (Spanish) translation; missing keys fall back to it then to the
+            // raw key string. New locales = drop another JSON in frontend/i18n/.
+            const I18N_KEY = "locale";
+            const I18N_DEFAULT = "es";
+            const I18N_AVAILABLE = ["es", "en"];
+            let currentLocale =
+                localStorage.getItem(I18N_KEY) || I18N_DEFAULT;
+            if (!I18N_AVAILABLE.includes(currentLocale))
+                currentLocale = I18N_DEFAULT;
+            let translations = {};
+            let fallbackDict = {};
+
+            async function loadLocaleFile(locale) {
+                try {
+                    const r = await fetch(`./i18n/${locale}.json`);
+                    if (!r.ok) return {};
+                    return await r.json();
+                } catch (e) {
+                    console.error("i18n load failed:", locale, e);
+                    return {};
+                }
+            }
+
+            async function initI18n() {
+                fallbackDict = await loadLocaleFile(I18N_DEFAULT);
+                translations =
+                    currentLocale === I18N_DEFAULT
+                        ? fallbackDict
+                        : await loadLocaleFile(currentLocale);
+                applyTranslations();
+                syncNativeStrings();
+            }
+
+            // Empuja a Rust los strings que viven fuera del DOM (menú del
+            // tray). Sin esto, el menú nativo se queda en el idioma con que
+            // se construyó la app, ignorando el cambio de locale.
+            async function syncNativeStrings() {
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) return;
+                try {
+                    await invoke("set_tray_menu_labels", {
+                        show: t("tray.show"),
+                        quit: t("tray.quit"),
+                    });
+                } catch (e) {
+                    console.warn("[i18n] set_tray_menu_labels falló", e);
+                }
+            }
+
+            function t(key) {
+                return (
+                    translations[key] ?? fallbackDict[key] ?? key
+                );
+            }
+
+            function tf(key, vars) {
+                let s = t(key);
+                if (vars) {
+                    for (const k in vars) {
+                        s = s.replace(
+                            new RegExp("\\{" + k + "\\}", "g"),
+                            vars[k],
+                        );
+                    }
+                }
+                return s;
+            }
+
+            async function setLocale(locale) {
+                if (!I18N_AVAILABLE.includes(locale)) return;
+                currentLocale = locale;
+                localStorage.setItem(I18N_KEY, locale);
+                translations =
+                    locale === I18N_DEFAULT
+                        ? fallbackDict
+                        : await loadLocaleFile(locale);
+                applyTranslations();
+                syncNativeStrings();
+                // Re-render dynamic content that bakes strings into innerHTML.
+                if (typeof renderZones === "function") renderZones();
+                if (typeof renderScenes === "function") renderScenes();
+                if (typeof updateSyncUI === "function") updateSyncUI();
+                if (
+                    typeof renderZoneLayout === "function" &&
+                    typeof selectedZoneID !== "undefined" &&
+                    selectedZoneID &&
+                    typeof lightsForZone === "function"
+                ) {
+                    try {
+                        renderZoneLayout(lightsForZone(selectedZoneID));
+                    } catch (e) {}
+                }
+            }
+
+            function applyTranslations() {
+                document
+                    .querySelectorAll("[data-i18n]")
+                    .forEach((el) => {
+                        el.textContent = t(el.dataset.i18n);
+                    });
+                document
+                    .querySelectorAll("[data-i18n-html]")
+                    .forEach((el) => {
+                        el.innerHTML = t(el.dataset.i18nHtml);
+                    });
+                document
+                    .querySelectorAll("[data-i18n-placeholder]")
+                    .forEach((el) => {
+                        el.placeholder = t(el.dataset.i18nPlaceholder);
+                    });
+                document
+                    .querySelectorAll("[data-i18n-title]")
+                    .forEach((el) => {
+                        el.title = t(el.dataset.i18nTitle);
+                    });
+                document.documentElement.lang = currentLocale;
+            }
+
+            async function buildLocaleOptions() {
+                const dicts = await Promise.all(
+                    I18N_AVAILABLE.map(async (loc) => [
+                        loc,
+                        await loadLocaleFile(loc),
+                    ]),
+                );
+                return dicts
+                    .map(
+                        ([loc, d]) =>
+                            `<option value="${loc}"${loc === currentLocale ? " selected" : ""}>${d["lang.name"] || loc}</option>`,
+                    )
+                    .join("");
+            }
+
+            async function populateLocaleSelector() {
+                const sel = document.getElementById("setup-locale");
+                if (sel) sel.innerHTML = await buildLocaleOptions();
+            }
+
+            async function populateSettingsLocaleSelector() {
+                const sel = document.getElementById("settings-locale");
+                if (sel) sel.innerHTML = await buildLocaleOptions();
+            }
 
             let lights = [];
             let groups = [];
@@ -1786,13 +2225,18 @@
             // ── SETUP ──
             function showSetup() {
                 document.getElementById("setup-screen").style.display = "flex";
+                // El setup siempre arranca en el paso de bridge — al re-vincular
+                // queremos repetir IP/pair primero.
+                document.getElementById("setup-step-bridge").style.display = "";
+                document.getElementById("setup-step-target").style.display =
+                    "none";
             }
             function hideSetup() {
                 document.getElementById("setup-screen").style.display = "none";
             }
 
             async function discoverBridge() {
-                toast("Buscando bridge en la red...", "info", 4000);
+                toast(t("toasts.searchingBridge"), "info", 4000);
                 try {
                     const r = await fetch(`${API}/api/discover`, {
                         method: "POST",
@@ -1802,19 +2246,19 @@
                         const ip = data.bridges[0].internalipaddress;
                         document.getElementById("setup-ip").value = ip;
                         document.getElementById("bridge-ip").value = ip;
-                        toast(`Bridge encontrado: ${ip}`, "success");
+                        toast(tf("toasts.bridgeFound", { ip }), "success");
                     } else {
-                        toast("No se encontró ningún bridge", "error");
+                        toast(t("toasts.bridgeNotFound"), "error");
                     }
                 } catch (e) {
-                    toast("Error al buscar bridge", "error");
+                    toast(t("toasts.searchError"), "error");
                 }
             }
 
             async function pairBridge() {
                 const ip = document.getElementById("setup-ip").value;
                 if (!ip) {
-                    toast("Ingresa la IP del bridge primero", "error");
+                    toast(t("toasts.enterIpFirst"), "error");
                     return;
                 }
                 toast(
@@ -1839,10 +2283,10 @@
                             4000,
                         );
                     } else {
-                        toast(data.detail || "Error al vincular", "error");
+                        toast(data.detail || t("toasts.pairError"), "error");
                     }
                 } catch (e) {
-                    toast("Error al vincular", "error");
+                    toast(t("toasts.pairError"), "error");
                 }
             }
 
@@ -1850,13 +2294,24 @@
                 const ip = document.getElementById("setup-ip").value;
                 const key = document.getElementById("setup-key").value;
                 if (!ip || !key) {
-                    toast("Completa IP y API Key", "error");
+                    toast(t("toasts.fillIpKey"), "error");
                     return;
                 }
                 document.getElementById("bridge-ip").value = ip;
                 document.getElementById("api-key").value = key;
                 await saveConfig();
-                hideSetup();
+                // saveConfig() llama a loadAll(), que ya pobló `groups`. Si
+                // hay habitaciones, pasamos al paso 2 (elegir target); si no,
+                // cerramos directamente.
+                if (groups.length) {
+                    document.getElementById("setup-step-bridge").style.display =
+                        "none";
+                    document.getElementById("setup-step-target").style.display =
+                        "block";
+                    renderSetupTargetPicker();
+                } else {
+                    hideSetup();
+                }
             }
 
             // ── CONFIG ──
@@ -1864,7 +2319,7 @@
                 const ip = document.getElementById("bridge-ip").value.trim();
                 const key = document.getElementById("api-key").value.trim();
                 if (!ip || !key) {
-                    toast("IP y API Key requeridos", "error");
+                    toast(t("toasts.ipKeyRequired"), "error");
                     return;
                 }
                 await fetch(`${API}/api/config`, {
@@ -1872,7 +2327,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ ip, api_key: key }),
                 });
-                toast("Configuración guardada", "success");
+                toast(t("toasts.configSaved"), "success");
                 await loadAll();
             }
 
@@ -1892,7 +2347,7 @@
                 const statusEl = document.getElementById("bridge-status");
 
                 if (!configured) {
-                    statusEl.textContent = "Sin conexión";
+                    statusEl.textContent = t("status.disconnected");
                     statusEl.classList.remove("connected");
                     document.getElementById("setup-screen").style.display =
                         "flex";
@@ -1901,12 +2356,12 @@
 
                 try {
                     await Promise.all([loadLights(), loadGroups()]);
-                    statusEl.textContent = "Sync";
+                    statusEl.textContent = t("status.sync");
                     statusEl.classList.add("connected");
                 } catch (e) {
-                    statusEl.textContent = "Error";
+                    statusEl.textContent = t("status.error");
                     statusEl.classList.remove("connected");
-                    toast("No se pudo conectar al bridge", "error");
+                    toast(t("toasts.bridgeConnect"), "error");
                 }
                 await loadSyncStatus();
                 loadEntertainmentConfigs();
@@ -1994,6 +2449,7 @@
                 );
                 renderGroups();
                 renderSyncGroupList();
+                populateSceneTargetSelect();
             }
 
             function briGradient(bri) {
@@ -2249,7 +2705,7 @@
                 const monitor = document.getElementById("zone-config-monitor");
                 if (!monitor) return;
                 if (!lightIds.length) {
-                    monitor.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-family:var(--mono);font-size:0.75rem">Esta zona no tiene luces asignadas</div>`;
+                    monitor.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-family:var(--mono);font-size:0.75rem">${t("zoneConfig.noLights")}</div>`;
                     return;
                 }
                 const positions = ensurePositionsFor(lightIds);
@@ -2338,13 +2794,15 @@
                     icon.innerHTML = SVG.stop;
                     dot.style.display = "";
                     ind.classList.add("active");
-                    txt.textContent = "Sincronizando";
+                    txt.textContent = t("sync.running");
+                    txt.dataset.i18n = "sync.running";
                 } else {
                     navSync.classList.remove("sync-active");
                     icon.innerHTML = SVG.play;
                     dot.style.display = "none";
                     ind.classList.remove("active");
-                    txt.textContent = "Detenido";
+                    txt.textContent = t("sync.stopped");
+                    txt.dataset.i18n = "sync.stopped";
                 }
             }
 
@@ -2484,11 +2942,36 @@
                             <div class="zone-card ${active ? "active" : ""}" onclick="toggleScene('${s.id}')">
                                 <div style="height:36px;border-radius:6px;background:${gradient};margin-bottom:10px;border:1px solid var(--border)"></div>
                                 <div class="zone-card-name">${s.name}</div>
-                                <div class="zone-card-meta">${s.duration}s · ${s.loop ? "loop" : "una vez"}</div>
-                                <div class="zone-card-status">${active ? "Reproduciendo" : "Tocar para iniciar"}</div>
+                                <div class="zone-card-meta">${s.duration}s · ${s.loop ? t("scenes.loop") : t("scenes.once")}</div>
+                                <div class="zone-card-status">${active ? t("scenes.playing") : t("scenes.tapToStart")}</div>
                             </div>`;
                     })
                     .join("");
+            }
+
+            // ── SCENE TARGET ──
+            // Las escenas dinámicas se reproducen sobre las luces de UNA
+            // habitación, no sobre todas. La elegida se guarda en localStorage
+            // y se setea en el setup (post-pairing) o en Ajustes. Sin elección
+            // → fallback al primer grupo disponible.
+            const SCENES_TARGET_KEY = "scenes.targetGroup";
+
+            function getSceneTargetGroup() {
+                return localStorage.getItem(SCENES_TARGET_KEY) || "";
+            }
+
+            function setSceneTargetGroup(id) {
+                if (id) localStorage.setItem(SCENES_TARGET_KEY, id);
+                else localStorage.removeItem(SCENES_TARGET_KEY);
+            }
+
+            function resolveSceneTargetLights() {
+                const targetId = getSceneTargetGroup();
+                let g = targetId
+                    ? groups.find((gr) => gr.id === targetId)
+                    : null;
+                if (!g) g = groups[0]; // fallback defensivo
+                return g ? g.lights || [] : [];
             }
 
             async function toggleScene(id) {
@@ -2497,9 +2980,9 @@
                     return;
                 }
                 if (syncRunning) stopSync();
-                const lightIDs = lights.map((l) => l.id);
+                const lightIDs = resolveSceneTargetLights();
                 if (!lightIDs.length) {
-                    toast("No hay luces disponibles", "error", 2500);
+                    toast(t("toasts.noLights"), "error", 2500);
                     return;
                 }
                 try {
@@ -2515,8 +2998,44 @@
                     activeSceneID = id;
                     renderScenes();
                 } catch (e) {
-                    toast("No se pudo iniciar la escena", "error", 2500);
+                    toast(t("toasts.sceneStartError"), "error", 2500);
                 }
+            }
+
+            function populateSceneTargetSelect() {
+                const sel = document.getElementById("scenes-target-select");
+                if (!sel) return;
+                const cur = getSceneTargetGroup();
+                sel.innerHTML = groups
+                    .map(
+                        (g) =>
+                            `<option value="${g.id}" ${g.id === cur ? "selected" : ""}>${g.name}</option>`,
+                    )
+                    .join("");
+                // Si no había nada elegido y hay grupos, persistir el primero
+                // así el usuario sabe sobre qué juega sin tocar nada.
+                if (!cur && groups.length) {
+                    setSceneTargetGroup(groups[0].id);
+                    sel.value = groups[0].id;
+                }
+            }
+
+            function renderSetupTargetPicker() {
+                const list = document.getElementById("setup-target-list");
+                list.innerHTML = groups
+                    .map(
+                        (g) => `
+                            <div class="setup-target-item" onclick="pickSetupTarget('${g.id}')">
+                                <span>${g.name}</span>
+                                <span class="setup-target-item-meta">${(g.lights || []).length} 💡</span>
+                            </div>`,
+                    )
+                    .join("");
+            }
+
+            async function pickSetupTarget(id) {
+                setSceneTargetGroup(id);
+                hideSetup();
             }
 
             async function stopScene() {
@@ -2544,12 +3063,63 @@
                     .classList.remove("open");
             }
 
+            // ── SYNC TARGET (último zone elegido) ──
+            // El click en una zona-card es la elección explícita; la
+            // recordamos para que el botón Sync del nav arranque solo sobre
+            // ella la próxima vez. Sin nada guardado, fallback al toast.
+            const SYNC_TARGET_KEY = "sync.targetZone";
+
+            function getSyncTargetZone() {
+                return localStorage.getItem(SYNC_TARGET_KEY) || "";
+            }
+
+            function setSyncTargetZone(id) {
+                if (id) localStorage.setItem(SYNC_TARGET_KEY, id);
+                else localStorage.removeItem(SYNC_TARGET_KEY);
+                // Mantener el select del drawer sincronizado si está abierto.
+                const sel = document.getElementById("sync-target-select");
+                if (sel && id && sel.value !== id) sel.value = id;
+            }
+
+            function resolveSyncTargetZone() {
+                const stored = getSyncTargetZone();
+                if (stored && entConfigs.some((z) => z.id === stored)) return stored;
+                return entConfigs[0]?.id || "";
+            }
+
+            function populateSyncTargetSelect() {
+                const sel = document.getElementById("sync-target-select");
+                if (!sel) return;
+                const cur = getSyncTargetZone();
+                if (!entConfigs.length) {
+                    sel.innerHTML = `<option value="">${t("settings.syncTargetEmpty")}</option>`;
+                    return;
+                }
+                sel.innerHTML = entConfigs
+                    .map(
+                        (c) =>
+                            `<option value="${c.id}" ${c.id === cur ? "selected" : ""}>${c.name}</option>`,
+                    )
+                    .join("");
+                // Si nunca se eligió, persistir el primero — sin esto el botón
+                // Sync usa entConfigs[0] silenciosamente y el usuario no sabe cuál.
+                if (!cur) {
+                    setSyncTargetZone(entConfigs[0].id);
+                    sel.value = entConfigs[0].id;
+                }
+            }
+
             function toggleSync() {
                 if (syncRunning) {
                     stopSync();
+                    return;
+                }
+                switchPage("home");
+                const zoneID = resolveSyncTargetZone();
+                if (zoneID) {
+                    activateZone(zoneID);
                 } else {
-                    switchPage("home");
-                    toast("Toca una zona para iniciar el Sync", "info", 2500);
+                    toast(t("toasts.tapZone"), "info", 2500);
                 }
             }
 
@@ -2682,7 +3252,10 @@
                 }
                 updateSyncUI();
                 renderZones();
-                toast("Sync detenido", "info");
+                notifyIfHidden(
+                    t("notify.syncStoppedTitle"),
+                    t("notify.syncStoppedBody"),
+                );
             }
 
             // ── ZONES ──
@@ -2718,12 +3291,12 @@
                               ? `<span class="zone-spinner"></span>`
                               : SVG.play;
                         const statusText = isActive
-                            ? "● Sincronizando"
+                            ? "● " + t("zoneCard.syncing")
                             : isLoading
-                              ? "Activando..."
+                              ? t("zoneCard.activating")
                               : cfg.status === "active"
-                                ? "● Activo"
-                                : "○ Inactivo";
+                                ? "● " + t("zoneCard.active")
+                                : "○ " + t("zoneCard.inactive");
                         return `
 <div class="zone-card${cardClass}" onclick="activateZone('${cfg.id}')">
   <span class="zone-card-icon">${icon}</span>
@@ -2748,8 +3321,11 @@
             }
 
             function activateZone(configID) {
-                // Recordar selección aunque luego se detenga el sync.
+                // Recordar selección aunque luego se detenga el sync — en
+                // memoria (selectedZoneID) y persistente (sync.targetZone),
+                // así el botón Sync del nav reusa esta zona.
                 selectedZoneID = configID;
+                setSyncTargetZone(configID);
                 updateZoneActions();
                 // Toggle off same zone
                 if (activeZoneID === configID && syncRunning) {
@@ -2854,7 +3430,7 @@
                             } else {
                                 toast(
                                     data.detail ||
-                                        "Error activando entertainment",
+                                        t("toasts.entActivateError"),
                                     "error",
                                     5000,
                                 );
@@ -2934,12 +3510,19 @@
                     activeSceneID = null;
                     updateSyncUI();
                     renderZones();
-                    toast("Sync iniciado (Tauri)", "success");
+                    notifyIfHidden(
+                        t("notify.syncStartedTitle"),
+                        t("notify.syncStartedBody"),
+                    );
                     scheduleTauriSample();
                 };
                 syncWs.onerror = (e) => {
                     console.error("[sync-tauri] WebSocket error", e);
-                    toast("WebSocket falló — intenta de nuevo", "error", 6000);
+                    toast(t("toasts.wsError"), "error", 6000);
+                    notifyIfHidden(
+                        t("notify.syncErrorTitle"),
+                        t("notify.syncErrorBody"),
+                    );
                     stopSync();
                 };
                 syncWs.onclose = () => {
@@ -3116,12 +3699,19 @@
                     activeSceneID = null;
                     updateSyncUI();
                     renderZones();
-                    toast("Sync iniciado", "success");
+                    notifyIfHidden(
+                        t("notify.syncStartedTitle"),
+                        t("notify.syncStartedBody"),
+                    );
                     scheduleSample();
                 };
                 syncWs.onerror = (e) => {
                     console.error("[sync] WebSocket error", e);
-                    toast("WebSocket falló — intenta de nuevo", "error", 6000);
+                    toast(t("toasts.wsError"), "error", 6000);
+                    notifyIfHidden(
+                        t("notify.syncErrorTitle"),
+                        t("notify.syncErrorBody"),
+                    );
                     stopSync();
                 };
                 syncWs.onclose = () => {
@@ -3131,13 +3721,17 @@
             }
 
             // ── THEME ──
+            function setThemeIcon(theme) {
+                const btn = document.getElementById("theme-btn");
+                if (!btn) return;
+                const icon = btn.querySelector(".theme-icon");
+                if (icon) icon.textContent = theme === "dark" ? "☀" : "🌙";
+            }
             function toggleTheme() {
                 const html = document.documentElement;
                 const goLight = html.dataset.theme === "dark";
                 html.dataset.theme = goLight ? "light" : "dark";
-                document.getElementById("theme-btn").textContent = goLight
-                    ? "🌙"
-                    : "☀";
+                setThemeIcon(html.dataset.theme);
                 localStorage.setItem("spectra-theme", html.dataset.theme);
             }
 
@@ -3208,6 +3802,15 @@
                         updateEntBadge(true);
                         activeZoneID = data.active_id;
                     }
+                    // Restaurar selección de zona persistida así el botón Sync
+                    // del nav puede arrancar antes del primer tap manual.
+                    if (!selectedZoneID) {
+                        const stored = getSyncTargetZone();
+                        if (stored && entConfigs.some((z) => z.id === stored)) {
+                            selectedZoneID = stored;
+                        }
+                    }
+                    populateSyncTargetSelect();
                     renderZones();
                 } catch (e) {
                     sel.innerHTML = `<option value="">Error: ${e.message}</option>`;
@@ -3232,7 +3835,7 @@
             async function startEntertainment() {
                 const configID = document.getElementById("ent-select").value;
                 if (!configID) {
-                    toast("Seleccioná un área de entretenimiento", "error");
+                    toast(t("toasts.entAreaSelect"), "error");
                     return;
                 }
                 const statusEl = document.getElementById("ent-status");
@@ -3268,7 +3871,10 @@
                 });
                 updateEntBadge(false);
                 document.getElementById("ent-status").textContent = "";
-                toast("Entertainment detenido", "info");
+                notifyIfHidden(
+                    t("notify.entStoppedTitle"),
+                    t("notify.entStoppedBody"),
+                );
             }
 
             // ── TABS ──
@@ -3407,8 +4013,7 @@
                 const savedTheme =
                     localStorage.getItem("spectra-theme") || "dark";
                 document.documentElement.dataset.theme = savedTheme;
-                document.getElementById("theme-btn").textContent =
-                    savedTheme === "dark" ? "☀" : "🌙";
+                setThemeIcon(savedTheme);
 
                 // Set outline SVG icons for the nav bar
                 document.getElementById("nav-icon-home").innerHTML = SVG.home;
@@ -3419,31 +4024,303 @@
                     SVG.sliders;
                 document.getElementById("sync-nav-icon").innerHTML = SVG.play;
 
+                initI18n().then(() => {
+                    populateLocaleSelector();
+                    populateSettingsLocaleSelector();
+                });
                 initBrightness();
                 loadAll();
                 checkForUpdate();
+                document.getElementById("notifications-toggle").checked =
+                    notificationsEnabled();
+                document.getElementById("quit-on-close-toggle").checked =
+                    quitOnCloseEnabled();
+                pushQuitOnCloseToRust();
+                getAutostartEnabled().then((on) => {
+                    document.getElementById("autostart-toggle").checked = on;
+                });
             });
 
+            // ── CLOSE BEHAVIOR + AUTOSTART ──
+            // Ambos toggles persisten en el SO (autostart) o en localStorage +
+            // Rust (close-behavior). En cada arranque empujamos el estado a
+            // Rust para que sobreviva a reinicios.
+            const QUIT_ON_CLOSE_KEY = "close-behavior-quit";
+
+            function quitOnCloseEnabled() {
+                return localStorage.getItem(QUIT_ON_CLOSE_KEY) === "1";
+            }
+
+            async function pushQuitOnCloseToRust() {
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) return;
+                try {
+                    await invoke("set_quit_on_close", {
+                        on: quitOnCloseEnabled(),
+                    });
+                } catch (e) {
+                    console.warn("[settings] set_quit_on_close falló", e);
+                }
+            }
+
+            function setQuitOnClose(on) {
+                localStorage.setItem(QUIT_ON_CLOSE_KEY, on ? "1" : "0");
+                pushQuitOnCloseToRust();
+            }
+
+            async function getAutostartEnabled() {
+                const a = window.__TAURI__?.autostart;
+                if (!a?.isEnabled) return false;
+                try {
+                    return await a.isEnabled();
+                } catch (e) {
+                    console.warn("[autostart] isEnabled falló", e);
+                    return false;
+                }
+            }
+
+            async function setAutostart(on) {
+                const a = window.__TAURI__?.autostart;
+                if (!a) return;
+                try {
+                    if (on) await a.enable();
+                    else await a.disable();
+                } catch (e) {
+                    console.error("[autostart] toggle falló", e);
+                    toast(
+                        tf("toasts.autostartError", { err: e.message || e }),
+                        "error",
+                        4000,
+                    );
+                    // Revertir el checkbox si falló.
+                    document.getElementById("autostart-toggle").checked = !on;
+                }
+            }
+
+            // ── LOGOUT ──
+            // Borra credenciales del bridge (POST /api/profile vacío). Las
+            // preferencias locales (locale, tema, posiciones, targets) se
+            // preservan: solo se desliga el bridge.
+            async function logoutBridge() {
+                if (!confirm(t("toasts.logoutConfirm"))) return;
+                try {
+                    await fetch(`${API}/api/profile`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            ip: "",
+                            api_key: "",
+                            client_key: "",
+                        }),
+                    });
+                    window.location.reload();
+                } catch (e) {
+                    toast(
+                        tf("toasts.logoutError", { err: e.message || e }),
+                        "error",
+                        4000,
+                    );
+                }
+            }
+
+            // ── SYSTEM NOTIFICATIONS ──
+            // Opt-in (default on). Solo dispara cuando la ventana no está
+            // visible: si el usuario está mirando la app ya verá el toast,
+            // duplicarlo en notificación nativa sería ruido.
+            const NOTIF_KEY = "notifications-enabled";
+            let notifPermissionState = "unknown"; // "granted" | "denied" | "unknown"
+
+            function notificationsEnabled() {
+                return (localStorage.getItem(NOTIF_KEY) ?? "1") === "1";
+            }
+
+            function setNotificationsEnabled(on) {
+                localStorage.setItem(NOTIF_KEY, on ? "1" : "0");
+                if (on) ensureNotificationPermission();
+            }
+
+            async function ensureNotificationPermission() {
+                const n = window.__TAURI__?.notification;
+                if (!n) return false;
+                if (notifPermissionState === "granted") return true;
+                try {
+                    let granted = await n.isPermissionGranted();
+                    if (!granted) {
+                        const res = await n.requestPermission();
+                        granted = res === "granted";
+                    }
+                    notifPermissionState = granted ? "granted" : "denied";
+                    return granted;
+                } catch (e) {
+                    console.warn("[notify] permiso falló", e);
+                    return false;
+                }
+            }
+
+            async function notifyIfHidden(title, body) {
+                if (!notificationsEnabled()) return;
+                if (document.visibilityState === "visible") return;
+                if (!(await ensureNotificationPermission())) return;
+                try {
+                    window.__TAURI__.notification.sendNotification({
+                        title,
+                        body,
+                    });
+                } catch (e) {
+                    console.warn("[notify] envío falló", e);
+                }
+            }
+
+            // ── PROFILE EXPORT / IMPORT ──
+            // Schema v1: bundle credenciales del bridge + estado localStorage.
+            // El backend custodia la parte sensible (api_key, client_key) y la
+            // expone via /api/profile (localhost-only).
+            const PROFILE_SCHEMA = "spectracontrol/profile";
+            const PROFILE_LS_KEYS = [
+                "locale",
+                "spectra-theme",
+                "globalBri",
+                "lightPositions",
+                "zoneBri",
+                "notifications-enabled",
+                "scenes.targetGroup",
+                "sync.targetZone",
+                "close-behavior-quit",
+            ];
+
+            async function exportProfile() {
+                try {
+                    const r = await fetch(`${API}/api/profile`);
+                    if (!r.ok) throw new Error(`backend ${r.status}`);
+                    const bridge = await r.json();
+                    const prefs = {};
+                    for (const k of PROFILE_LS_KEYS) {
+                        const v = localStorage.getItem(k);
+                        if (v !== null) prefs[k] = v;
+                    }
+                    const profile = {
+                        schema: PROFILE_SCHEMA,
+                        version: 1,
+                        exported_at: new Date().toISOString(),
+                        bridge,
+                        preferences: prefs,
+                    };
+                    const json = JSON.stringify(profile, null, 2);
+                    const today = new Date().toISOString().slice(0, 10);
+                    const defaultName = `spectracontrol-profile-${today}.json`;
+
+                    const dialog = window.__TAURI__?.dialog;
+                    const invoke = window.__TAURI__?.core?.invoke;
+                    if (dialog?.save && invoke) {
+                        // Save dialog nativo del SO — el usuario elige ruta y la
+                        // ve. Mucho mejor que el truco del <a download> dentro
+                        // del WebView (que se va a un default opaco).
+                        const path = await dialog.save({
+                            defaultPath: defaultName,
+                            filters: [
+                                { name: "JSON", extensions: ["json"] },
+                            ],
+                        });
+                        if (!path) return; // canceled
+                        await invoke("write_text_file", {
+                            path,
+                            contents: json,
+                        });
+                        toast(
+                            tf("toasts.profileExportedTo", { path }),
+                            "success",
+                            5000,
+                        );
+                        return;
+                    }
+
+                    // Fallback fuera de Tauri (dev en navegador): Blob + click.
+                    const blob = new Blob([json], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = defaultName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                    toast(t("toasts.profileExported"), "success");
+                } catch (e) {
+                    console.error("[profile] export falló", e);
+                    toast(
+                        tf("toasts.profileExportError", { err: e.message || e }),
+                        "error",
+                        4000,
+                    );
+                }
+            }
+
+            async function importProfile(file) {
+                if (!file) return;
+                if (!confirm(t("toasts.profileImportConfirm"))) return;
+                try {
+                    const text = await file.text();
+                    const profile = JSON.parse(text);
+                    if (profile.schema !== PROFILE_SCHEMA) {
+                        throw new Error(t("toasts.profileSchemaInvalid"));
+                    }
+                    if (profile.bridge && profile.bridge.ip) {
+                        const r = await fetch(`${API}/api/profile`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                ip: profile.bridge.ip || "",
+                                api_key: profile.bridge.api_key || "",
+                                client_key: profile.bridge.client_key || "",
+                            }),
+                        });
+                        if (!r.ok) throw new Error(`backend ${r.status}`);
+                    }
+                    if (profile.preferences) {
+                        for (const k of PROFILE_LS_KEYS) {
+                            if (profile.preferences[k] !== undefined) {
+                                localStorage.setItem(k, profile.preferences[k]);
+                            }
+                        }
+                    }
+                    toast(t("toasts.profileImported"), "success");
+                    // Recargar para aplicar locale, theme, posiciones, etc.
+                    setTimeout(() => window.location.reload(), 600);
+                } catch (e) {
+                    console.error("[profile] import falló", e);
+                    toast(
+                        tf("toasts.profileImportError", { err: e.message || e }),
+                        "error",
+                        5000,
+                    );
+                }
+            }
+
             // ── UPDATE CHECK ──
+            // Maneja todo el plugin oficial tauri-plugin-updater: chequeo del
+            // latest.json (firmado con minisign), descarga del AppImage y
+            // reemplazo in-place. Solo funciona en el binario empacado: en
+            // `tauri dev` window.__TAURI__ existe pero no hay endpoint válido
+            // hasta que se publique un release.
             let pendingUpdate = null;
             async function checkForUpdate() {
-                if (sessionStorage.getItem("spectra-update-dismissed") === "1") {
-                    return;
-                }
+                if (sessionStorage.getItem("spectra-update-dismissed") === "1") return;
+                const tauri = window.__TAURI__;
+                if (!tauri?.updater?.check) return; // no estamos dentro de Tauri
                 try {
-                    const r = await fetch(`${API}/api/update/check`);
-                    if (!r.ok) return;
-                    const data = await r.json();
-                    if (!data.has_update) return;
-                    pendingUpdate = data;
+                    const update = await tauri.updater.check();
+                    if (!update) return;
+                    pendingUpdate = update;
                     const banner = document.getElementById("update-banner");
                     const text = document.getElementById("update-banner-text");
                     const btn = document.getElementById("update-banner-btn");
-                    text.innerHTML = `Nueva versión disponible: <b>${data.latest}</b> (actual: ${data.current})`;
-                    btn.textContent = data.can_install
-                        ? "Actualizar"
-                        : "Ver release";
+                    text.innerHTML = `Nueva versión disponible: <b>${update.version}</b> (actual: ${update.currentVersion})`;
+                    btn.textContent = t("update.install");
                     banner.hidden = false;
+                    notifyIfHidden(
+                        t("notify.updateTitle"),
+                        tf("notify.updateBody", { version: update.version }),
+                    );
                 } catch (e) {
                     console.warn("[update] check falló", e);
                 }
@@ -3452,34 +4329,33 @@
             async function installUpdate() {
                 if (!pendingUpdate) return;
                 const btn = document.getElementById("update-banner-btn");
-                if (!pendingUpdate.can_install) {
-                    window.open(pendingUpdate.release_url, "_blank");
-                    return;
-                }
+                const textEl = document.getElementById("update-banner-text");
                 btn.disabled = true;
                 btn.textContent = "Descargando...";
                 try {
-                    const r = await fetch(`${API}/api/update/install`, {
-                        method: "POST",
+                    let downloaded = 0;
+                    let total = 0;
+                    await pendingUpdate.downloadAndInstall((event) => {
+                        if (event.event === "Started") {
+                            total = event.data.contentLength || 0;
+                        } else if (event.event === "Progress") {
+                            downloaded += event.data.chunkLength || 0;
+                            if (total > 0) {
+                                const pct = Math.floor((downloaded / total) * 100);
+                                btn.textContent = `Descargando ${pct}%`;
+                            }
+                        } else if (event.event === "Finished") {
+                            btn.textContent = "Reiniciando...";
+                        }
                     });
-                    const data = await r.json();
-                    if (!r.ok || data.ok === false) {
-                        throw new Error(data.detail || data.message || "fallo");
-                    }
-                    if (data.already_latest) {
-                        toast("Ya estás en la última versión", "info");
-                        document.getElementById("update-banner").hidden = true;
-                        return;
-                    }
-                    btn.textContent = "Listo";
-                    document.getElementById(
-                        "update-banner-text",
-                    ).innerHTML = `Actualización <b>${data.installed}</b> instalada — reinicia la app para aplicar.`;
-                    toast("Reinicia la app para aplicar la actualización", "success", 6000);
+                    // downloadAndInstall ya reemplazó el AppImage; relanzamos.
+                    await window.__TAURI__.process.relaunch();
                 } catch (e) {
+                    console.error("[update] install falló", e);
                     btn.disabled = false;
                     btn.textContent = "Reintentar";
-                    toast(`Error actualizando: ${e.message}`, "error", 4000);
+                    textEl.innerHTML = `Error al actualizar: ${e.message || e}`;
+                    toast(`Error actualizando: ${e.message || e}`, "error", 4000);
                 }
             }
 

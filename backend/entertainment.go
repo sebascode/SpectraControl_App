@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -80,7 +79,7 @@ func fetchApplicationID() (string, error) {
 		return "", fmt.Errorf("/auth/v1 sin header hue-application-id")
 	}
 	cachedAppID = id
-	log.Printf("[ent] application_id obtenido: %s", id)
+	logInfof("[ent] application_id obtenido: %s", id)
 	return id, nil
 }
 
@@ -298,7 +297,7 @@ func startEntertainmentStreaming(configID string) error {
 	); err != nil {
 		return fmt.Errorf("activar streaming: %w", err)
 	}
-	log.Printf("[ent] modo streaming activo — config %s, canales: %v", configID, channelMap)
+	logInfof("[ent] modo streaming activo — config %s, canales: %v", configID, channelMap)
 
 	// Abrir conexión DTLS PSK al bridge:2100
 	// CRÍTICO: en v2 la PSK identity es el hue-application-id (NO el api_key).
@@ -352,7 +351,7 @@ func startEntertainmentStreaming(configID string) error {
 	ent.colorCh <- initial
 
 	go entertainmentSender(ent.colorCh)
-	log.Printf("[ent] DTLS conectado a %s:2100", ip)
+	logInfof("[ent] DTLS conectado a %s:2100", ip)
 	return nil
 }
 
@@ -375,7 +374,7 @@ func stopEntertainmentStreaming() {
 	}
 	if configID != "" {
 		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
-		log.Println("[ent] streaming detenido")
+		logInfof("[ent] streaming detenido")
 	}
 }
 
@@ -472,13 +471,13 @@ func entertainmentSender(colorCh <-chan []chanColor) {
 
 		pkt := buildHueStreamPacket(seq, configID, frame)
 		if _, err := conn.Write(pkt); err != nil {
-			log.Println("[ent] write error — limpiando estado:", err)
+			logErrorf("[ent] write error — limpiando estado: %v", err)
 			stopEntertainmentStreaming()
 			return
 		}
 		// Heartbeat cada ~200 paquetes (≈5s a 40fps) para confirmar que el sender sigue vivo
 		if seq%200 == 0 {
-			log.Printf("[ent] sender vivo — seq=%d canales=%d", seq, len(frame))
+			logDebugf("[ent] sender vivo — seq=%d canales=%d", seq, len(frame))
 		}
 	}
 }
@@ -566,7 +565,7 @@ func pushToEntertainment(lights []lightCmd) bool {
 		for k := range chMap {
 			mapKeys = append(mapKeys, k)
 		}
-		log.Printf("[ent] push #%d: IDs=%v  chMap=%v  → %d/%d mapeadas",
+		logDebugf("[ent] push #%d: IDs=%v  chMap=%v  → %d/%d mapeadas",
 			n, ids, mapKeys, len(colors), len(lights))
 	}
 

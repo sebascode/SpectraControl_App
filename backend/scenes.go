@@ -10,7 +10,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -65,7 +64,7 @@ func loadScenePresets() []scenePreset {
 			}
 			var s scenePreset
 			if err := json.Unmarshal(data, &s); err != nil {
-				log.Printf("[scenes] embedded %s: %v", e.Name(), err)
+				logWarnf("[scenes] embedded %s: %v", e.Name(), err)
 				continue
 			}
 			s.Source = "builtin"
@@ -85,7 +84,7 @@ func loadScenePresets() []scenePreset {
 			}
 			var s scenePreset
 			if err := json.Unmarshal(data, &s); err != nil {
-				log.Printf("[scenes] user %s: %v", e.Name(), err)
+				logWarnf("[scenes] user %s: %v", e.Name(), err)
 				continue
 			}
 			s.Source = "user"
@@ -262,12 +261,12 @@ func handleStartScene(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	log.Printf("[scenes] iniciada %s sobre %d luces", body.SceneID, len(body.LightIDs))
+	logInfof("[scenes] iniciada %s sobre %d luces", body.SceneID, len(body.LightIDs))
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
 func handleStopScene(w http.ResponseWriter, r *http.Request) {
 	stopScene()
-	log.Println("[scenes] detenida")
+	logInfof("[scenes] detenida")
 	writeJSON(w, map[string]bool{"ok": true})
 }

@@ -6,12 +6,17 @@
 
 use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
 use ashpd::desktop::screencast::{CursorMode, Screencast, SourceType};
 use ashpd::desktop::PersistMode;
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    Manager,
+};
 
 // linuxdeploy's AppRun prepends bundled lib/plugin paths to env vars before exec'ing
 // the app. Subprocesses we spawn that come from the *host* (gst-launch-1.0) inherit
@@ -252,9 +257,74 @@ fn allow_display_capture(app: &tauri::App) {
 
 struct BackendProcess(Mutex<Option<Child>>);
 
+// is_quitting=false → cerrar la ventana solo la oculta (sigue corriendo en el
+// tray; la sync continúa porque el backend Go sigue vivo). El menú "Salir" del
+// tray pone el flag en true antes de pedir exit, y entonces sí limpiamos.
+struct IsQuitting(AtomicBool);
+
+// quit_on_close=true → la X de la ventana cierra la app entera (igual que el
+// "Salir" del tray). false → la X oculta al tray. El frontend lo empuja desde
+// el toggle de Apariencia con set_quit_on_close.
+struct QuitOnClose(AtomicBool);
+
+#[tauri::command]
+fn set_quit_on_close(on: bool, state: tauri::State<'_, QuitOnClose>) {
+    state.0.store(on, Ordering::SeqCst);
+}
+
+// Referencias a los items del menú del tray para poder reescribir sus labels
+// cuando el frontend cambia de idioma (los strings de Rust no pasan por el
+// helper i18n del frontend).
+struct TrayMenuItems {
+    show: MenuItem<tauri::Wry>,
+    quit: MenuItem<tauri::Wry>,
+}
+
+#[tauri::command]
+fn set_tray_menu_labels(
+    show: String,
+    quit: String,
+    items: tauri::State<'_, TrayMenuItems>,
+) -> Result<(), String> {
+    items.show.set_text(show).map_err(|e| e.to_string())?;
+    items.quit.set_text(quit).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// write_text_file complementa al save-dialog de tauri-plugin-dialog: el JS
+// pide al usuario una ruta, y luego nos llama acá para volcar el contenido.
+// Sin scope adicional porque la ruta ya pasó por el diálogo nativo del SO.
+#[tauri::command]
+fn write_text_file(path: String, contents: String) -> Result<(), String> {
+    std::fs::write(&path, contents).map_err(|e| e.to_string())
+}
+
+fn cleanup_children(app: &tauri::AppHandle) {
+    if let Some(state) = app.try_state::<BackendProcess>() {
+        if let Some(mut child) = state.0.lock().unwrap().take() {
+            let _ = child.kill();
+        }
+    }
+    if let Some(cap) = CAPTURE.get() {
+        if let Some(mut gst) = cap.gst_child.lock().unwrap().take() {
+            let _ = gst.kill();
+        }
+    }
+}
+
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(BackendProcess(Mutex::new(None)))
+        .manage(IsQuitting(AtomicBool::new(false)))
+        .manage(QuitOnClose(AtomicBool::new(false)))
         .setup(|app| {
             #[cfg(not(debug_assertions))]
             {
@@ -271,24 +341,91 @@ fn main() {
             #[cfg(target_os = "linux")]
             allow_display_capture(app);
 
+            // System tray. Mantiene la app viva al ocultar la ventana — la
+            // sync sigue corriendo en background. Los labels se reescriben
+            // desde JS en cuanto initI18n() resuelve (set_tray_menu_labels),
+            // los placeholders quedan en español por si JS no llega a llamar.
+            let show_item = MenuItem::with_id(app, "show", "Mostrar", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            app.manage(TrayMenuItems {
+                show: show_item.clone(),
+                quit: quit_item.clone(),
+            });
+
+            let icon = app
+                .default_window_icon()
+                .cloned()
+                .expect("default window icon missing");
+
+            TrayIconBuilder::with_id("main")
+                .icon(icon)
+                .tooltip("SpectraControl")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
+                        cleanup_children(app);
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    // Click izquierdo en el icono = mostrar la ventana.
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        button_state: tauri::tray::MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                let state = window.state::<BackendProcess>();
-                let mut guard = state.0.lock().unwrap();
-                if let Some(mut child) = guard.take() {
-                    let _ = child.kill();
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let app = window.app_handle();
+                if app.state::<IsQuitting>().0.load(Ordering::SeqCst) {
+                    // Salida real: la limpieza ya la hizo el handler del menú,
+                    // dejamos pasar el close.
+                    return;
                 }
-                // Cerrar también el gst-launch del screen capture si está vivo
-                if let Some(cap) = CAPTURE.get() {
-                    if let Some(mut gst) = cap.gst_child.lock().unwrap().take() {
-                        let _ = gst.kill();
-                    }
+                if app.state::<QuitOnClose>().0.load(Ordering::SeqCst) {
+                    // El usuario eligió que la X cierre la app: limpiamos y
+                    // marcamos is_quitting para que el siguiente CloseRequested
+                    // (si llega) pase derecho.
+                    app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
+                    cleanup_children(&app);
+                    app.exit(0);
+                    return;
                 }
+                // Default: ocultar al tray.
+                api.prevent_close();
+                let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![sample_screen_regions])
+        .invoke_handler(tauri::generate_handler![
+            sample_screen_regions,
+            set_tray_menu_labels,
+            set_quit_on_close,
+            write_text_file
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

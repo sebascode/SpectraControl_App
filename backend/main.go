@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"os"
@@ -22,6 +21,18 @@ import (
 )
 
 // Version se inyecta en build con -ldflags "-X main.Version=<tag>".
+// El auto-update lo maneja Tauri (tauri-plugin-updater) en el binario padre;
+// aquí solo lo exponemos para logs.
+func runningChannel() string {
+	if os.Getenv("APPIMAGE") != "" {
+		return "appimage"
+	}
+	if Version == "dev" {
+		return "dev"
+	}
+	return "package"
+}
+
 // "dev" indica build local / sin tag.
 var Version = "dev"
 
@@ -77,7 +88,7 @@ func loadPersistedConfig() {
 					cfgMu.Unlock()
 					saveConfig()
 					os.Remove(old)
-					log.Printf("Configuración migrada desde %s", old)
+					logInfof("configuración migrada desde %s", old)
 					break
 				}
 			}
@@ -264,6 +275,45 @@ func handleSetConfig(w http.ResponseWriter, r *http.Request) {
 	cfgMu.Lock()
 	bridgeIP = body.IP
 	apiKey = body.APIKey
+	cfgMu.Unlock()
+	if err := saveConfig(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// handleGetProfile devuelve la config completa del backend (incluye api_key y
+// client_key). Pensado para que el frontend ensamble un export completo del
+// perfil. El binario solo escucha en 127.0.0.1, así que la exposición de
+// secretos queda dentro de la propia máquina.
+func handleGetProfile(w http.ResponseWriter, r *http.Request) {
+	cfgMu.RLock()
+	ip, key, ck := bridgeIP, apiKey, clientKey
+	cfgMu.RUnlock()
+	writeJSON(w, map[string]any{
+		"ip":         ip,
+		"api_key":    key,
+		"client_key": ck,
+	})
+}
+
+// handleSetProfile reemplaza la config completa del backend (incluye
+// client_key). Usado al importar un perfil exportado previamente.
+func handleSetProfile(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IP        string `json:"ip"`
+		APIKey    string `json:"api_key"`
+		ClientKey string `json:"client_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	cfgMu.Lock()
+	bridgeIP = body.IP
+	apiKey = body.APIKey
+	clientKey = body.ClientKey
 	cfgMu.Unlock()
 	if err := saveConfig(); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -566,11 +616,11 @@ func sendColorUpdate(u colorUpdate) {
 func handleWsColor(w http.ResponseWriter, r *http.Request) {
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("[ws/color] upgrade:", err)
+		logWarnf("[ws/color] upgrade: %v", err)
 		return
 	}
 	defer conn.Close()
-	log.Println("[ws/color] conectado")
+	logDebugf("[ws/color] conectado")
 
 	// Canal de tamaño 1: el sender toma frames, el reader nunca bloquea.
 	// Si llega un frame nuevo mientras el sender está ocupado, reemplaza al pendiente
@@ -592,7 +642,7 @@ func handleWsColor(w http.ResponseWriter, r *http.Request) {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-				log.Println("[ws/color] error:", err)
+				logWarnf("[ws/color] error: %v", err)
 			}
 			break
 		}
@@ -634,17 +684,23 @@ func handleWsColor(w http.ResponseWriter, r *http.Request) {
 		}
 		ch <- u
 	}
-	log.Println("[ws/color] desconectado")
+	logDebugf("[ws/color] desconectado")
 }
 
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 
 func main() {
+	defaultLogLevel := os.Getenv("SPECTRA_LOG_LEVEL")
+	if defaultLogLevel == "" {
+		defaultLogLevel = "info"
+	}
 	var (
 		addr        = flag.String("addr", ":8000", "dirección de escucha")
 		frontendDir = flag.String("frontend", "", "ruta al directorio frontend (auto-detectada si vacía)")
+		logLevel    = flag.String("log-level", defaultLogLevel, "verbosidad: debug | info | warn | error")
 	)
 	flag.Parse()
+	setupLogger(*logLevel)
 
 	loadPersistedConfig()
 
@@ -656,6 +712,10 @@ func main() {
 	r.Post("/api/config", handleSetConfig)
 	r.Post("/api/discover", handleDiscover)
 	r.Post("/api/pair", handlePair)
+
+	// Profile export/import (config completa con secretos)
+	r.Get("/api/profile", handleGetProfile)
+	r.Post("/api/profile", handleSetProfile)
 
 	// Lights
 	r.Get("/api/lights", handleGetLights)
@@ -685,23 +745,20 @@ func main() {
 	r.Get("/api/brightness", handleGetBrightness)
 	r.Post("/api/brightness", handleSetBrightness)
 
-	// Updater (consulta GitHub Releases y reemplaza el AppImage in-place)
-	r.Get("/api/version", handleGetVersion)
-	r.Get("/api/update/check", handleCheckUpdate)
-	r.Post("/api/update/install", handleInstallUpdate)
-
 	// WebSocket
 	r.Get("/ws/color", handleWsColor)
 
 	// Frontend estático — sin cache para que los cambios en index.html se reflejen al recargar.
 	fe := frontendPath(*frontendDir)
-	log.Printf("Sirviendo frontend desde: %s", fe)
+	logInfof("sirviendo frontend desde: %s", fe)
 	fileServer := http.FileServer(http.Dir(fe))
 	r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store, must-revalidate")
 		fileServer.ServeHTTP(w, r)
 	}))
 
-	log.Printf("SpectraControl %s (%s) escuchando en http://localhost%s", Version, runningChannel(), *addr)
-	log.Fatal(http.ListenAndServe(*addr, r))
+	logInfof("SpectraControl %s (%s) escuchando en http://localhost%s", Version, runningChannel(), *addr)
+	if err := http.ListenAndServe(*addr, r); err != nil {
+		logFatalf("listen: %v", err)
+	}
 }
