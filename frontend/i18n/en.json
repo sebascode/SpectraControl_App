@@ -79,6 +79,7 @@
   "settings.notifications": "System notifications",
   "settings.quitOnClose": "Close button quits the app (instead of minimizing to tray)",
   "settings.autostart": "Start with system",
+  "settings.autostartSync": "Start Screen Sync on launch",
   "settings.logout": "Sign out of bridge",
   "settings.scenesSection": "Dynamic scenes",
   "settings.scenesTargetHint": "Room where they play",

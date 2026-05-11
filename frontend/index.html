@@ -1766,6 +1766,21 @@
                         Iniciar con el sistema
                     </span>
                 </label>
+                <label
+                    class="settings-check"
+                    id="autostart-sync-row"
+                    style="padding-left: 1.25rem; opacity: 0.5"
+                >
+                    <input
+                        type="checkbox"
+                        id="autostart-sync-toggle"
+                        onchange="setAutostartSync(this.checked)"
+                        disabled
+                    />
+                    <span data-i18n="settings.autostartSync">
+                        Iniciar Screen Sync al arrancar
+                    </span>
+                </label>
             </div>
 
             <!-- Conexión (oculta — los inputs siguen en DOM para el setup
@@ -3812,6 +3827,7 @@
                     }
                     populateSyncTargetSelect();
                     renderZones();
+                    maybeAutostartSync();
                 } catch (e) {
                     sel.innerHTML = `<option value="">Error: ${e.message}</option>`;
                     entConfigs = [];
@@ -4038,6 +4054,13 @@
                 pushQuitOnCloseToRust();
                 getAutostartEnabled().then((on) => {
                     document.getElementById("autostart-toggle").checked = on;
+                    document.getElementById("autostart-sync-toggle").checked =
+                        autostartSyncEnabled();
+                    syncAutostartSyncRowState(on);
+                    // Si entConfigs ya cargó (el fetch ganó la carrera contra
+                    // este IPC), disparamos acá; si no, lo hará el .then() de
+                    // loadEntertainmentConfigs.
+                    maybeAutostartSync();
                 });
             });
 
@@ -4068,23 +4091,30 @@
                 pushQuitOnCloseToRust();
             }
 
+            // El plugin autostart no se expone en window.__TAURI__.autostart
+            // con withGlobalTauri (no hay bundler que importe el wrapper JS).
+            // Invocamos los comandos del plugin directamente — el contrato
+            // `plugin:autostart|<cmd>` es estable mientras esté registrado en
+            // Rust (ver main.rs) y declarado en capabilities/default.json.
             async function getAutostartEnabled() {
-                const a = window.__TAURI__?.autostart;
-                if (!a?.isEnabled) return false;
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) return false;
                 try {
-                    return await a.isEnabled();
+                    return await invoke("plugin:autostart|is_enabled");
                 } catch (e) {
-                    console.warn("[autostart] isEnabled falló", e);
+                    console.warn("[autostart] is_enabled falló", e);
                     return false;
                 }
             }
 
             async function setAutostart(on) {
-                const a = window.__TAURI__?.autostart;
-                if (!a) return;
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) return;
                 try {
-                    if (on) await a.enable();
-                    else await a.disable();
+                    await invoke(
+                        on ? "plugin:autostart|enable" : "plugin:autostart|disable",
+                    );
+                    syncAutostartSyncRowState(on);
                 } catch (e) {
                     console.error("[autostart] toggle falló", e);
                     toast(
@@ -4095,6 +4125,49 @@
                     // Revertir el checkbox si falló.
                     document.getElementById("autostart-toggle").checked = !on;
                 }
+            }
+
+            // ── AUTO-START SCREEN SYNC ──
+            // Sub-toggle dependiente: si autostart está on Y este flag está on,
+            // dispara toggleSync() una sola vez al final del bootstrap, cuando
+            // entConfigs ya está cargado. Persiste solo en localStorage — no
+            // necesita pasar por el SO.
+            const AUTOSTART_SYNC_KEY = "autostart.sync";
+            let autostartSyncFired = false;
+
+            function autostartSyncEnabled() {
+                return localStorage.getItem(AUTOSTART_SYNC_KEY) === "1";
+            }
+
+            function setAutostartSync(on) {
+                localStorage.setItem(AUTOSTART_SYNC_KEY, on ? "1" : "0");
+            }
+
+            // Mantiene el sub-toggle deshabilitado y atenuado cuando el padre
+            // está apagado. Si el padre se apaga, también limpiamos el flag
+            // hijo para no dejar configuración fantasma.
+            function syncAutostartSyncRowState(parentOn) {
+                const row = document.getElementById("autostart-sync-row");
+                const cb = document.getElementById("autostart-sync-toggle");
+                if (!row || !cb) return;
+                cb.disabled = !parentOn;
+                row.style.opacity = parentOn ? "1" : "0.5";
+                if (!parentOn) {
+                    cb.checked = false;
+                    setAutostartSync(false);
+                }
+            }
+
+            function maybeAutostartSync() {
+                if (autostartSyncFired) return;
+                if (!autostartSyncEnabled()) return;
+                if (syncRunning) return;
+                if (!entConfigs.length) return;
+                const cb = document.getElementById("autostart-toggle");
+                if (!cb || !cb.checked) return;
+                autostartSyncFired = true;
+                console.log("[autostart] disparando Screen Sync al arranque");
+                toggleSync();
             }
 
             // ── LOGOUT ──

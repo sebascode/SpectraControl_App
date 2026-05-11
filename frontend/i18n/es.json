@@ -79,6 +79,7 @@
   "settings.notifications": "Notificaciones del sistema",
   "settings.quitOnClose": "Al cerrar, salir de la app (en vez de minimizar al tray)",
   "settings.autostart": "Iniciar con el sistema",
+  "settings.autostartSync": "Iniciar Screen Sync al arrancar",
   "settings.logout": "Cerrar sesión del bridge",
   "settings.scenesSection": "Escenas dinámicas",
   "settings.scenesTargetHint": "Habitación donde se reproducen",
