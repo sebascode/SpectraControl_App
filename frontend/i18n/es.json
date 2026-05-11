@@ -24,9 +24,12 @@
 
   "update.install": "Actualizar",
   "update.dismiss": "Ocultar",
+  "update.installed": "Actualización lista. Cerrando — reabrí la app para usarla.",
 
   "notify.updateTitle": "SpectraControl — hay una actualización",
   "notify.updateBody": "La versión {version} está lista para instalar.",
+  "notify.updateInstalledTitle": "SpectraControl — actualización instalada",
+  "notify.updateInstalledBody": "Reabrí la app para usar la versión {version}.",
   "notify.syncErrorTitle": "SpectraControl — sync detenido",
   "notify.syncErrorBody": "El stream de Screen Sync se cortó inesperadamente.",
   "notify.syncStartedTitle": "SpectraControl",
@@ -54,7 +57,7 @@
 
   "zoneConfig.title": "Configuración:",
   "zoneConfig.positionsHint": "Posiciones · Arrastra cada luz a su ubicación frente al monitor",
-  "zoneConfig.brightness": "Brillo del sync",
+  "zoneConfig.brightness": "Brillo Global del sync",
   "zoneConfig.upcoming": "Próximamente:<br />· Secciones por luz · Sync con audio · Perfiles",
   "zoneConfig.noLights": "Esta zona no tiene luces asignadas",
 

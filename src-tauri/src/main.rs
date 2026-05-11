@@ -426,6 +426,15 @@ fn main() {
             set_quit_on_close,
             write_text_file
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Cualquier path de salida — tray "Salir", X con quit_on_close,
+            // process.exit() del frontend tras instalar update — pasa por
+            // RunEvent::Exit. Garantizamos que el backend Go muera acá para
+            // que no quede huérfano ocupando el puerto.
+            if let tauri::RunEvent::Exit = event {
+                cleanup_children(app);
+            }
+        });
 }

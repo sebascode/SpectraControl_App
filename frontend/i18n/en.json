@@ -24,9 +24,12 @@
 
   "update.install": "Update",
   "update.dismiss": "Hide",
+  "update.installed": "Update ready. Closing — please reopen the app to use it.",
 
   "notify.updateTitle": "SpectraControl — update available",
   "notify.updateBody": "Version {version} is ready to install.",
+  "notify.updateInstalledTitle": "SpectraControl — update installed",
+  "notify.updateInstalledBody": "Reopen the app to use version {version}.",
   "notify.syncErrorTitle": "SpectraControl — sync stopped",
   "notify.syncErrorBody": "The screen sync stream dropped unexpectedly.",
   "notify.syncStartedTitle": "SpectraControl",
@@ -54,7 +57,7 @@
 
   "zoneConfig.title": "Configuration:",
   "zoneConfig.positionsHint": "Positions · Drag each light to its place in front of the monitor",
-  "zoneConfig.brightness": "Sync brightness",
+  "zoneConfig.brightness": "Global Sync brightness",
   "zoneConfig.upcoming": "Coming soon:<br />· Per-light sections · Audio sync · Profiles",
   "zoneConfig.noLights": "This zone has no lights assigned",
 

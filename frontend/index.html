@@ -4512,12 +4512,24 @@
                                 const pct = Math.floor((downloaded / total) * 100);
                                 btn.textContent = `Descargando ${pct}%`;
                             }
-                        } else if (event.event === "Finished") {
-                            btn.textContent = "Reiniciando...";
                         }
                     });
-                    // downloadAndInstall ya reemplazó el AppImage; relanzamos.
-                    await window.__TAURI__.process.relaunch();
+                    // downloadAndInstall ya reemplazó el AppImage en disco.
+                    // No usamos process.relaunch(): la nueva instancia haría
+                    // race con la vieja por el puerto 8000 del backend Go.
+                    // En su lugar cerramos limpio y pedimos reabrir — el
+                    // handler RunEvent::Exit (main.rs) mata el backend Go.
+                    btn.disabled = true;
+                    btn.textContent = "";
+                    textEl.textContent = t("update.installed");
+                    const v = pendingUpdate.version;
+                    notifyIfHidden(
+                        t("notify.updateInstalledTitle"),
+                        tf("notify.updateInstalledBody", { version: v }),
+                    );
+                    setTimeout(() => {
+                        window.__TAURI__?.process?.exit(0);
+                    }, 1500);
                 } catch (e) {
                     console.error("[update] install falló", e);
                     btn.disabled = false;
