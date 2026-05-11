@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -754,6 +755,11 @@ func main() {
 
 	// WebSocket
 	r.Get("/ws/color", handleWsColor)
+	r.Get("/ws/state", handleWsState)
+
+	// SSE eventstream del bridge (state sync en tiempo real) — corre en
+	// background y se reconecta solo. Sin bridge configurado queda idle.
+	startBridgeEventStream(context.Background())
 
 	// Frontend estático — sin cache para que los cambios en index.html se reflejen al recargar.
 	fe := frontendPath(*frontendDir)
