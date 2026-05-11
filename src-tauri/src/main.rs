@@ -438,3 +438,72 @@ fn main() {
             }
         });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsString;
+
+    #[test]
+    fn sanitize_host_env_removes_all_polluting_vars() {
+        // Build a Command pre-populated with every var sanitize_host_env claims to strip.
+        let polluting = [
+            "LD_LIBRARY_PATH",
+            "LD_PRELOAD",
+            "GST_PLUGIN_PATH",
+            "GST_PLUGIN_PATH_1_0",
+            "GST_PLUGIN_SYSTEM_PATH",
+            "GST_PLUGIN_SYSTEM_PATH_1_0",
+            "GST_PLUGIN_SCANNER",
+            "GST_REGISTRY",
+            "GIO_MODULE_DIR",
+            "GIO_EXTRA_MODULES",
+            "GSETTINGS_SCHEMA_DIR",
+            "GTK_PATH",
+            "GTK_DATA_PREFIX",
+            "GTK_EXE_PREFIX",
+            "GTK_IM_MODULE_FILE",
+            "GDK_PIXBUF_MODULE_FILE",
+            "QT_PLUGIN_PATH",
+            "PYTHONHOME",
+            "PYTHONPATH",
+            "PERLLIB",
+            "XDG_DATA_DIRS",
+        ];
+
+        let mut cmd = Command::new("/bin/true");
+        for v in &polluting {
+            cmd.env(v, "appimage-poison");
+        }
+        // A non-polluting var should survive sanitize_host_env untouched.
+        cmd.env("KEEP_ME", "ok");
+
+        sanitize_host_env(&mut cmd);
+
+        // Command::get_envs yields (key, None) for env_remove calls and
+        // (key, Some(value)) for env(...) calls. After sanitize_host_env, each
+        // polluting var must appear as a removal.
+        let envs: Vec<(OsString, Option<OsString>)> = cmd
+            .get_envs()
+            .map(|(k, v)| (k.to_owned(), v.map(|v| v.to_owned())))
+            .collect();
+
+        for v in &polluting {
+            let entry = envs.iter().find(|(k, _)| k == v);
+            match entry {
+                Some((_, None)) => {} // removed — good
+                Some((_, Some(val))) => panic!(
+                    "{v} still set to {val:?} after sanitize_host_env"
+                ),
+                None => panic!("{v} missing from Command envs (expected a removal entry)"),
+            }
+        }
+
+        // KEEP_ME should still be present with its value.
+        let keep = envs.iter().find(|(k, _)| k == "KEEP_ME");
+        assert!(
+            matches!(keep, Some((_, Some(v))) if v == "ok"),
+            "KEEP_ME was disturbed by sanitize_host_env: {keep:?}"
+        );
+    }
+}

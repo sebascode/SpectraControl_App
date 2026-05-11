@@ -41,6 +41,7 @@ Detailed component responsibilities live in [`docs/architecture.md`](docs/archit
 - Stdlib + chi router + gorilla/websocket + pion/dtls. No ORM, no codegen.
 - Add a route in `main.go`, keep the handler small, push protocol details (DTLS, color math) into the matching file.
 - Run it standalone with `./run.sh` and curl the endpoints from a terminal while you iterate — much faster than restarting the full Tauri build.
+- Tests live alongside their target: `go test ./...` from `backend/`. The suite is small on purpose — pure functions only (no network, no globals). New protocol code should land with a unit test for its byte layout or math, the same way `entertainment_test.go` covers `buildHueStreamPacket`.
 
 ### Frontend (HTML/JS)
 
@@ -53,6 +54,7 @@ Detailed component responsibilities live in [`docs/architecture.md`](docs/archit
 - Plugins (updater, autostart, notification, dialog, tray-icon, process) are registered in `main.rs` and granted in `capabilities/default.json`. If you add a plugin or a new permission, update both.
 - The frontend reaches Tauri APIs via `withGlobalTauri: true` (no JS bundler). For external plugins that don't expose a JS namespace, use `core.invoke('plugin:<name>|<cmd>', args)` — see `setAutostart` in `index.html` for the pattern.
 - Exit cleanup goes through `RunEvent::Exit` (`main.rs`). Any new child process you spawn should be tracked in a `manage`d state and killed in `cleanup_children`.
+- Tests: `cargo test` from `src-tauri/`. Today this covers `sanitize_host_env` (env-var stripping for spawned host processes). Add tests for any new pure helper you introduce.
 
 ## Commit conventions
 
@@ -71,7 +73,7 @@ Common scopes: `backend`, `frontend`, `ui`, `tauri`, `bundle`, `ci`, `docs`, `up
 
 1. Fork, create a topic branch from `master`.
 2. Keep the PR focused — one logical change. If you're refactoring as you fix a bug, split them.
-3. Make sure `cargo check` passes in `src-tauri/` and `go build ./...` passes in `backend/`. There is no test suite yet (see [#17](https://github.com/sebascode/SpectraControl_App/issues/17)) — manual smoke testing is expected for UI / capture changes.
+3. Make sure tests pass: `go test ./...` in `backend/` and `cargo test` in `src-tauri/`. Manual smoke testing is still expected for UI / capture changes — the suite covers protocol-level math (HueStream packet layout, scene interpolation, color lerp, brightness clamp, env sanitization) but not the runtime pipeline.
 4. Open the PR against `master` with:
    - a short description of the user-facing change,
    - what you tested manually (which distro, which compositor, which Hue setup),
