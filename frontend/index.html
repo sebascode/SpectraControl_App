@@ -1465,6 +1465,15 @@
                         "
                     >
                         <button
+                            id="audio-sync-btn"
+                            class="btn btn-ghost"
+                            style="padding: 10px 16px; font-size: 0.85rem"
+                            onclick="toggleAudioSync()"
+                            data-i18n="home.startAudioSync"
+                        >
+                            🎵 Audio Sync
+                        </button>
+                        <button
                             class="btn btn-ghost"
                             style="padding: 10px 16px; font-size: 0.85rem"
                             onclick="openZoneConfig(selectedZoneID)"
@@ -2225,6 +2234,18 @@
             let activeZoneID = null; // zona actualmente activa (entertainment + sync)
             let loadingZoneID = null; // zona en proceso de activación (spinner)
             let selectedZoneID = null; // última zona elegida (sticky aunque sync se detenga)
+
+            // Audio Sync (mutex con screen sync). Pipeline: getDisplayMedia({audio:true})
+            // → AudioContext → AnalyserNode → FFT → bandas RGB → /ws/color.
+            let audioSyncRunning = false;
+            let audioStream = null;
+            let audioCtx = null;
+            let audioAnalyser = null;
+            let audioFreqBuf = null;
+            let audioRafId = null;
+            let audioWs = null;
+            let audioLightIds = [];
+            let audioBassEMA = 0; // running avg para beat detection
 
             const SVG = {
                 home: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2 21 9v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>`,
@@ -3000,7 +3021,8 @@
                 const dot = document.getElementById("sync-color-dot");
                 const ind = document.getElementById("sync-indicator");
                 const txt = document.getElementById("sync-status-text");
-                if (syncRunning) {
+                const anyActive = syncRunning || audioSyncRunning;
+                if (anyActive) {
                     navSync.classList.add("sync-active");
                     icon.innerHTML = SVG.stop;
                     dot.style.display = "";
@@ -3014,6 +3036,15 @@
                     ind.classList.remove("active");
                     txt.textContent = t("sync.stopped");
                     txt.dataset.i18n = "sync.stopped";
+                }
+                const audioBtn = document.getElementById("audio-sync-btn");
+                if (audioBtn) {
+                    audioBtn.textContent = audioSyncRunning
+                        ? "⏹ " + t("home.stopAudioSync")
+                        : "🎵 " + t("home.startAudioSync");
+                    audioBtn.dataset.i18n = audioSyncRunning
+                        ? "home.stopAudioSync"
+                        : "home.startAudioSync";
                 }
             }
 
@@ -3469,6 +3500,270 @@
                 );
             }
 
+            // ── AUDIO SYNC ──
+            // Captura system audio (loopback) vía getDisplayMedia y maneja FFT
+            // + mapeo a RGB del lado del navegador. El backend Go ve los frames
+            // por el mismo /ws/color que el screen sync — sin código nuevo allá.
+            function toggleAudioSync() {
+                if (audioSyncRunning) {
+                    stopAudioSync();
+                    return;
+                }
+                const zoneID = selectedZoneID || resolveSyncTargetZone();
+                if (!zoneID) {
+                    toast(t("toasts.tapZone"), "info", 2500);
+                    return;
+                }
+                if (syncRunning) stopSync(); // mutex
+                startAudioSync(zoneID);
+            }
+
+            async function startAudioSync(zoneID) {
+                // getDisplayMedia debe llamarse sincrónicamente desde un onclick
+                // para preservar el "transient user activation" — el toggle ya
+                // entró por un onclick, así que estamos OK.
+                let stream;
+                try {
+                    // Algunos browsers (Chromium) exigen video:true para mostrar el
+                    // picker con el toggle de audio. Pedimos los dos y descartamos
+                    // video después.
+                    stream = await navigator.mediaDevices.getDisplayMedia({
+                        audio: true,
+                        video: true,
+                    });
+                } catch (e) {
+                    console.warn("[audio-sync] getDisplayMedia falló", e);
+                    toast(
+                        tf("toasts.audioCaptureFailed", {
+                            err: e.message || e,
+                        }),
+                        "error",
+                        6000,
+                    );
+                    return;
+                }
+                const audioTracks = stream.getAudioTracks();
+                if (!audioTracks.length) {
+                    stream.getTracks().forEach((t) => t.stop());
+                    toast(t("toasts.audioShareNoAudio"), "error", 6000);
+                    return;
+                }
+                // Descartar el track de video — solo necesitamos audio.
+                stream.getVideoTracks().forEach((tr) => tr.stop());
+
+                // Arrancar entertainment en la zona elegida.
+                let entOk = false;
+                try {
+                    const r = await fetch(`${API}/api/entertainment/start`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ config_id: zoneID }),
+                    });
+                    if (r.ok) {
+                        entOk = true;
+                        updateEntBadge(true);
+                        try {
+                            const fr = await fetch(`${API}/api/entertainment`);
+                            const fd = await fr.json();
+                            entConfigs = fd.configs || [];
+                        } catch (_) {}
+                    } else {
+                        const data = await r.json().catch(() => ({}));
+                        toast(
+                            data.detail || t("toasts.entActivateError"),
+                            "error",
+                            5000,
+                        );
+                    }
+                } catch (e) {
+                    toast(e.message, "error");
+                }
+                if (!entOk) {
+                    stream.getTracks().forEach((tr) => tr.stop());
+                    return;
+                }
+
+                // Lights de la zona (deduplicadas).
+                const cfg = entConfigs.find((c) => c.id === zoneID);
+                audioLightIds = cfg
+                    ? [...new Set(cfg.channels.flatMap((ch) => ch.lights))]
+                    : lights.map((l) => l.id);
+
+                // Setup Web Audio. NO conectamos al destination — sería un loop
+                // de feedback con los parlantes.
+                audioStream = stream;
+                audioCtx = new (window.AudioContext ||
+                    window.webkitAudioContext)();
+                const source = audioCtx.createMediaStreamSource(audioStream);
+                audioAnalyser = audioCtx.createAnalyser();
+                audioAnalyser.fftSize = 1024; // 512 bins, ~43 Hz por bin a 44.1 kHz
+                audioAnalyser.smoothingTimeConstant = 0.6;
+                source.connect(audioAnalyser);
+                audioFreqBuf = new Uint8Array(audioAnalyser.frequencyBinCount);
+                audioBassEMA = 0;
+
+                // WebSocket de color (mismo canal que screen sync).
+                const wsBase = API
+                    ? API.replace(/^http/, "ws")
+                    : `ws://${location.host}`;
+                audioWs = new WebSocket(`${wsBase}/ws/color`);
+                audioWs.onopen = () => {
+                    audioWs.send(JSON.stringify({ bri: globalBri }));
+                    audioSyncRunning = true;
+                    activeZoneID = zoneID;
+                    activeSceneID = null;
+                    updateSyncUI();
+                    renderZones();
+                    notifyIfHidden(
+                        t("notify.audioSyncStartedTitle"),
+                        t("notify.audioSyncStartedBody"),
+                    );
+                    scheduleAudioSample();
+                };
+                audioWs.onerror = (e) => {
+                    console.error("[audio-sync] WebSocket error", e);
+                    toast(t("toasts.wsError"), "error", 6000);
+                    stopAudioSync();
+                };
+                audioWs.onclose = () => {
+                    if (audioSyncRunning) stopAudioSync();
+                };
+            }
+
+            function stopAudioSync() {
+                audioSyncRunning = false;
+                if (audioRafId) {
+                    cancelAnimationFrame(audioRafId);
+                    audioRafId = null;
+                }
+                if (audioWs) {
+                    try {
+                        audioWs.close();
+                    } catch {}
+                    audioWs = null;
+                }
+                if (audioCtx) {
+                    audioCtx.close().catch(() => {});
+                    audioCtx = null;
+                }
+                audioAnalyser = null;
+                audioFreqBuf = null;
+                if (audioStream) {
+                    audioStream.getTracks().forEach((tr) => tr.stop());
+                    audioStream = null;
+                }
+                if (activeZoneID) {
+                    fetch(`${API}/api/entertainment/stop`, { method: "POST" });
+                    updateEntBadge(false);
+                    activeZoneID = null;
+                }
+                updateSyncUI();
+                renderZones();
+                notifyIfHidden(
+                    t("notify.audioSyncStoppedTitle"),
+                    t("notify.audioSyncStoppedBody"),
+                );
+            }
+
+            function scheduleAudioSample() {
+                // Throttle a ~30 fps: el bridge interpola en DTLS, no hace falta más.
+                let lastSent = 0;
+                const minIntervalMs = 33;
+                let frameN = 0;
+                function tick(ts) {
+                    if (
+                        !audioSyncRunning ||
+                        !audioWs ||
+                        audioWs.readyState !== WebSocket.OPEN ||
+                        !audioAnalyser
+                    ) {
+                        return;
+                    }
+                    audioRafId = requestAnimationFrame(tick);
+                    if (ts - lastSent < minIntervalMs) return;
+                    lastSent = ts;
+
+                    audioAnalyser.getByteFrequencyData(audioFreqBuf);
+                    const [r, g, b] = audioFrameToRGB(audioFreqBuf);
+
+                    // Aplicar mismo color a todas las luces de la zona.
+                    const lightsPayload = audioLightIds.map((id) => ({
+                        id,
+                        r,
+                        g,
+                        b,
+                    }));
+                    // DTLS tt=0 → interpolación smoothstep en Go
+                    audioWs.send(
+                        JSON.stringify({
+                            lights: lightsPayload,
+                            bri: globalBri,
+                            transitiontime: 0,
+                        }),
+                    );
+                    frameN++;
+                    if (frameN === 1 || frameN % 60 === 0) {
+                        console.log(
+                            `[audio-sync] frame ${frameN} rgb=${r},${g},${b}`,
+                        );
+                    }
+                }
+                audioRafId = requestAnimationFrame(tick);
+            }
+
+            // audioFrameToRGB: mapea bins FFT a un color RGB.
+            //  - Bass (bins 1..8 ≈ 43-344 Hz)   → R, también dispara beat-flash.
+            //  - Mid  (bins 9..60 ≈ 387-2580 Hz)→ G
+            //  - Treble (bins 61..200 ≈ 2624-8600 Hz) → B
+            //  - Beat-flash: cuando bass supera al EMA por un factor, sube V.
+            // Devuelve [r, g, b] en 0..255. Expuesto para testing.
+            function audioFrameToRGB(buf) {
+                const avg = (lo, hi) => {
+                    let sum = 0;
+                    const n = Math.max(1, hi - lo);
+                    for (let i = lo; i < hi && i < buf.length; i++)
+                        sum += buf[i];
+                    return sum / n; // 0..255
+                };
+                const bass = avg(1, 9);
+                const mid = avg(9, 61);
+                const treble = avg(61, 201);
+
+                // EMA del bass: alpha bajo para que el "promedio reciente" tarde
+                // ~1s en seguir cambios sostenidos, pero los picos cortos sí
+                // saltan por encima.
+                const ALPHA = 0.05;
+                audioBassEMA =
+                    audioBassEMA === 0
+                        ? bass
+                        : audioBassEMA * (1 - ALPHA) + bass * ALPHA;
+                const beat = bass > Math.max(40, audioBassEMA * 1.5);
+
+                // Normalización: el byte freq data ya está en 0..255, pero para
+                // que se vea "vivo" amplificamos contra una baseline.
+                const norm = (v) => Math.min(255, Math.round(v * 1.4));
+                let r = norm(bass);
+                let g = norm(mid);
+                let b = norm(treble);
+
+                if (beat) {
+                    // Beat-flash: subir el canal dominante y rellenar al blanco
+                    // por un ~tick, para que se sienta el golpe.
+                    const m = Math.max(r, g, b, 1);
+                    const k = Math.min(1, 220 / m);
+                    r = Math.min(255, Math.round(r * k + 60));
+                    g = Math.min(255, Math.round(g * k + 60));
+                    b = Math.min(255, Math.round(b * k + 60));
+                }
+                // Piso para que no se quede negro absoluto con silencio.
+                if (r + g + b < 30) {
+                    r = 10;
+                    g = 10;
+                    b = 20;
+                }
+                return [r, g, b];
+            }
+
             // ── ZONES ──
             function renderZones() {
                 updateZoneActions();
@@ -3483,7 +3778,9 @@
                         const lightIds = [
                             ...new Set(cfg.channels.flatMap((ch) => ch.lights)),
                         ];
-                        const isActive = activeZoneID === cfg.id && syncRunning;
+                        const isActive =
+                            activeZoneID === cfg.id &&
+                            (syncRunning || audioSyncRunning);
                         const isLoading = loadingZoneID === cfg.id;
                         const isSelected =
                             selectedZoneID === cfg.id &&
@@ -3543,6 +3840,8 @@
                     stopSync();
                     return;
                 }
+                // Audio sync activo → detenerlo antes de arrancar screen sync.
+                if (audioSyncRunning) stopAudioSync();
                 // Ignore double-tap while already loading
                 if (loadingZoneID) return;
 

@@ -36,6 +36,10 @@
   "notify.syncStartedBody": "Screen Sync iniciado.",
   "notify.syncStoppedTitle": "SpectraControl",
   "notify.syncStoppedBody": "Screen Sync detenido.",
+  "notify.audioSyncStartedTitle": "SpectraControl",
+  "notify.audioSyncStartedBody": "Audio Sync iniciado.",
+  "notify.audioSyncStoppedTitle": "SpectraControl",
+  "notify.audioSyncStoppedBody": "Audio Sync detenido.",
   "notify.entStoppedTitle": "SpectraControl",
   "notify.entStoppedBody": "Entertainment streaming detenido.",
 
@@ -54,6 +58,8 @@
 
   "home.title": "Zonas de Entretenimiento",
   "home.configureLights": "⚙ Configurar luces",
+  "home.startAudioSync": "Audio Sync",
+  "home.stopAudioSync": "Detener Audio Sync",
 
   "zoneConfig.title": "Configuración:",
   "zoneConfig.positionsHint": "Posiciones · Arrastra cada luz a su ubicación frente al monitor",
@@ -127,6 +133,8 @@
   "toasts.tapZone": "Toca una zona para iniciar el Sync",
   "toasts.wsError": "WebSocket falló — intenta de nuevo",
   "toasts.entActivateError": "Error activando entertainment",
+  "toasts.audioCaptureFailed": "Captura de audio falló: {err}",
+  "toasts.audioShareNoAudio": "El diálogo no incluyó pista de audio. Volvé a intentar marcando \"Compartir audio del sistema\".",
   "toasts.entAreaSelect": "Seleccioná un área de entretenimiento",
   "toasts.profileExported": "Perfil exportado",
   "toasts.profileExportedTo": "Perfil exportado → {path}",
