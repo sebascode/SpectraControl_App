@@ -17,4 +17,4 @@ echo "→ Starting SpectraControl..."
 echo "→ Open http://localhost:8000 in your browser"
 echo "→ Ctrl+C to stop"
 echo ""
-exec ./backend/spectractl -addr :8000
+exec ./backend/spectractl -addr 127.0.0.1:8000

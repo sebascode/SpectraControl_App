@@ -695,7 +695,7 @@ func main() {
 		defaultLogLevel = "info"
 	}
 	var (
-		addr        = flag.String("addr", ":8000", "dirección de escucha")
+		addr        = flag.String("addr", "127.0.0.1:8000", "dirección de escucha (default localhost-only; usá 0.0.0.0:8000 para exponer en LAN)")
 		frontendDir = flag.String("frontend", "", "ruta al directorio frontend (auto-detectada si vacía)")
 		logLevel    = flag.String("log-level", defaultLogLevel, "verbosidad: debug | info | warn | error")
 	)
