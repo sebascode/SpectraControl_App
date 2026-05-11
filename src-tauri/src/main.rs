@@ -12,11 +12,24 @@ use std::thread;
 use std::time::Duration;
 use ashpd::desktop::screencast::{CursorMode, Screencast, SourceType};
 use ashpd::desktop::PersistMode;
+use log::{debug, error, info, warn};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Manager,
 };
+
+// Inicializa env_logger leyendo SPECTRA_LOG_LEVEL (misma env var que el backend
+// Go), default "info". Filtros tipo "debug,hyper=warn" también funcionan,
+// env_logger los parsea igual que RUST_LOG.
+fn setup_logger() {
+    let level = std::env::var("SPECTRA_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
+    env_logger::Builder::new()
+        .parse_filters(&level)
+        .format_timestamp_millis()
+        .try_init()
+        .ok();
+}
 
 // linuxdeploy's AppRun prepends bundled lib/plugin paths to env vars before exec'ing
 // the app. Subprocesses we spawn that come from the *host* (gst-launch-1.0) inherit
@@ -116,7 +129,7 @@ async fn ensure_capture_initialized() -> Result<(), String> {
     let streams: Vec<_> = response.streams().to_vec();
     let stream_info = streams.first().ok_or_else(|| "sin streams".to_string())?;
     let node_id = stream_info.pipe_wire_node_id();
-    eprintln!("[capture] portal listo — node_id={node_id}");
+    info!("[capture] portal listo — node_id={node_id}");
 
     // 2) Lanzar gst-launch leyendo de pipewire y escupiendo RGB raw a stdout
     let pipeline_args = [
@@ -153,7 +166,7 @@ async fn ensure_capture_initialized() -> Result<(), String> {
     if let Some(stderr) = child.stderr.take() {
         thread::spawn(move || {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                eprintln!("[capture/gst] {line}");
+                debug!("[capture/gst] {line}");
             }
         });
     }
@@ -167,12 +180,12 @@ async fn ensure_capture_initialized() -> Result<(), String> {
             while filled < FRAME_BYTES {
                 match stdout.read(&mut buf[filled..]) {
                     Ok(0) => {
-                        eprintln!("[capture] gst-launch cerró stdout");
+                        warn!("[capture] gst-launch cerró stdout");
                         return;
                     }
                     Ok(n) => filled += n,
                     Err(e) => {
-                        eprintln!("[capture] read error: {e}");
+                        error!("[capture] read error: {e}");
                         return;
                     }
                 }
@@ -313,6 +326,7 @@ fn cleanup_children(app: &tauri::AppHandle) {
 }
 
 fn main() {
+    setup_logger();
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())

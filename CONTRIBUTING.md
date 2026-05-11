@@ -36,6 +36,19 @@ Detailed component responsibilities live in [`docs/architecture.md`](docs/archit
 
 ## Working on different layers
 
+### Logging & verbosity
+
+Both layers honor a single env var: **`SPECTRA_LOG_LEVEL`** (`debug | info | warn | error`, default `info`). Set it before launching the AppImage and it propagates to the Tauri shell *and* the spawned Go backend (`spectractl` inherits the parent env).
+
+```bash
+SPECTRA_LOG_LEVEL=debug ./SpectraControl_0.x.y.AppImage
+```
+
+- Go: leveled `slog` via `backend/logger.go`. Use the helpers (`logDebugf`, `logInfof`, `logWarnf`, `logErrorf`, `logFatalf`). Do **not** add raw `log.Printf` / `fmt.Println` for diagnostics — they bypass the level filter.
+- Rust: `log` + `env_logger`. Use `log::debug!`, `info!`, `warn!`, `error!`. Same rule: no `eprintln!` for routine logs. Panic paths can still use `eprintln!`/`expect()` since the logger is not guaranteed during a panic.
+
+The Go side also accepts a `-log-level` flag for `spectractl` standalone runs (`./run.sh` doesn't set one — env var is preferred for parity with the AppImage).
+
 ### Backend (Go)
 
 - Stdlib + chi router + gorilla/websocket + pion/dtls. No ORM, no codegen.
