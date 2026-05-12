@@ -64,11 +64,13 @@
   "home.configureLights": "⚙ Configure lights",
   "home.startAudioSync": "Audio Sync",
   "home.stopAudioSync": "Stop Audio Sync",
+  "home.audioReactive": "Sound reactive",
+  "home.audioReactiveHint": "Sync brightness pulses with system audio.",
 
   "zoneConfig.title": "Configuration:",
   "zoneConfig.positionsHint": "Positions · Drag each light to its place in front of the monitor",
   "zoneConfig.brightness": "Global Sync brightness",
-  "zoneConfig.upcoming": "Coming soon:<br />· Per-light sections · Audio sync · Profiles",
+  "zoneConfig.perLightMaxLabel": "Per-light max brightness",
   "zoneConfig.noLights": "This zone has no lights assigned",
 
   "zoneCard.syncing": "Syncing",
@@ -82,6 +84,8 @@
 
   "scenes.title": "Dynamic scenes",
   "scenes.description": "Animations that loop through colors. Tap to start; tap again to stop.",
+  "scenes.audioReactive": "Sound reactive",
+  "scenes.audioReactiveHint": "Brightness pulses with system audio.",
   "scenes.loop": "loop",
   "scenes.once": "once",
   "scenes.playing": "Playing",
@@ -174,5 +178,6 @@
   "toasts.updateCheckError": "Update check failed: {err}",
   "toasts.updateUnavailable": "Updates are only available in the installed app",
   "toasts.logoutConfirm": "Sign out from the bridge? You'll need to re-pair it next time.",
-  "toasts.logoutError": "Sign-out failed: {err}"
+  "toasts.logoutError": "Sign-out failed: {err}",
+  "toasts.sceneAudioTauriOnly": "Sound-reactive mode needs the desktop app (native audio capture)."
 }
