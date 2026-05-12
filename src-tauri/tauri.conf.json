@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SpectraControl",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "identifier": "dev.spectracontrol",
   "build": {
     "devUrl": "http://localhost:8000",
@@ -30,6 +30,14 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
+    "publisher": "Sebas Contreras",
+    "copyright": "Copyright (c) 2026 Sebas Contreras",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "homepage": "https://github.com/sebascode/SpectraControl_App",
+    "category": "Utility",
+    "shortDescription": "Sync Philips Hue lights with your screen",
+    "longDescription": "SpectraControl samples colors from your monitor and pushes them to Philips Hue lights in real time, with customizable per-light regions, scenes, and tray integration.",
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",

@@ -12,11 +12,24 @@ use std::thread;
 use std::time::Duration;
 use ashpd::desktop::screencast::{CursorMode, Screencast, SourceType};
 use ashpd::desktop::PersistMode;
+use log::{debug, error, info, warn};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Manager,
 };
+
+// Inicializa env_logger leyendo SPECTRA_LOG_LEVEL (misma env var que el backend
+// Go), default "info". Filtros tipo "debug,hyper=warn" también funcionan,
+// env_logger los parsea igual que RUST_LOG.
+fn setup_logger() {
+    let level = std::env::var("SPECTRA_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
+    env_logger::Builder::new()
+        .parse_filters(&level)
+        .format_timestamp_millis()
+        .try_init()
+        .ok();
+}
 
 // linuxdeploy's AppRun prepends bundled lib/plugin paths to env vars before exec'ing
 // the app. Subprocesses we spawn that come from the *host* (gst-launch-1.0) inherit
@@ -116,7 +129,7 @@ async fn ensure_capture_initialized() -> Result<(), String> {
     let streams: Vec<_> = response.streams().to_vec();
     let stream_info = streams.first().ok_or_else(|| "sin streams".to_string())?;
     let node_id = stream_info.pipe_wire_node_id();
-    eprintln!("[capture] portal listo — node_id={node_id}");
+    info!("[capture] portal listo — node_id={node_id}");
 
     // 2) Lanzar gst-launch leyendo de pipewire y escupiendo RGB raw a stdout
     let pipeline_args = [
@@ -153,7 +166,7 @@ async fn ensure_capture_initialized() -> Result<(), String> {
     if let Some(stderr) = child.stderr.take() {
         thread::spawn(move || {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                eprintln!("[capture/gst] {line}");
+                debug!("[capture/gst] {line}");
             }
         });
     }
@@ -167,12 +180,12 @@ async fn ensure_capture_initialized() -> Result<(), String> {
             while filled < FRAME_BYTES {
                 match stdout.read(&mut buf[filled..]) {
                     Ok(0) => {
-                        eprintln!("[capture] gst-launch cerró stdout");
+                        warn!("[capture] gst-launch cerró stdout");
                         return;
                     }
                     Ok(n) => filled += n,
                     Err(e) => {
-                        eprintln!("[capture] read error: {e}");
+                        error!("[capture] read error: {e}");
                         return;
                     }
                 }
@@ -299,6 +312,44 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|e| e.to_string())
 }
 
+// withGlobalTauri=true no inyecta los wrappers JS de los plugins (no hay
+// bundler), así que window.__TAURI__.notification es undefined desde el
+// frontend. Exponemos el envío en Rust — el frontend pasa los strings ya
+// traducidos y nosotros disparamos la notificación nativa.
+//
+// Usamos notify-rust directamente en vez del plugin: tauri-plugin-notification
+// 2.x corre el .show() interno con async_runtime::spawn → cae en un worker
+// de tokio, donde el block_on de zbus dentro de notify-rust panic'ea con
+// "Cannot start a runtime from within a runtime". std::thread::spawn aísla
+// la llamada en un OS thread sin contexto tokio.
+// Shell-out a `notify-send` (libnotify-bin):
+// - tauri-plugin-notification 2.x panic'ea en Linux: spawnea notify-rust en
+//   un worker de tokio donde el block_on interno de zbus dispara "Cannot
+//   start a runtime from within a runtime".
+// - Llamar notify-rust directamente desde un std::thread evita el panic y
+//   dbus responde OK con un id, pero GNOME Shell descarta la notificación
+//   silenciosamente incluso con DesktopEntry / urgency / icon hints
+//   (parece ser credenciales del sender que libnotify maneja y notify-rust
+//   no).
+// - notify-send es parte de libnotify-bin, ubicuo en escritorios Linux, y
+//   verificado que renderiza en GNOME Shell.
+#[tauri::command]
+fn notify_native(title: String, body: String) -> Result<(), String> {
+    let output = std::process::Command::new("notify-send")
+        .arg("--app-name=SpectraControl")
+        .arg("--icon=dev.spectracontrol")
+        .arg("--expire-time=5000")
+        .arg(&title)
+        .arg(&body)
+        .output()
+        .map_err(|e| format!("spawn notify-send: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("notify-send exit {}: {}", output.status, stderr));
+    }
+    Ok(())
+}
+
 fn cleanup_children(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<BackendProcess>() {
         if let Some(mut child) = state.0.lock().unwrap().take() {
@@ -313,10 +364,10 @@ fn cleanup_children(app: &tauri::AppHandle) {
 }
 
 fn main() {
+    setup_logger();
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -424,7 +475,8 @@ fn main() {
             sample_screen_regions,
             set_tray_menu_labels,
             set_quit_on_close,
-            write_text_file
+            write_text_file,
+            notify_native
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -437,4 +489,73 @@ fn main() {
                 cleanup_children(app);
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsString;
+
+    #[test]
+    fn sanitize_host_env_removes_all_polluting_vars() {
+        // Build a Command pre-populated with every var sanitize_host_env claims to strip.
+        let polluting = [
+            "LD_LIBRARY_PATH",
+            "LD_PRELOAD",
+            "GST_PLUGIN_PATH",
+            "GST_PLUGIN_PATH_1_0",
+            "GST_PLUGIN_SYSTEM_PATH",
+            "GST_PLUGIN_SYSTEM_PATH_1_0",
+            "GST_PLUGIN_SCANNER",
+            "GST_REGISTRY",
+            "GIO_MODULE_DIR",
+            "GIO_EXTRA_MODULES",
+            "GSETTINGS_SCHEMA_DIR",
+            "GTK_PATH",
+            "GTK_DATA_PREFIX",
+            "GTK_EXE_PREFIX",
+            "GTK_IM_MODULE_FILE",
+            "GDK_PIXBUF_MODULE_FILE",
+            "QT_PLUGIN_PATH",
+            "PYTHONHOME",
+            "PYTHONPATH",
+            "PERLLIB",
+            "XDG_DATA_DIRS",
+        ];
+
+        let mut cmd = Command::new("/bin/true");
+        for v in &polluting {
+            cmd.env(v, "appimage-poison");
+        }
+        // A non-polluting var should survive sanitize_host_env untouched.
+        cmd.env("KEEP_ME", "ok");
+
+        sanitize_host_env(&mut cmd);
+
+        // Command::get_envs yields (key, None) for env_remove calls and
+        // (key, Some(value)) for env(...) calls. After sanitize_host_env, each
+        // polluting var must appear as a removal.
+        let envs: Vec<(OsString, Option<OsString>)> = cmd
+            .get_envs()
+            .map(|(k, v)| (k.to_owned(), v.map(|v| v.to_owned())))
+            .collect();
+
+        for v in &polluting {
+            let entry = envs.iter().find(|(k, _)| k == v);
+            match entry {
+                Some((_, None)) => {} // removed — good
+                Some((_, Some(val))) => panic!(
+                    "{v} still set to {val:?} after sanitize_host_env"
+                ),
+                None => panic!("{v} missing from Command envs (expected a removal entry)"),
+            }
+        }
+
+        // KEEP_ME should still be present with its value.
+        let keep = envs.iter().find(|(k, _)| k == "KEEP_ME");
+        assert!(
+            matches!(keep, Some((_, Some(v))) if v == "ok"),
+            "KEEP_ME was disturbed by sanitize_host_env: {keep:?}"
+        );
+    }
 }
