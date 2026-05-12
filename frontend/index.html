@@ -4696,8 +4696,12 @@
             // Opt-in (default on). Solo dispara cuando la ventana no está
             // visible: si el usuario está mirando la app ya verá el toast,
             // duplicarlo en notificación nativa sería ruido.
+            //
+            // withGlobalTauri no inyecta el wrapper JS del plugin
+            // notification (no hay bundler), así que window.__TAURI__.notification
+            // es undefined. Delegamos en el comando Rust notify_native que
+            // dispara la notificación a través del plugin desde el lado nativo.
             const NOTIF_KEY = "notifications-enabled";
-            let notifPermissionState = "unknown"; // "granted" | "denied" | "unknown"
 
             function notificationsEnabled() {
                 return (localStorage.getItem(NOTIF_KEY) ?? "1") === "1";
@@ -4705,36 +4709,15 @@
 
             function setNotificationsEnabled(on) {
                 localStorage.setItem(NOTIF_KEY, on ? "1" : "0");
-                if (on) ensureNotificationPermission();
-            }
-
-            async function ensureNotificationPermission() {
-                const n = window.__TAURI__?.notification;
-                if (!n) return false;
-                if (notifPermissionState === "granted") return true;
-                try {
-                    let granted = await n.isPermissionGranted();
-                    if (!granted) {
-                        const res = await n.requestPermission();
-                        granted = res === "granted";
-                    }
-                    notifPermissionState = granted ? "granted" : "denied";
-                    return granted;
-                } catch (e) {
-                    console.warn("[notify] permiso falló", e);
-                    return false;
-                }
             }
 
             async function notifyIfHidden(title, body) {
                 if (!notificationsEnabled()) return;
                 if (document.visibilityState === "visible") return;
-                if (!(await ensureNotificationPermission())) return;
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) return;
                 try {
-                    window.__TAURI__.notification.sendNotification({
-                        title,
-                        body,
-                    });
+                    await invoke("notify_native", { title, body });
                 } catch (e) {
                     console.warn("[notify] envío falló", e);
                 }

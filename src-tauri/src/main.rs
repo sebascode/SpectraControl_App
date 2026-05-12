@@ -312,6 +312,44 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|e| e.to_string())
 }
 
+// withGlobalTauri=true no inyecta los wrappers JS de los plugins (no hay
+// bundler), así que window.__TAURI__.notification es undefined desde el
+// frontend. Exponemos el envío en Rust — el frontend pasa los strings ya
+// traducidos y nosotros disparamos la notificación nativa.
+//
+// Usamos notify-rust directamente en vez del plugin: tauri-plugin-notification
+// 2.x corre el .show() interno con async_runtime::spawn → cae en un worker
+// de tokio, donde el block_on de zbus dentro de notify-rust panic'ea con
+// "Cannot start a runtime from within a runtime". std::thread::spawn aísla
+// la llamada en un OS thread sin contexto tokio.
+// Shell-out a `notify-send` (libnotify-bin):
+// - tauri-plugin-notification 2.x panic'ea en Linux: spawnea notify-rust en
+//   un worker de tokio donde el block_on interno de zbus dispara "Cannot
+//   start a runtime from within a runtime".
+// - Llamar notify-rust directamente desde un std::thread evita el panic y
+//   dbus responde OK con un id, pero GNOME Shell descarta la notificación
+//   silenciosamente incluso con DesktopEntry / urgency / icon hints
+//   (parece ser credenciales del sender que libnotify maneja y notify-rust
+//   no).
+// - notify-send es parte de libnotify-bin, ubicuo en escritorios Linux, y
+//   verificado que renderiza en GNOME Shell.
+#[tauri::command]
+fn notify_native(title: String, body: String) -> Result<(), String> {
+    let output = std::process::Command::new("notify-send")
+        .arg("--app-name=SpectraControl")
+        .arg("--icon=dev.spectracontrol")
+        .arg("--expire-time=5000")
+        .arg(&title)
+        .arg(&body)
+        .output()
+        .map_err(|e| format!("spawn notify-send: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("notify-send exit {}: {}", output.status, stderr));
+    }
+    Ok(())
+}
+
 fn cleanup_children(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<BackendProcess>() {
         if let Some(mut child) = state.0.lock().unwrap().take() {
@@ -330,7 +368,6 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -438,7 +475,8 @@ fn main() {
             sample_screen_regions,
             set_tray_menu_labels,
             set_quit_on_close,
-            write_text_file
+            write_text_file,
+            notify_native
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
