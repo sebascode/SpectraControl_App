@@ -1259,6 +1259,219 @@
                     transform: rotate(360deg);
                 }
             }
+
+            /* ── SCENE CARD ACTIONS ── */
+            .scene-card-actions {
+                display: flex;
+                gap: 6px;
+                margin-top: 8px;
+            }
+            .scene-card-action {
+                flex: 1;
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                color: var(--text-dim);
+                border-radius: 6px;
+                padding: 5px 8px;
+                font-size: 0.65rem;
+                font-family: var(--mono);
+                cursor: pointer;
+                transition: all var(--transition);
+            }
+            .scene-card-action:hover {
+                border-color: var(--border);
+                color: var(--text);
+            }
+            .scene-card-action.danger:hover {
+                border-color: var(--danger);
+                color: var(--danger);
+            }
+
+            /* ── MODAL ── */
+            .modal-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.75);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                padding: 20px;
+            }
+            /* Sobre display:flex el atributo [hidden] no surte efecto porque
+               la UA stylesheet aplica display:none con menor especificidad.
+               Forzamos el override para que JS pueda alternar via .hidden. */
+            .modal-overlay[hidden] {
+                display: none;
+            }
+            .modal-card {
+                background: var(--surface);
+                border: 1px solid var(--border2);
+                border-radius: var(--radius-lg);
+                width: 100%;
+                max-width: 380px;
+                max-height: 88vh;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .modal-header {
+                padding: 16px 18px 10px;
+                font-family: var(--sans);
+                font-size: 1rem;
+                font-weight: 600;
+                color: var(--text);
+                border-bottom: 1px solid var(--border);
+            }
+            .modal-body {
+                padding: 14px 18px;
+                overflow-y: auto;
+                flex: 1;
+            }
+            .modal-footer {
+                padding: 12px 18px;
+                border-top: 1px solid var(--border);
+                display: flex;
+                gap: 8px;
+            }
+            .modal-footer .btn {
+                flex: 1;
+                width: auto;
+            }
+
+            /* ── EDITOR FORM ── */
+            .form-row {
+                margin-bottom: 12px;
+            }
+            .form-row > label {
+                display: block;
+                font-size: 0.7rem;
+                color: var(--text-muted);
+                font-family: var(--mono);
+                margin-bottom: 4px;
+            }
+            .form-row input[type="text"],
+            .form-row input[type="number"] {
+                width: 100%;
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 8px;
+                color: var(--text);
+                padding: 8px 10px;
+                font-family: var(--sans);
+                font-size: 0.85rem;
+                box-sizing: border-box;
+            }
+            .form-row input:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+            .form-row-inline {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+            .form-row-inline label {
+                flex: 1;
+                font-size: 0.8rem;
+                color: var(--text-dim);
+            }
+            .form-row-inline .stagger-value {
+                font-family: var(--mono);
+                font-size: 0.7rem;
+                color: var(--text-muted);
+                min-width: 110px;
+                text-align: right;
+            }
+            .kf-unit {
+                font-family: var(--mono);
+                font-size: 0.7rem;
+                color: var(--text-muted);
+                margin-left: -2px;
+            }
+
+            /* ── KEYFRAME LIST ── */
+            .kf-list-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            .kf-list-header > span {
+                font-size: 0.7rem;
+                color: var(--text-muted);
+                font-family: var(--mono);
+            }
+            .kf-add-btn {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                color: var(--text-dim);
+                border-radius: 6px;
+                padding: 4px 9px;
+                font-size: 0.7rem;
+                cursor: pointer;
+                font-family: var(--mono);
+            }
+            .kf-add-btn:hover {
+                color: var(--accent);
+                border-color: var(--accent);
+            }
+            .kf-row {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                margin-bottom: 6px;
+            }
+            .kf-row input[type="number"] {
+                width: 64px;
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                color: var(--text);
+                padding: 5px 7px;
+                font-family: var(--mono);
+                font-size: 0.75rem;
+                box-sizing: border-box;
+            }
+            .kf-row input[type="color"] {
+                width: 38px;
+                height: 28px;
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                cursor: pointer;
+                padding: 2px;
+            }
+            .kf-preview {
+                flex: 1;
+                height: 28px;
+                border-radius: 6px;
+                border: 1px solid var(--border2);
+            }
+            .kf-remove {
+                background: var(--surface2);
+                border: 1px solid var(--border2);
+                color: var(--text-muted);
+                border-radius: 6px;
+                width: 28px;
+                height: 28px;
+                cursor: pointer;
+                font-size: 1rem;
+                line-height: 1;
+                padding: 0;
+            }
+            .kf-remove:hover {
+                color: var(--danger);
+                border-color: var(--danger);
+            }
+            .editor-error {
+                color: var(--danger);
+                font-size: 0.7rem;
+                font-family: var(--mono);
+                margin-top: 6px;
+                min-height: 1em;
+            }
         </style>
     </head>
     <body>
@@ -1626,6 +1839,13 @@
                             Cargando...
                         </div>
                     </div>
+                    <button
+                        class="btn btn-ghost"
+                        style="margin-top: 14px"
+                        onclick="createNewScene()"
+                    >
+                        + <span data-i18n="sceneEditor.newScene">Nueva escena</span>
+                    </button>
                 </div>
 
                 <!-- LIGHTS PAGE -->
@@ -2064,6 +2284,118 @@
 
         <!-- TOAST -->
         <div class="toast-container" id="toast-container"></div>
+
+        <!-- SCENE EDITOR MODAL -->
+        <div id="scene-editor-modal" class="modal-overlay" hidden>
+            <div class="modal-card">
+                <div
+                    class="modal-header"
+                    id="scene-editor-title"
+                    data-i18n="sceneEditor.editTitle"
+                >
+                    Editar escena
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label data-i18n="sceneEditor.nameLabel">Nombre</label>
+                        <input
+                            type="text"
+                            id="scene-editor-name"
+                            maxlength="64"
+                        />
+                    </div>
+                    <div class="form-row">
+                        <label data-i18n="sceneEditor.durationLabel">
+                            Duración (s)
+                        </label>
+                        <input
+                            type="number"
+                            id="scene-editor-duration"
+                            min="0.5"
+                            step="0.5"
+                        />
+                    </div>
+                    <div class="form-row-inline">
+                        <label
+                            for="scene-editor-loop"
+                            data-i18n="sceneEditor.loopLabel"
+                        >
+                            Loop
+                        </label>
+                        <label class="switch">
+                            <input type="checkbox" id="scene-editor-loop" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label data-i18n="sceneEditor.staggerLabel">
+                            Stagger entre luces
+                        </label>
+                        <div class="form-row-inline" style="margin: 4px 0 0">
+                            <input
+                                type="range"
+                                id="scene-editor-stagger"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                style="flex: 1"
+                            />
+                            <span
+                                class="stagger-value"
+                                id="scene-editor-stagger-value"
+                            >
+                                0.00
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="kf-list-header">
+                            <span data-i18n="sceneEditor.keyframesLabel">
+                                Keyframes
+                            </span>
+                            <button
+                                type="button"
+                                class="kf-add-btn"
+                                onclick="addEditorKeyframe()"
+                                data-i18n="sceneEditor.addKeyframe"
+                            >
+                                + agregar
+                            </button>
+                        </div>
+                        <div id="scene-editor-keyframes"></div>
+                    </div>
+                    <div class="editor-error" id="scene-editor-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-ghost"
+                        onclick="closeSceneEditor()"
+                        data-i18n="common.cancel"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        id="scene-editor-delete"
+                        onclick="deleteFromEditor()"
+                        data-i18n="common.delete"
+                        hidden
+                    >
+                        Eliminar
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        onclick="saveSceneEditor()"
+                        data-i18n="common.save"
+                    >
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <script>
             // ── CONFIG ──
@@ -3180,12 +3512,23 @@
                             )
                             .join(", ");
                         const gradient = `linear-gradient(90deg, ${stops || "#222, #444"})`;
+                        // Actions: built-in escenas son read-only (solo Duplicar).
+                        // user escenas pueden editarse o borrarse.
+                        const stop = "event.stopPropagation()";
+                        const actions =
+                            s.source === "user"
+                                ? `
+                                <button class="scene-card-action" onclick="${stop};editScene('${s.id}')">${t("common.edit")}</button>
+                                <button class="scene-card-action danger" onclick="${stop};confirmDeleteScene('${s.id}')">${t("common.delete")}</button>`
+                                : `
+                                <button class="scene-card-action" onclick="${stop};duplicateScene('${s.id}')">${t("common.duplicate")}</button>`;
                         return `
                             <div class="zone-card ${active ? "active" : ""}" onclick="toggleScene('${s.id}')">
                                 <div style="height:36px;border-radius:6px;background:${gradient};margin-bottom:10px;border:1px solid var(--border)"></div>
                                 <div class="zone-card-name">${s.name}</div>
                                 <div class="zone-card-meta">${s.duration}s · ${s.loop ? t("scenes.loop") : t("scenes.once")}</div>
                                 <div class="zone-card-status">${active ? t("scenes.playing") : t("scenes.tapToStart")}</div>
+                                <div class="scene-card-actions">${actions}</div>
                             </div>`;
                     })
                     .join("");
@@ -3243,6 +3586,307 @@
                     toast(t("toasts.sceneStartError"), "error", 2500);
                 }
             }
+
+            // ── SCENE EDITOR ──
+            // Estado de edición vivo solo mientras el modal está abierto.
+            // editorScene guarda el snapshot original para saber si es "edit"
+            // (id ya persistido) o "create" (id nuevo aún no escrito a disco).
+            let editorScene = null;
+            let editorMode = "create"; // "create" | "edit"
+            let editorKeyframes = []; // [{ t: number, hex: "#rrggbb" }]
+
+            const rgbToHex = ([r, g, b]) =>
+                "#" +
+                [r, g, b]
+                    .map((c) => c.toString(16).padStart(2, "0"))
+                    .join("");
+            const hexToRgb = (hex) => {
+                const n = parseInt(hex.slice(1), 16);
+                return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+            };
+
+            // Genera un id user único. Si "<base><suffix>" está tomado,
+            // intenta "<base><suffix>-2", "-3", etc. Con suffix="-copy" se
+            // usa para duplicar; sin suffix, para crear desde cero.
+            function freshSceneID(base, suffix = "") {
+                const taken = new Set(scenes.map((s) => s.id));
+                const root = base + suffix;
+                if (!taken.has(root)) return root;
+                let n = 2;
+                while (taken.has(`${root}-${n}`)) n++;
+                return `${root}-${n}`;
+            }
+
+            function duplicateScene(srcID) {
+                const src = scenes.find((s) => s.id === srcID);
+                if (!src) return;
+                openSceneEditor(
+                    {
+                        ...src,
+                        id: freshSceneID(src.id, "-copy"),
+                        name: `${src.name} (copy)`,
+                        keyframes: src.keyframes.map((k) => ({
+                            t: k.t,
+                            color: [...k.color],
+                        })),
+                        source: "user",
+                    },
+                    "create",
+                );
+            }
+
+            // Crea una escena desde cero: id libre, 2 keyframes default
+            // (rojo→azul) para que tenga el mínimo válido al abrir el editor.
+            function createNewScene() {
+                openSceneEditor(
+                    {
+                        id: freshSceneID("nueva-escena"),
+                        name: t("sceneEditor.newSceneName"),
+                        duration: 10,
+                        loop: true,
+                        stagger: 0,
+                        keyframes: [
+                            { t: 0, color: [255, 100, 100] },
+                            { t: 1, color: [100, 100, 255] },
+                        ],
+                        source: "user",
+                    },
+                    "create",
+                );
+            }
+
+            function editScene(id) {
+                const src = scenes.find((s) => s.id === id);
+                if (!src) return;
+                openSceneEditor(src, "edit");
+            }
+
+            async function confirmDeleteScene(id) {
+                if (!confirm(t("sceneEditor.deleteConfirm"))) return;
+                try {
+                    const r = await fetch(API + "/api/scenes/" + id, {
+                        method: "DELETE",
+                    });
+                    if (!r.ok) throw new Error(await r.text());
+                    await loadScenes();
+                    toast(t("toasts.sceneDeleted"), "info", 2000);
+                } catch (e) {
+                    toast(t("toasts.sceneDeleteError"), "error", 2500);
+                }
+            }
+
+            function openSceneEditor(scene, mode) {
+                editorScene = scene;
+                editorMode = mode;
+                editorKeyframes = (scene.keyframes || []).map((k) => ({
+                    t: k.t,
+                    hex: rgbToHex(k.color),
+                }));
+                document.getElementById("scene-editor-title").textContent =
+                    mode === "edit"
+                        ? t("sceneEditor.editTitle")
+                        : t("sceneEditor.createTitle");
+                document.getElementById("scene-editor-name").value =
+                    scene.name || "";
+                document.getElementById("scene-editor-duration").value =
+                    scene.duration ?? 10;
+                document.getElementById("scene-editor-loop").checked =
+                    scene.loop ?? true;
+                document.getElementById("scene-editor-stagger").value =
+                    scene.stagger ?? 0;
+                document.getElementById("scene-editor-error").textContent = "";
+                // Solo mostrar Eliminar al editar una escena user ya persistida.
+                document.getElementById("scene-editor-delete").hidden =
+                    mode !== "edit";
+                renderEditorKeyframes();
+                updateStaggerDisplay();
+                document.getElementById("scene-editor-modal").hidden = false;
+            }
+
+            function closeSceneEditor() {
+                document.getElementById("scene-editor-modal").hidden = true;
+                editorScene = null;
+                editorKeyframes = [];
+            }
+
+            // Para mostrar tiempos en segundos en lugar de fracciones 0..1.
+            // Internamente seguimos guardando t∈[0,1] (lo que persiste el
+            // backend), pero la UI los expone como segundos relativos a la
+            // duración. Cambiar duration re-escala automáticamente lo que se
+            // ve sin tocar el "shape" de la escena.
+            function getEditorDuration() {
+                const v = parseFloat(
+                    document.getElementById("scene-editor-duration").value,
+                );
+                return Number.isFinite(v) && v > 0 ? v : 1;
+            }
+
+            function renderEditorKeyframes() {
+                const duration = getEditorDuration();
+                const host = document.getElementById("scene-editor-keyframes");
+                host.innerHTML = editorKeyframes
+                    .map((k, i) => {
+                        const sec = (k.t * duration).toFixed(2);
+                        return `
+                            <div class="kf-row">
+                                <input type="number" min="0" max="${duration}" step="0.1"
+                                    value="${sec}"
+                                    oninput="updateEditorKeyframe(${i}, 'sec', this.value)" />
+                                <span class="kf-unit">s</span>
+                                <input type="color" value="${k.hex}"
+                                    oninput="updateEditorKeyframe(${i}, 'hex', this.value)" />
+                                <div class="kf-preview" style="background:${k.hex}"></div>
+                                <button type="button" class="kf-remove"
+                                    onclick="removeEditorKeyframe(${i})"
+                                    title="${t("common.delete")}">×</button>
+                            </div>`;
+                    })
+                    .join("");
+            }
+
+            function updateEditorKeyframe(idx, field, value) {
+                const k = editorKeyframes[idx];
+                if (!k) return;
+                if (field === "sec") {
+                    const v = parseFloat(value);
+                    if (Number.isNaN(v)) return;
+                    const dur = getEditorDuration();
+                    k.t = Math.max(0, Math.min(1, v / dur));
+                } else if (field === "hex") {
+                    k.hex = value;
+                    // Re-render para refrescar la swatch de preview.
+                    renderEditorKeyframes();
+                }
+            }
+
+            function addEditorKeyframe() {
+                // Inserta un keyframe nuevo desplazado 10% del ciclo desde
+                // el último, con el mismo color para que sea fácil tweakearlo.
+                const last = editorKeyframes[editorKeyframes.length - 1];
+                editorKeyframes.push({
+                    t: Math.min(1, (last?.t ?? 0) + 0.1),
+                    hex: last?.hex ?? "#ffffff",
+                });
+                renderEditorKeyframes();
+            }
+
+            // Muestra el stagger como fracción + segundos por luz (stagger *
+            // duration). Cambiar cualquiera de los dos lo refresca.
+            function updateStaggerDisplay() {
+                const stagger = parseFloat(
+                    document.getElementById("scene-editor-stagger").value,
+                );
+                const duration = getEditorDuration();
+                const sec = (stagger * duration).toFixed(1);
+                document.getElementById(
+                    "scene-editor-stagger-value",
+                ).textContent =
+                    `${stagger.toFixed(2)} · ${sec}s ` +
+                    t("sceneEditor.staggerSuffix");
+            }
+
+            function removeEditorKeyframe(idx) {
+                editorKeyframes.splice(idx, 1);
+                renderEditorKeyframes();
+            }
+
+            async function saveSceneEditor() {
+                const errBox = document.getElementById("scene-editor-error");
+                errBox.textContent = "";
+                const name = document
+                    .getElementById("scene-editor-name")
+                    .value.trim();
+                const duration = parseFloat(
+                    document.getElementById("scene-editor-duration").value,
+                );
+                const loop =
+                    document.getElementById("scene-editor-loop").checked;
+                const stagger = parseFloat(
+                    document.getElementById("scene-editor-stagger").value,
+                );
+
+                if (!name) {
+                    errBox.textContent = t("sceneEditor.errNameRequired");
+                    return;
+                }
+                if (!(duration > 0)) {
+                    errBox.textContent = t("sceneEditor.errDurationPositive");
+                    return;
+                }
+                if (editorKeyframes.length < 2) {
+                    errBox.textContent = t("sceneEditor.errMinKeyframes");
+                    return;
+                }
+                // Backend valida t en [0,1] y ordena en lectura, pero ordenamos
+                // acá también para que el JSON guardado sea coherente con la
+                // UI y la sobreescritura sea predecible.
+                const sorted = [...editorKeyframes].sort((a, b) => a.t - b.t);
+                const payload = {
+                    id: editorScene.id,
+                    name,
+                    duration,
+                    loop,
+                    stagger,
+                    keyframes: sorted.map((k) => ({
+                        t: k.t,
+                        color: hexToRgb(k.hex),
+                    })),
+                    source: "user",
+                };
+
+                try {
+                    const r = await fetch(API + "/api/scenes", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!r.ok) {
+                        const body = await r.json().catch(() => ({}));
+                        throw new Error(body.detail || `HTTP ${r.status}`);
+                    }
+                    closeSceneEditor();
+                    await loadScenes();
+                    toast(t("toasts.sceneSaved"), "info", 2000);
+                } catch (e) {
+                    errBox.textContent =
+                        t("sceneEditor.errSaveFailed") + ": " + e.message;
+                }
+            }
+
+            async function deleteFromEditor() {
+                if (!editorScene) return;
+                const id = editorScene.id;
+                closeSceneEditor();
+                await confirmDeleteScene(id);
+            }
+
+            // UX: cerrar con click en el backdrop y con Escape.
+            document
+                .getElementById("scene-editor-modal")
+                .addEventListener("click", (e) => {
+                    if (e.target.id === "scene-editor-modal")
+                        closeSceneEditor();
+                });
+            document.addEventListener("keydown", (e) => {
+                if (
+                    e.key === "Escape" &&
+                    !document.getElementById("scene-editor-modal").hidden
+                ) {
+                    closeSceneEditor();
+                }
+            });
+            document
+                .getElementById("scene-editor-stagger")
+                .addEventListener("input", updateStaggerDisplay);
+            // Cambiar la duración re-escala los keyframes mostrados (siguen
+            // en t∈[0,1] internamente, pero la swatch en segundos cambia) y
+            // recalcula el stagger en segundos.
+            document
+                .getElementById("scene-editor-duration")
+                .addEventListener("input", () => {
+                    renderEditorKeyframes();
+                    updateStaggerDisplay();
+                });
 
             function populateSceneTargetSelect() {
                 const sel = document.getElementById("scenes-target-select");

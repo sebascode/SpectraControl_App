@@ -13,11 +13,19 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 )
+
+// IDs de escenas son nombre de archivo en el user dir, así que se filtran a
+// caracteres seguros para path: minúsculas, dígitos y guion. Sin puntos
+// (evita ".." y oculta), sin slashes, sin espacios.
+var sceneIDRegex = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 //go:embed scenes/*.json
 var embeddedScenes embed.FS
@@ -268,5 +276,86 @@ func handleStartScene(w http.ResponseWriter, r *http.Request) {
 func handleStopScene(w http.ResponseWriter, r *http.Request) {
 	stopScene()
 	logInfof("[scenes] detenida")
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// handleCreateScene crea o actualiza una escena de usuario. Las built-in
+// embebidas son read-only; si llega un id que coincide con una built-in se
+// escribe igualmente en el user dir y `loadScenePresets()` ya las sobreescribe
+// al leer disco (el override convive sin tocar el embed).
+func handleCreateScene(w http.ResponseWriter, r *http.Request) {
+	var s scenePreset
+	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+		writeErr(w, http.StatusBadRequest, "json inválido: "+err.Error())
+		return
+	}
+	if !sceneIDRegex.MatchString(s.ID) {
+		writeErr(w, http.StatusBadRequest, "id debe ser [a-z0-9-]+")
+		return
+	}
+	if len(s.ID) > 64 {
+		writeErr(w, http.StatusBadRequest, "id demasiado largo (máx 64)")
+		return
+	}
+	if strings.TrimSpace(s.Name) == "" {
+		writeErr(w, http.StatusBadRequest, "name requerido")
+		return
+	}
+	if s.Duration <= 0 {
+		writeErr(w, http.StatusBadRequest, "duration debe ser > 0")
+		return
+	}
+	if len(s.Keyframes) < 2 {
+		writeErr(w, http.StatusBadRequest, "se requieren al menos 2 keyframes")
+		return
+	}
+	for _, k := range s.Keyframes {
+		if k.T < 0 || k.T > 1 {
+			writeErr(w, http.StatusBadRequest, "keyframe.t fuera de [0,1]")
+			return
+		}
+	}
+	// Persistir source="user" siempre — el archivo vive en user dir y el
+	// loader lo sobreescribe sobre cualquier built-in homónima.
+	s.Source = "user"
+
+	path := filepath.Join(userScenesDir(), s.ID+".json")
+	data, err := json.MarshalIndent(s, "", "    ")
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "marshal: "+err.Error())
+		return
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		writeErr(w, http.StatusInternalServerError, "write: "+err.Error())
+		return
+	}
+	logInfof("[scenes] guardada %s (%d keyframes)", s.ID, len(s.Keyframes))
+	writeJSON(w, s)
+}
+
+// handleDeleteScene borra el archivo de una escena de usuario. Las built-in
+// no se pueden borrar (viven embebidas en el binario); si alguien pide
+// borrar un id que solo existe como built-in, devolvemos 404.
+func handleDeleteScene(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if !sceneIDRegex.MatchString(id) {
+		writeErr(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+	path := filepath.Join(userScenesDir(), id+".json")
+	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			writeErr(w, http.StatusNotFound, "escena de usuario no encontrada")
+			return
+		}
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Si la escena borrada estaba activa, frenar el runner.
+	activeID, _ := sceneStatus()
+	if activeID == id {
+		stopScene()
+	}
+	logInfof("[scenes] borrada %s", id)
 	writeJSON(w, map[string]bool{"ok": true})
 }

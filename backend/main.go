@@ -746,6 +746,8 @@ func main() {
 
 	// Dynamic scenes
 	r.Get("/api/scenes", handleListScenes)
+	r.Post("/api/scenes", handleCreateScene)
+	r.Delete("/api/scenes/{id}", handleDeleteScene)
 	r.Post("/api/scenes/start", handleStartScene)
 	r.Post("/api/scenes/stop", handleStopScene)
 
