@@ -64,11 +64,13 @@
   "home.configureLights": "⚙ Configurar luces",
   "home.startAudioSync": "Audio Sync",
   "home.stopAudioSync": "Detener Audio Sync",
+  "home.audioReactive": "Reactivo al sonido",
+  "home.audioReactiveHint": "El brillo del sync pulsa con el audio del sistema.",
 
   "zoneConfig.title": "Configuración:",
   "zoneConfig.positionsHint": "Posiciones · Arrastra cada luz a su ubicación frente al monitor",
   "zoneConfig.brightness": "Brillo Global del sync",
-  "zoneConfig.upcoming": "Próximamente:<br />· Secciones por luz · Sync con audio · Perfiles",
+  "zoneConfig.perLightMaxLabel": "Brillo máximo por luz",
   "zoneConfig.noLights": "Esta zona no tiene luces asignadas",
 
   "zoneCard.syncing": "Sincronizando",
@@ -82,6 +84,8 @@
 
   "scenes.title": "Escenas dinámicas",
   "scenes.description": "Animaciones que recorren colores en bucle. Toca para iniciar; toca de nuevo para detener.",
+  "scenes.audioReactive": "Reactivo al sonido",
+  "scenes.audioReactiveHint": "El brillo pulsa con el audio del sistema.",
   "scenes.loop": "loop",
   "scenes.once": "una vez",
   "scenes.playing": "Reproduciendo",
@@ -174,5 +178,6 @@
   "toasts.updateCheckError": "Error al chequear actualizaciones: {err}",
   "toasts.updateUnavailable": "Las actualizaciones solo están disponibles en la app instalada",
   "toasts.logoutConfirm": "¿Cerrar sesión del bridge? Tendrás que volver a vincularlo.",
-  "toasts.logoutError": "No se pudo cerrar sesión: {err}"
+  "toasts.logoutError": "No se pudo cerrar sesión: {err}",
+  "toasts.sceneAudioTauriOnly": "El modo reactivo necesita la app de escritorio (captura de audio nativa)."
 }

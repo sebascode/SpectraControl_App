@@ -23,6 +23,7 @@ ashpd = { version = "0.10", default-features = false, features = ["tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 log = "0.4"
 env_logger = { version = "0.11", default-features = false, features = ["humantime"] }
+rustfft = "6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = { version = "2", features = ["v2_28"] }

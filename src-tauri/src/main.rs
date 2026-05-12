@@ -16,7 +16,7 @@ use log::{debug, error, info, warn};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager,
+    Emitter, Manager,
 };
 
 // Inicializa env_logger leyendo SPECTRA_LOG_LEVEL (misma env var que el backend
@@ -248,6 +248,234 @@ async fn sample_screen_regions(positions: Vec<[f32; 2]>) -> Result<Vec<[u8; 3]>,
     Ok(colors)
 }
 
+// ── AUDIO CAPTURE via pulsesrc + GStreamer ──────────────────────────────────
+// El portal xdg-desktop-portal de pantalla en Linux todavía no expone toggle
+// de audio (GNOME ≤46 al menos), así que getDisplayMedia({audio:true}) cae
+// silenciosamente sin track. Para el audio sync corremos un pipeline
+// pulsesrc apuntando al monitor del sink default — sin diálogo, sin permiso
+// extra. La FFT se hace acá en Rust con rustfft, y devolvemos un Vec<u8>
+// con la misma semántica que AnalyserNode.getByteFrequencyData (fftSize
+// 1024 → 512 bins, dB clamp -100..-30 → 0..255), así audioFrameToRGB() en
+// JS funciona sin cambios.
+const AUDIO_RATE: u32 = 44100;
+const AUDIO_FFT: usize = 1024;
+const AUDIO_BINS: usize = AUDIO_FFT / 2;
+const AUDIO_RING: usize = AUDIO_FFT * 2;
+
+struct AudioRing {
+    buf: Vec<f32>,
+    head: usize,
+}
+
+impl AudioRing {
+    fn new(cap: usize) -> Self {
+        Self {
+            buf: vec![0.0; cap],
+            head: 0,
+        }
+    }
+    fn push(&mut self, samples: &[f32]) {
+        for &s in samples {
+            self.buf[self.head] = s;
+            self.head = (self.head + 1) % self.buf.len();
+        }
+    }
+    fn copy_latest(&self, out: &mut [f32]) {
+        let n = out.len().min(self.buf.len());
+        let start = (self.head + self.buf.len() - n) % self.buf.len();
+        for (i, slot) in out.iter_mut().enumerate().take(n) {
+            *slot = self.buf[(start + i) % self.buf.len()];
+        }
+    }
+}
+
+struct AudioCaptureState {
+    ring: Arc<Mutex<AudioRing>>,
+    init_lock: tokio::sync::Mutex<bool>,
+    gst_child: Mutex<Option<Child>>,
+    // Smoothing IIR estado-por-bin (alpha = smoothingTimeConstant en
+    // AnalyserNode). Inicialmente en cero → primer frame entra crudo.
+    smoothed: Mutex<Vec<f32>>,
+    // Plan FFT compartido — rustfft::Fft no es Send+Sync via Arc<dyn>, así
+    // que lo guardamos detrás de un Mutex.
+    fft: Mutex<Arc<dyn rustfft::Fft<f32>>>,
+}
+
+static AUDIO_CAPTURE: OnceLock<AudioCaptureState> = OnceLock::new();
+
+fn audio_capture_state() -> &'static AudioCaptureState {
+    AUDIO_CAPTURE.get_or_init(|| {
+        let mut planner = rustfft::FftPlanner::<f32>::new();
+        AudioCaptureState {
+            ring: Arc::new(Mutex::new(AudioRing::new(AUDIO_RING))),
+            init_lock: tokio::sync::Mutex::new(false),
+            gst_child: Mutex::new(None),
+            smoothed: Mutex::new(vec![0.0; AUDIO_BINS]),
+            fft: Mutex::new(planner.plan_fft_forward(AUDIO_FFT)),
+        }
+    })
+}
+
+async fn ensure_audio_capture_initialized() -> Result<(), String> {
+    let state = audio_capture_state();
+    let mut init = state.init_lock.lock().await;
+    if *init {
+        return Ok(());
+    }
+
+    // pulsesrc device=@DEFAULT_MONITOR@ captura el monitor del sink default,
+    // lo que en PipeWire (con la capa de compatibilidad Pulse) es el mismo
+    // audio que sale por los parlantes. Forzamos F32LE mono @ 44.1k para
+    // tener un buffer denso y simple que alimentar a la FFT.
+    let caps = format!(
+        "audio/x-raw,format=F32LE,rate={AUDIO_RATE},channels=1,layout=interleaved"
+    );
+    let pipeline_args = [
+        "-q",
+        "pulsesrc",
+        "device=@DEFAULT_MONITOR@",
+        "!",
+        "audioconvert",
+        "!",
+        "audioresample",
+        "!",
+        &caps,
+        "!",
+        "fdsink",
+        "fd=1",
+        "sync=false",
+    ];
+    let mut cmd = Command::new("gst-launch-1.0");
+    cmd.args(
+        pipeline_args
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
+    )
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped());
+    sanitize_host_env(&mut cmd);
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("spawn gst-launch-1.0 (audio): {e}"))?;
+
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "sin stdout (audio)".to_string())?;
+    if let Some(stderr) = child.stderr.take() {
+        thread::spawn(move || {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                debug!("[audio-capture/gst] {line}");
+            }
+        });
+    }
+
+    let ring = state.ring.clone();
+    thread::spawn(move || {
+        // Buffer de lectura: leemos hasta 4096 samples (16 KB) por iteración.
+        let chunk_samples = 4096usize;
+        let mut byte_buf = vec![0u8; chunk_samples * 4];
+        loop {
+            match stdout.read(&mut byte_buf) {
+                Ok(0) => {
+                    warn!("[audio-capture] gst-launch cerró stdout");
+                    return;
+                }
+                Ok(n) => {
+                    // F32LE → f32: ignoramos colas parciales (n % 4 != 0)
+                    // hasta la próxima lectura, gst alinea normalmente.
+                    let aligned = n - (n % 4);
+                    if aligned == 0 {
+                        continue;
+                    }
+                    let mut samples = Vec::with_capacity(aligned / 4);
+                    for i in (0..aligned).step_by(4) {
+                        let s = f32::from_le_bytes([
+                            byte_buf[i],
+                            byte_buf[i + 1],
+                            byte_buf[i + 2],
+                            byte_buf[i + 3],
+                        ]);
+                        samples.push(s);
+                    }
+                    ring.lock().unwrap().push(&samples);
+                }
+                Err(e) => {
+                    error!("[audio-capture] read error: {e}");
+                    return;
+                }
+            }
+        }
+    });
+
+    *state.gst_child.lock().unwrap() = Some(child);
+    *init = true;
+    Ok(())
+}
+
+#[tauri::command]
+async fn sample_audio_bins(smoothing: Option<f32>) -> Result<Vec<u8>, String> {
+    ensure_audio_capture_initialized().await?;
+    let state = audio_capture_state();
+    // 0.6 imita AnalyserNode default (bueno para color stability del audio
+    // sync). Para detección de beats — scene-audio — el caller pasa 0 para
+    // recibir magnitudes sin suavizar.
+    let smoothing = smoothing.unwrap_or(0.6).clamp(0.0, 0.99);
+
+    // Esperar a tener al menos un buffer completo (la primera vez tras
+    // arrancar gst). Bound bajo: si en ~1 s no hay datos, error.
+    let mut samples = vec![0.0f32; AUDIO_FFT];
+    let mut tries = 0;
+    loop {
+        state.ring.lock().unwrap().copy_latest(&mut samples);
+        // Heurística rápida: si todos los samples siguen siendo 0.0 y no
+        // pasaron muchos intentos, esperar — todavía no llegó audio.
+        let any_nonzero = samples.iter().any(|&s| s != 0.0);
+        if any_nonzero || tries > 50 {
+            break;
+        }
+        tries += 1;
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+
+    // Hann window — mismo windowing implícito que AnalyserNode.
+    for (i, s) in samples.iter_mut().enumerate() {
+        let w = 0.5
+            * (1.0
+                - (2.0 * std::f32::consts::PI * i as f32 / (AUDIO_FFT - 1) as f32)
+                    .cos());
+        *s *= w;
+    }
+
+    let mut fft_buf: Vec<rustfft::num_complex::Complex<f32>> = samples
+        .iter()
+        .map(|&s| rustfft::num_complex::Complex { re: s, im: 0.0 })
+        .collect();
+    {
+        let fft = state.fft.lock().unwrap();
+        fft.process(&mut fft_buf);
+    }
+
+    // dB clamp -100..-30 idéntico al default de AnalyserNode; el smoothing
+    // ahora viene del caller (parámetro arriba).
+    const MIN_DB: f32 = -100.0;
+    const MAX_DB: f32 = -30.0;
+    let mut smoothed = state.smoothed.lock().unwrap();
+    let mut out = vec![0u8; AUDIO_BINS];
+    for i in 0..AUDIO_BINS {
+        let re = fft_buf[i].re;
+        let im = fft_buf[i].im;
+        let mag = (re * re + im * im).sqrt() / AUDIO_FFT as f32;
+        let sm = smoothing * smoothed[i] + (1.0 - smoothing) * mag;
+        smoothed[i] = sm;
+        let db = 20.0 * sm.max(1e-12).log10();
+        let v = ((db - MIN_DB) / (MAX_DB - MIN_DB)).clamp(0.0, 1.0);
+        out[i] = (v * 255.0).round() as u8;
+    }
+    Ok(out)
+}
+
 #[cfg(target_os = "linux")]
 fn allow_display_capture(app: &tauri::App) {
     if let Some(window) = app.get_webview_window("main") {
@@ -279,6 +507,14 @@ struct IsQuitting(AtomicBool);
 // "Salir" del tray). false → la X oculta al tray. El frontend lo empuja desde
 // el toggle de Apariencia con set_quit_on_close.
 struct QuitOnClose(AtomicBool);
+
+// graceful_quit: cuando el usuario pide cerrar (tray "Salir" o X con
+// quit_on_close=true), no salimos inmediato. Emitimos `spectra:before-quit`
+// y dejamos al frontend apagar las luces del ambiente sincronizado, que
+// después invoca `confirm_quit`. Un watchdog garantiza salida aunque el JS
+// no responda. QuitRequested evita re-entrada si el usuario insiste con
+// otro click.
+struct QuitRequested(AtomicBool);
 
 #[tauri::command]
 fn set_quit_on_close(on: bool, state: tauri::State<'_, QuitOnClose>) {
@@ -350,6 +586,58 @@ fn notify_native(title: String, body: String) -> Result<(), String> {
     Ok(())
 }
 
+fn force_exit(app: &tauri::AppHandle) {
+    app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
+    cleanup_children(app);
+    app.exit(0);
+}
+
+fn request_graceful_quit(app: &tauri::AppHandle) {
+    let already = app
+        .state::<QuitRequested>()
+        .0
+        .swap(true, Ordering::SeqCst);
+    if already {
+        return;
+    }
+    // Ocultar la ventana enseguida — el usuario ya pidió cerrar y no debería
+    // ver la UI mientras corre el shutdown del bridge.
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+    let _ = app.emit("spectra:before-quit", ());
+    let handle = app.clone();
+    thread::spawn(move || {
+        // Watchdog: si el frontend no llamó a confirm_quit en este margen,
+        // forzamos salida. Suficiente para mandar PUTs de "on:false" al
+        // bridge local (latencia típica ~50ms) sin hacer esperar al usuario.
+        thread::sleep(Duration::from_millis(1500));
+        force_exit(&handle);
+    });
+}
+
+#[tauri::command]
+fn confirm_quit(app: tauri::AppHandle) {
+    force_exit(&app);
+}
+
+// Redimensiona la ventana principal a un tamaño lógico (DPI-independent).
+// Lo expone Rust porque `window.__TAURI__.window.LogicalSize` no siempre
+// llega cuando `withGlobalTauri:true` está activo.
+#[tauri::command]
+fn resize_window(
+    window: tauri::WebviewWindow,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    window
+        .set_size(tauri::Size::Logical(tauri::LogicalSize {
+            width,
+            height,
+        }))
+        .map_err(|e| e.to_string())
+}
+
 fn cleanup_children(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<BackendProcess>() {
         if let Some(mut child) = state.0.lock().unwrap().take() {
@@ -358,6 +646,11 @@ fn cleanup_children(app: &tauri::AppHandle) {
     }
     if let Some(cap) = CAPTURE.get() {
         if let Some(mut gst) = cap.gst_child.lock().unwrap().take() {
+            let _ = gst.kill();
+        }
+    }
+    if let Some(audio) = AUDIO_CAPTURE.get() {
+        if let Some(mut gst) = audio.gst_child.lock().unwrap().take() {
             let _ = gst.kill();
         }
     }
@@ -376,6 +669,7 @@ fn main() {
         .manage(BackendProcess(Mutex::new(None)))
         .manage(IsQuitting(AtomicBool::new(false)))
         .manage(QuitOnClose(AtomicBool::new(false)))
+        .manage(QuitRequested(AtomicBool::new(false)))
         .setup(|app| {
             #[cfg(not(debug_assertions))]
             {
@@ -423,9 +717,7 @@ fn main() {
                         }
                     }
                     "quit" => {
-                        app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
-                        cleanup_children(app);
-                        app.exit(0);
+                        request_graceful_quit(app);
                     }
                     _ => {}
                 })
@@ -458,12 +750,11 @@ fn main() {
                     return;
                 }
                 if app.state::<QuitOnClose>().0.load(Ordering::SeqCst) {
-                    // El usuario eligió que la X cierre la app: limpiamos y
-                    // marcamos is_quitting para que el siguiente CloseRequested
-                    // (si llega) pase derecho.
-                    app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
-                    cleanup_children(&app);
-                    app.exit(0);
+                    // El usuario eligió que la X cierre la app. Cancelamos el
+                    // cierre de la ventana mientras el frontend apaga las luces;
+                    // confirm_quit (o el watchdog) hará el exit real luego.
+                    api.prevent_close();
+                    request_graceful_quit(&app);
                     return;
                 }
                 // Default: ocultar al tray.
@@ -473,10 +764,13 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             sample_screen_regions,
+            sample_audio_bins,
             set_tray_menu_labels,
             set_quit_on_close,
             write_text_file,
-            notify_native
+            notify_native,
+            confirm_quit,
+            resize_window
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

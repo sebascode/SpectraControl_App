@@ -183,10 +183,13 @@ func sceneRunner(ctx context.Context, preset scenePreset, lightIDs []string) {
 				})
 			}
 			if isConfigured() {
+				// tt=1 (100 ms) es suficiente para suavizar el color entre
+				// keyframes y deja que cambios rápidos de bri (audio reactivo)
+				// se sientan sin que el bridge los suavice de más.
 				sendColorUpdate(colorUpdate{
 					lights: cmds,
 					bri:    int(getBri()),
-					tt:     2,
+					tt:     1,
 				})
 			}
 		}

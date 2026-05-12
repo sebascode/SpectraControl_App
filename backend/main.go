@@ -566,6 +566,11 @@ type lightCmd struct {
 	R  float64 `json:"r"`
 	G  float64 `json:"g"`
 	B  float64 `json:"b"`
+	// MaxBri caps this light's effective brightness (1-255). Optional: when
+	// nil, the global bri applies untouched. Used by the per-light cap in
+	// the zone config so a single bright bulb can be dialled down without
+	// changing the global sync bri.
+	MaxBri *int `json:"max_bri,omitempty"`
 }
 
 type wsMsg struct {
@@ -599,8 +604,12 @@ func sendColorUpdate(u colorUpdate) {
 			go func(l lightCmd) {
 				defer wg.Done()
 				xy := rgbToXY(l.R, l.G, l.B)
+				bri := u.bri
+				if l.MaxBri != nil && *l.MaxBri < bri {
+					bri = *l.MaxBri
+				}
 				huePut("lights/"+l.ID+"/state", map[string]any{
-					"on": true, "xy": xy[:], "bri": u.bri, "transitiontime": u.tt,
+					"on": true, "xy": xy[:], "bri": bri, "transitiontime": u.tt,
 				})
 			}(l)
 		}

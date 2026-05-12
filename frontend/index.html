@@ -43,6 +43,12 @@
             }
             html {
                 font-size: 14px;
+                /* Ventana Tauri tiene transparent:true. Usamos clip-path
+                   (no border-radius+overflow:hidden) para no romper el
+                   scroll vertical del documento: clip-path recorta el
+                   pintado sin alterar el overflow. */
+                background: transparent;
+                clip-path: inset(0 round 12px);
             }
             body {
                 background: var(--bg);
@@ -203,7 +209,8 @@
                 right: 8px;
                 display: flex;
                 gap: 6px;
-                z-index: 200;
+                /* Encima del setup overlay (z:200) y de drawers (z:200+). */
+                z-index: 300;
             }
             .window-btn {
                 width: 22px;
@@ -314,20 +321,24 @@
                 font-weight: 400;
             }
 
-            /* Checkboxes alineados dentro del drawer de Ajustes. */
-            .settings-check {
+            /* Filas de toggle del drawer de Ajustes: label a la izquierda,
+               switch a la derecha (mismo estilo que los toggles de Home y
+               Escenas para que la app se sienta unificada). */
+            .settings-row {
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                margin-top: 8px;
+                justify-content: space-between;
+                gap: 12px;
+                margin-top: 10px;
                 font-size: 0.75rem;
                 font-family: var(--mono);
                 color: var(--text-dim);
-                cursor: pointer;
                 line-height: 1.3;
+                cursor: pointer;
             }
-            .settings-check input {
-                flex-shrink: 0;
+            .settings-row > span:first-child {
+                flex: 1;
+                min-width: 0;
             }
 
             /* ── SCENE TARGET PICKER (setup + settings) ── */
@@ -397,7 +408,7 @@
             .drawer-header {
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
+                gap: 10px;
                 padding: 18px 20px;
                 border-bottom: 1px solid var(--border);
                 position: sticky;
@@ -407,7 +418,7 @@
                 font-weight: 700;
                 font-size: 0.9rem;
             }
-            .drawer-close {
+            .drawer-back {
                 background: none;
                 border: none;
                 color: var(--text-muted);
@@ -416,8 +427,9 @@
                 padding: 4px 8px;
                 border-radius: 6px;
                 transition: color var(--transition);
+                line-height: 1;
             }
-            .drawer-close:hover {
+            .drawer-back:hover {
                 color: var(--text);
             }
             .drawer-section {
@@ -943,20 +955,21 @@
                 font-size: 0.8rem;
             }
 
-            /* ── SETUP SCREEN ── */
+            /* ── SETUP SCREEN ──
+               El wizard ahora "es" la ventana (esquinas redondeadas vienen
+               del html), así que el card no necesita bg/border/radius
+               propios — solo padding interno y layout. El fondo se pinta a
+               nivel del overlay con el color de surface. */
             #setup-screen {
                 position: fixed;
                 inset: 0;
                 z-index: 200;
-                background: var(--bg);
+                background: var(--surface);
                 display: flex;
                 align-items: center;
                 justify-content: center;
             }
             .setup-card {
-                background: var(--surface);
-                border: 1px solid var(--border2);
-                border-radius: 20px;
                 padding: 36px;
                 width: 100%;
                 max-width: 420px;
@@ -1475,8 +1488,25 @@
         </style>
     </head>
     <body>
+        <!-- Window controls fuera de #app para que su z-index gane sobre
+             el overlay del setup (que también es posición fija). -->
+        <div class="window-controls">
+            <button
+                class="window-btn"
+                data-i18n-title="window.minimize"
+                title="Minimizar"
+                onclick="minimizeWindow()"
+            >−</button>
+            <button
+                class="window-btn close"
+                data-i18n-title="window.close"
+                title="Cerrar"
+                onclick="closeWindow()"
+            >×</button>
+        </div>
+
         <!-- SETUP SCREEN -->
-        <div id="setup-screen" style="display: none">
+        <div id="setup-screen" style="display: none" data-tauri-drag-region>
             <div class="setup-card">
                 <div>
                     <div class="logo" style="margin-bottom: 16px">
@@ -1614,21 +1644,6 @@
                 <div data-tauri-drag-region></div>
             </div>
 
-            <div class="window-controls">
-                <button
-                    class="window-btn"
-                    data-i18n-title="window.minimize"
-                    title="Minimizar"
-                    onclick="minimizeWindow()"
-                >−</button>
-                <button
-                    class="window-btn close"
-                    data-i18n-title="window.close"
-                    title="Cerrar"
-                    onclick="closeWindow()"
-                >×</button>
-            </div>
-
             <div class="main">
                 <div class="update-banner" id="update-banner" hidden>
                     <span class="update-banner-text" id="update-banner-text"></span>
@@ -1668,6 +1683,48 @@
                         </div>
                     </div>
                     <div
+                        style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 12px;
+                            margin-top: 14px;
+                            background: var(--surface2);
+                            padding: 10px 12px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                        "
+                    >
+                        <div style="min-width: 0; flex: 1">
+                            <div
+                                style="font-size: 0.85rem; color: var(--text)"
+                                data-i18n="home.audioReactive"
+                            >
+                                Reactivo al sonido
+                            </div>
+                            <div
+                                style="
+                                    font-size: 0.65rem;
+                                    color: var(--text-muted);
+                                    font-family: var(--mono);
+                                    margin-top: 2px;
+                                "
+                                data-i18n="home.audioReactiveHint"
+                            >
+                                El brillo del sync pulsa con el audio del
+                                sistema.
+                            </div>
+                        </div>
+                        <label class="toggle">
+                            <input
+                                type="checkbox"
+                                id="home-audio-toggle"
+                                onchange="setHomeAudioReactive(this.checked)"
+                            />
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                    <div
                         id="zone-actions"
                         style="
                             display: none;
@@ -1677,15 +1734,6 @@
                             align-items: stretch;
                         "
                     >
-                        <button
-                            id="audio-sync-btn"
-                            class="btn btn-ghost"
-                            style="padding: 10px 16px; font-size: 0.85rem"
-                            onclick="toggleAudioSync()"
-                            data-i18n="home.startAudioSync"
-                        >
-                            🎵 Audio Sync
-                        </button>
                         <button
                             class="btn btn-ghost"
                             style="padding: 10px 16px; font-size: 0.85rem"
@@ -1795,19 +1843,35 @@
                         />
                     </div>
 
-                    <div
-                        style="
-                            margin-top: 14px;
-                            font-size: 0.65rem;
-                            color: var(--text-muted);
-                            font-family: var(--mono);
-                            line-height: 1.6;
-                        "
-                        data-i18n-html="zoneConfig.upcoming"
-                    >
-                        Próximamente:<br />
-                        · Secciones por luz · Sync con audio · Perfiles
+                    <div class="zone-bri-section">
+                        <div class="zone-bri-label">
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M9 21h6M12 3a6 6 0 0 1 6 6c0 2.5-1.5 4.7-3.5 6V17H9.5v-2C7.5 13.7 6 11.5 6 9a6 6 0 0 1 6-6z" />
+                            </svg>
+                            <span data-i18n="zoneConfig.perLightMaxLabel"
+                                >Brillo máximo por luz</span
+                            >
+                        </div>
+                        <div
+                            id="zone-config-light-caps"
+                            style="
+                                display: flex;
+                                flex-direction: column;
+                                gap: 8px;
+                                margin-top: 6px;
+                            "
+                        ></div>
                     </div>
+
                 </div>
 
                 <!-- SCENES PAGE -->
@@ -1829,6 +1893,50 @@
                     >
                         Animaciones que recorren colores en bucle. Toca para
                         iniciar; toca de nuevo para detener.
+                    </div>
+                    <div
+                        style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 12px;
+                            margin-bottom: 14px;
+                            background: var(--surface2);
+                            padding: 10px 12px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                        "
+                    >
+                        <div style="min-width: 0; flex: 1">
+                            <div
+                                style="
+                                    font-size: 0.85rem;
+                                    color: var(--text);
+                                "
+                                data-i18n="scenes.audioReactive"
+                            >
+                                Reactivo al sonido
+                            </div>
+                            <div
+                                style="
+                                    font-size: 0.65rem;
+                                    color: var(--text-muted);
+                                    font-family: var(--mono);
+                                    margin-top: 2px;
+                                "
+                                data-i18n="scenes.audioReactiveHint"
+                            >
+                                El brillo pulsa con el audio del sistema.
+                            </div>
+                        </div>
+                        <label class="toggle">
+                            <input
+                                type="checkbox"
+                                id="scenes-audio-toggle"
+                                onchange="setSceneAudioReactive(this.checked)"
+                            />
+                            <span class="toggle-track"></span>
+                        </label>
                     </div>
                     <div class="zones-grid" id="scenes-grid">
                         <div
@@ -1937,10 +2045,13 @@
         ></div>
         <div class="settings-drawer" id="settings-drawer">
             <div class="drawer-header">
+                <button
+                    class="drawer-back"
+                    onclick="closeSettings()"
+                    data-i18n-title="common.back"
+                    title="Volver"
+                >←</button>
                 <span data-i18n="nav.settings">Ajustes</span>
-                <button class="drawer-close" onclick="closeSettings()">
-                    ✕
-                </button>
             </div>
 
             <!-- Apariencia -->
@@ -1965,49 +2076,61 @@
                     style="margin-top: 4px"
                     onchange="setLocale(this.value); populateLocaleSelector(); populateSettingsLocaleSelector();"
                 ></select>
-                <label class="settings-check">
-                    <input
-                        type="checkbox"
-                        id="notifications-toggle"
-                        onchange="setNotificationsEnabled(this.checked)"
-                    />
+                <label class="settings-row">
                     <span data-i18n="settings.notifications">
                         Notificaciones del sistema
                     </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="notifications-toggle"
+                            onchange="setNotificationsEnabled(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
                 </label>
-                <label class="settings-check">
-                    <input
-                        type="checkbox"
-                        id="quit-on-close-toggle"
-                        onchange="setQuitOnClose(this.checked)"
-                    />
+                <label class="settings-row">
                     <span data-i18n="settings.quitOnClose">
                         Al cerrar, salir de la app (en vez de minimizar al tray)
                     </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="quit-on-close-toggle"
+                            onchange="setQuitOnClose(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
                 </label>
-                <label class="settings-check">
-                    <input
-                        type="checkbox"
-                        id="autostart-toggle"
-                        onchange="setAutostart(this.checked)"
-                    />
+                <label class="settings-row">
                     <span data-i18n="settings.autostart">
                         Iniciar con el sistema
                     </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="autostart-toggle"
+                            onchange="setAutostart(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
                 </label>
                 <label
-                    class="settings-check"
+                    class="settings-row"
                     id="autostart-sync-row"
                     style="padding-left: 1.25rem; opacity: 0.5"
                 >
-                    <input
-                        type="checkbox"
-                        id="autostart-sync-toggle"
-                        onchange="setAutostartSync(this.checked)"
-                        disabled
-                    />
                     <span data-i18n="settings.autostartSync">
                         Iniciar Screen Sync al arrancar
+                    </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="autostart-sync-toggle"
+                            onchange="setAutostartSync(this.checked)"
+                            disabled
+                        />
+                        <span class="toggle-track"></span>
                     </span>
                 </label>
             </div>
@@ -2642,6 +2765,22 @@
             }
 
             // ── SETUP ──
+            // Tamaño de la ventana durante el wizard inicial: mismo ancho
+            // que la app (`.setup-card` está cap'd en 420px de ancho) pero
+            // más alto para que el card no scrollee.
+            const SETUP_WIN_SIZE = { w: 420, h: 780 };
+            const APP_WIN_SIZE = { w: 420, h: 700 };
+
+            async function resizeWindow(w, h) {
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) return;
+                try {
+                    await invoke("resize_window", { width: w, height: h });
+                } catch (e) {
+                    console.warn("[window] resize_window failed:", e);
+                }
+            }
+
             function showSetup() {
                 document.getElementById("setup-screen").style.display = "flex";
                 // El setup siempre arranca en el paso de bridge — al re-vincular
@@ -2649,9 +2788,11 @@
                 document.getElementById("setup-step-bridge").style.display = "";
                 document.getElementById("setup-step-target").style.display =
                     "none";
+                resizeWindow(SETUP_WIN_SIZE.w, SETUP_WIN_SIZE.h);
             }
             function hideSetup() {
                 document.getElementById("setup-screen").style.display = "none";
+                resizeWindow(APP_WIN_SIZE.w, APP_WIN_SIZE.h);
             }
 
             async function discoverBridge() {
@@ -2768,8 +2909,7 @@
                 if (!configured) {
                     statusEl.textContent = t("status.disconnected");
                     statusEl.classList.remove("connected");
-                    document.getElementById("setup-screen").style.display =
-                        "flex";
+                    showSetup();
                     return;
                 }
 
@@ -3218,6 +3358,34 @@
                 return ids;
             }
 
+            // ── LIGHT MAX BRIGHTNESS ──
+            // Tope de brillo individual por luz (1..255). Se aplica además del
+            // brillo global del sync, así una bombilla muy potente puede vivir
+            // junto a otras más tenues sin reventar la escena. Stub a 255 cuando
+            // no hay valor guardado — el backend lo trata como "sin cap".
+            const LIGHT_MAX_BRI_KEY = "lightMaxBri";
+            function loadLightMaxBri() {
+                try {
+                    const v = JSON.parse(
+                        localStorage.getItem(LIGHT_MAX_BRI_KEY) || "{}",
+                    );
+                    return v && typeof v === "object" ? v : {};
+                } catch {
+                    return {};
+                }
+            }
+            function getLightMaxBri(id) {
+                const map = loadLightMaxBri();
+                const v = parseInt(map[id], 10);
+                if (isNaN(v) || v < 1 || v > 255) return 255;
+                return v;
+            }
+            function setLightMaxBri(id, v) {
+                const map = loadLightMaxBri();
+                map[id] = v;
+                localStorage.setItem(LIGHT_MAX_BRI_KEY, JSON.stringify(map));
+            }
+
             // ── LIGHT POSITIONS ──
             const POSITIONS_KEY = "lightPositions";
             // Odd counts so the exact center (0.5, 0.5) is a representable snap point.
@@ -3283,9 +3451,46 @@
                 selectedZoneID = zoneID;
                 document.getElementById("zone-config-name").textContent =
                     cfg.name;
-                renderZoneLayout(lightsForZone(zoneID));
+                const ids = lightsForZone(zoneID);
+                renderZoneLayout(ids);
+                renderZoneLightCaps(ids);
                 applyZoneBriUI(zoneID);
                 switchPage("zone-config");
+            }
+
+            // Render una fila por luz con un slider de brillo máximo individual.
+            function renderZoneLightCaps(lightIds) {
+                const wrap = document.getElementById("zone-config-light-caps");
+                if (!wrap) return;
+                if (!lightIds.length) {
+                    wrap.innerHTML = "";
+                    return;
+                }
+                const lightById = Object.fromEntries(
+                    lights.map((l) => [l.id, l]),
+                );
+                wrap.innerHTML = lightIds
+                    .map((id) => {
+                        const name = lightById[id] ? lightById[id].name : id;
+                        const v = getLightMaxBri(id);
+                        return `
+<div style="display:flex;align-items:center;gap:10px">
+  <div style="flex:0 0 38%;min-width:0;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</div>
+  <input type="range" min="1" max="255" value="${v}" data-light-id="${id}"
+         oninput="onLightMaxBriInput('${id}', this.value)" style="flex:1" />
+  <div class="zone-bri-value" id="light-max-bri-val-${id}" style="flex:0 0 32px;text-align:right">${v}</div>
+</div>`;
+                    })
+                    .join("");
+            }
+
+            function onLightMaxBriInput(id, v) {
+                v = parseInt(v, 10);
+                if (isNaN(v) || v < 1) v = 1;
+                if (v > 255) v = 255;
+                setLightMaxBri(id, v);
+                const lbl = document.getElementById(`light-max-bri-val-${id}`);
+                if (lbl) lbl.textContent = v;
             }
 
             function renderZoneLayout(lightIds) {
@@ -3423,13 +3628,17 @@
                             el.dataset.page === navPage,
                         ),
                     );
-                if (page === "home") renderZones();
+                if (page === "home") {
+                    renderZones();
+                    applyHomeAudioToggleUI();
+                }
                 if (page === "lights") {
                     renderGroups();
                     renderLights();
                 }
                 if (page === "scenes") {
                     loadScenes();
+                    applySceneAudioToggleUI();
                 }
             }
 
@@ -3605,6 +3814,9 @@
                     if (!r.ok) throw new Error(await r.text());
                     activeSceneID = id;
                     renderScenes();
+                    if (isSceneAudioReactive()) {
+                        startSceneAudio();
+                    }
                 } catch (e) {
                     toast(t("toasts.sceneStartError"), "error", 2500);
                 }
@@ -3951,8 +4163,223 @@
                 try {
                     await fetch(API + "/api/scenes/stop", { method: "POST" });
                 } catch (e) {}
+                stopSceneAudio();
                 activeSceneID = null;
                 renderScenes();
+            }
+
+            // ── AUDIO BEAT TRACKER ─────────────────────────────────────
+            // Helper compartido entre los modos reactivos (escenas y screen
+            // sync). Detecta transientes contra un promedio largo del bass
+            // y devuelve un 0..1 que cae rápido entre golpes.
+            function createBeatTracker() {
+                return { bassAvg: 0, beatPeak: 0 };
+            }
+
+            function bassFromBins(buf) {
+                let bass = 0;
+                for (let i = 1; i < 9; i++) bass += buf[i];
+                return bass / 8 / 255;
+            }
+
+            function ingestBeat(tracker, bass) {
+                tracker.bassAvg =
+                    tracker.bassAvg === 0
+                        ? bass
+                        : tracker.bassAvg * 0.96 + bass * 0.04;
+                const dev = Math.max(0, bass - tracker.bassAvg * 1.15);
+                const beat = Math.min(1, dev * 5);
+                tracker.beatPeak = Math.max(beat, tracker.beatPeak * 0.78);
+                return tracker.beatPeak;
+            }
+
+            // smoothing=0 → bins crudos, sino se borran los transientes.
+            async function sampleAudioBeatFactor(tracker) {
+                const bins = await window.__TAURI__.core.invoke(
+                    "sample_audio_bins",
+                    { smoothing: 0.0 },
+                );
+                return ingestBeat(
+                    tracker,
+                    bassFromBins(new Uint8Array(bins)),
+                );
+            }
+
+            // ── HOME SYNC AUDIO REACTIVITY ─────────────────────────────
+            // Modo "el brillo del Screen Sync pulsa con el audio del sistema".
+            // El color sigue viniendo de la captura de pantalla; sólo se
+            // reemplaza el campo `bri` del frame WS por uno derivado del
+            // beat-tracker.
+            const HOME_AUDIO_KEY = "home.audioReactive";
+            let homeAudioTracker = null;
+
+            function isHomeAudioReactive() {
+                return localStorage.getItem(HOME_AUDIO_KEY) === "1";
+            }
+
+            function setHomeAudioReactive(on) {
+                localStorage.setItem(HOME_AUDIO_KEY, on ? "1" : "0");
+                if (on && !inTauri()) {
+                    toast(t("toasts.sceneAudioTauriOnly"), "info", 4000);
+                }
+                if (!on) {
+                    homeAudioTracker = null;
+                }
+            }
+
+            function applyHomeAudioToggleUI() {
+                const cb = document.getElementById("home-audio-toggle");
+                if (cb) cb.checked = isHomeAudioReactive();
+            }
+
+            // Devuelve el bri que el screen-sync debería enviar en el frame
+            // actual. Sin audio-reactive activo, es globalBri tal cual. Con
+            // audio-reactive y en Tauri, las luces se sientan en 80% del bri
+            // y los beats las empujan hasta el 100% — radio de 20%.
+            async function computeSyncBri() {
+                if (!isHomeAudioReactive() || !inTauri()) {
+                    return globalBri;
+                }
+                if (!homeAudioTracker) {
+                    homeAudioTracker = createBeatTracker();
+                }
+                try {
+                    const factor = await sampleAudioBeatFactor(
+                        homeAudioTracker,
+                    );
+                    const ceiling = globalBri;
+                    const floor = Math.max(1, Math.round(ceiling * 0.8));
+                    return Math.round(
+                        floor + (ceiling - floor) * factor,
+                    );
+                } catch (e) {
+                    console.warn("[home-audio] sample error:", e);
+                    return globalBri;
+                }
+            }
+
+            // ── SCENE AUDIO REACTIVITY ──
+            // Modo "el brillo pulsa con el audio mientras la escena recorre
+            // sus keyframes". El sceneRunner del backend mantiene el color
+            // (lee getBri() en cada tick), y desde acá mandamos `{bri: x}`
+            // por WS para modular el brillo según la energía del bass.
+            const SCENE_AUDIO_KEY = "scenes.audioReactive";
+            let sceneAudioActive = false;
+            let sceneAudioWs = null;
+            let sceneAudioTimerId = null;
+            let sceneAudioEMA = 0;
+
+            function isSceneAudioReactive() {
+                return localStorage.getItem(SCENE_AUDIO_KEY) === "1";
+            }
+
+            function setSceneAudioReactive(on) {
+                localStorage.setItem(SCENE_AUDIO_KEY, on ? "1" : "0");
+                // Si hay una escena activa, sincronizar el estado del loop
+                // con el toggle ahora mismo en lugar de esperar al siguiente
+                // toggleScene.
+                if (activeSceneID) {
+                    if (on) {
+                        startSceneAudio();
+                    } else {
+                        stopSceneAudio();
+                    }
+                }
+            }
+
+            function applySceneAudioToggleUI() {
+                const cb = document.getElementById("scenes-audio-toggle");
+                if (cb) cb.checked = isSceneAudioReactive();
+            }
+
+            async function startSceneAudio() {
+                if (sceneAudioActive) return;
+                if (!inTauri()) {
+                    toast(t("toasts.sceneAudioTauriOnly"), "info", 4000);
+                    return;
+                }
+                sceneAudioActive = true;
+                sceneAudioEMA = 0;
+                const wsBase = API
+                    ? API.replace(/^http/, "ws")
+                    : `ws://${location.host}`;
+                sceneAudioWs = new WebSocket(`${wsBase}/ws/color`);
+                sceneAudioWs.onopen = () => scheduleSceneAudioTick();
+                sceneAudioWs.onerror = (e) => {
+                    console.error("[scene-audio] WebSocket error", e);
+                    stopSceneAudio();
+                };
+                sceneAudioWs.onclose = () => {
+                    if (sceneAudioActive) stopSceneAudio();
+                };
+            }
+
+            function stopSceneAudio() {
+                const wasActive = sceneAudioActive;
+                sceneAudioActive = false;
+                if (sceneAudioTimerId) {
+                    clearTimeout(sceneAudioTimerId);
+                    sceneAudioTimerId = null;
+                }
+                if (sceneAudioWs) {
+                    try {
+                        sceneAudioWs.close();
+                    } catch {}
+                    sceneAudioWs = null;
+                }
+                sceneAudioEMA = 0;
+                // Restituir el bri global que el usuario tenía configurado
+                // antes de que el loop lo estuviera modulando.
+                if (wasActive) {
+                    pushBriToBackend(globalBri);
+                }
+            }
+
+            function scheduleSceneAudioTick() {
+                let inflight = false;
+                const minIntervalMs = 33; // ~30 Hz
+                const tracker = createBeatTracker();
+
+                const tick = async () => {
+                    if (
+                        !sceneAudioActive ||
+                        !sceneAudioWs ||
+                        sceneAudioWs.readyState !== WebSocket.OPEN
+                    ) {
+                        return;
+                    }
+                    if (inflight) {
+                        sceneAudioTimerId = setTimeout(tick, minIntervalMs);
+                        return;
+                    }
+                    inflight = true;
+                    try {
+                        const factor = await sampleAudioBeatFactor(tracker);
+                        const ceiling = Math.max(1, globalBri);
+                        // Piso 8% del ceiling — la luz no se apaga del todo
+                        // entre beats pero queda claramente atenuada.
+                        const floor = Math.max(1, Math.round(ceiling * 0.08));
+                        const bri = Math.round(
+                            floor + (ceiling - floor) * factor,
+                        );
+                        sceneAudioWs.send(JSON.stringify({ bri }));
+                    } catch (e) {
+                        console.error("[scene-audio] sample error:", e);
+                        toast(
+                            tf("toasts.audioCaptureFailed", {
+                                err: e.message || e,
+                            }),
+                            "error",
+                            6000,
+                        );
+                        stopSceneAudio();
+                        return;
+                    } finally {
+                        inflight = false;
+                    }
+                    sceneAudioTimerId = setTimeout(tick, minIntervalMs);
+                };
+                tick();
             }
 
             function openSettings() {
@@ -4136,8 +4563,32 @@
                 }, 0);
             }
 
+            // Apaga (on:false) las luces de una zona via HTTP. Se llama al
+            // detener cualquier sync o al cerrar la app, para no dejar las luces
+            // en el último color del frame. Devuelve una Promise que resuelve
+            // cuando el bridge confirmó cada PUT.
+            async function turnOffLightsForZone(zoneID) {
+                if (!zoneID) return;
+                const ids = lightsForZone(zoneID);
+                if (!ids.length) return;
+                await Promise.all(
+                    ids.map((id) =>
+                        fetch(`${API}/api/lights/${id}/state`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                on: false,
+                                transitiontime: 2,
+                            }),
+                        }).catch(() => {}),
+                    ),
+                );
+            }
+
             function stopSync() {
+                const zoneBeingStopped = activeZoneID;
                 syncRunning = false;
+                homeAudioTracker = null;
                 if (syncTimerId) {
                     clearTimeout(syncTimerId);
                     syncTimerId = null;
@@ -4158,6 +4609,13 @@
                     fetch(`${API}/api/entertainment/stop`, { method: "POST" });
                     updateEntBadge(false);
                     activeZoneID = null;
+                }
+                // Apagar las luces del último ambiente sincronizado. Se hace
+                // después de cerrar el WS y el stream de entertainment para
+                // que el "off" no compita con un frame de color que aún esté
+                // en vuelo y reencienda la luz.
+                if (zoneBeingStopped) {
+                    turnOffLightsForZone(zoneBeingStopped);
                 }
                 updateSyncUI();
                 renderZones();
@@ -4182,7 +4640,144 @@
                     return;
                 }
                 if (syncRunning) stopSync(); // mutex
-                startAudioSync(zoneID);
+                // En Tauri capturamos audio nativo (pulsesrc monitor) porque
+                // el portal de pantalla no expone toggle "Compartir audio del
+                // sistema". En browser caemos a getDisplayMedia({audio:true}).
+                const tauri = inTauri();
+                console.log(
+                    `[audio-sync] inTauri=${tauri} → ${tauri ? "native pulsesrc" : "browser getDisplayMedia"}`,
+                );
+                if (tauri) {
+                    startAudioSyncTauri(zoneID);
+                } else {
+                    startAudioSync(zoneID);
+                }
+            }
+
+            async function startAudioSyncTauri(zoneID) {
+                let entOk = false;
+                try {
+                    const r = await fetch(`${API}/api/entertainment/start`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ config_id: zoneID }),
+                    });
+                    if (r.ok) {
+                        entOk = true;
+                        updateEntBadge(true);
+                        try {
+                            const fr = await fetch(`${API}/api/entertainment`);
+                            const fd = await fr.json();
+                            entConfigs = fd.configs || [];
+                        } catch (_) {}
+                    } else {
+                        const data = await r.json().catch(() => ({}));
+                        toast(
+                            data.detail || t("toasts.entActivateError"),
+                            "error",
+                            5000,
+                        );
+                    }
+                } catch (e) {
+                    toast(e.message, "error");
+                }
+                if (!entOk) return;
+
+                const cfg = entConfigs.find((c) => c.id === zoneID);
+                audioLightIds = cfg
+                    ? [...new Set(cfg.channels.flatMap((ch) => ch.lights))]
+                    : lights.map((l) => l.id);
+
+                const wsBase = API
+                    ? API.replace(/^http/, "ws")
+                    : `ws://${location.host}`;
+                audioWs = new WebSocket(`${wsBase}/ws/color`);
+                audioWs.onopen = () => {
+                    audioWs.send(JSON.stringify({ bri: globalBri }));
+                    audioSyncRunning = true;
+                    activeZoneID = zoneID;
+                    activeSceneID = null;
+                    updateSyncUI();
+                    renderZones();
+                    notifyIfHidden(
+                        t("notify.audioSyncStartedTitle"),
+                        t("notify.audioSyncStartedBody"),
+                    );
+                    scheduleAudioSampleTauri();
+                };
+                audioWs.onerror = (e) => {
+                    console.error("[audio-sync-tauri] WebSocket error", e);
+                    toast(t("toasts.wsError"), "error", 6000);
+                    stopAudioSync();
+                };
+                audioWs.onclose = () => {
+                    if (audioSyncRunning) stopAudioSync();
+                };
+            }
+
+            // Loop nativo: invoca sample_audio_bins (FFT en Rust) y reutiliza
+            // audioFrameToRGB — el byte buffer tiene la misma forma que
+            // getByteFrequencyData (512 bins, 0..255).
+            function scheduleAudioSampleTauri() {
+                const invoke = window.__TAURI__.core.invoke;
+                let inflight = false;
+                const minIntervalMs = 33;
+                let frameN = 0;
+
+                const tick = async () => {
+                    if (
+                        !audioSyncRunning ||
+                        !audioWs ||
+                        audioWs.readyState !== WebSocket.OPEN
+                    ) {
+                        return;
+                    }
+                    if (inflight) {
+                        audioRafId = setTimeout(tick, minIntervalMs);
+                        return;
+                    }
+                    inflight = true;
+                    try {
+                        const bins = await invoke("sample_audio_bins");
+                        const buf = new Uint8Array(bins);
+                        const [r, g, b] = audioFrameToRGB(buf);
+                        const lightsPayload = audioLightIds.map((id) => ({
+                            id,
+                            r,
+                            g,
+                            b,
+                            max_bri: getLightMaxBri(id),
+                        }));
+                        audioWs.send(
+                            JSON.stringify({
+                                lights: lightsPayload,
+                                bri: globalBri,
+                                transitiontime: 0,
+                            }),
+                        );
+                        frameN++;
+                        if (frameN === 1 || frameN % 60 === 0) {
+                            console.log(
+                                `[audio-sync-tauri] frame ${frameN} rgb=${r},${g},${b}`,
+                            );
+                        }
+                    } catch (e) {
+                        console.error("[audio-sync-tauri] sample error:", e);
+                        toast(
+                            tf("toasts.audioCaptureFailed", {
+                                err: e.message || e,
+                            }),
+                            "error",
+                            6000,
+                        );
+                        stopAudioSync();
+                        return;
+                    } finally {
+                        inflight = false;
+                    }
+                    audioRafId = setTimeout(tick, minIntervalMs);
+                };
+                tick();
             }
 
             async function startAudioSync(zoneID) {
@@ -4298,9 +4893,14 @@
             }
 
             function stopAudioSync() {
+                const zoneBeingStopped = activeZoneID;
                 audioSyncRunning = false;
                 if (audioRafId) {
+                    // El loop browser usa requestAnimationFrame; el loop
+                    // Tauri usa setTimeout. Llamamos ambos cancels — son
+                    // no-op si el id no corresponde.
                     cancelAnimationFrame(audioRafId);
+                    clearTimeout(audioRafId);
                     audioRafId = null;
                 }
                 if (audioWs) {
@@ -4323,6 +4923,9 @@
                     fetch(`${API}/api/entertainment/stop`, { method: "POST" });
                     updateEntBadge(false);
                     activeZoneID = null;
+                }
+                if (zoneBeingStopped) {
+                    turnOffLightsForZone(zoneBeingStopped);
                 }
                 updateSyncUI();
                 renderZones();
@@ -4359,6 +4962,7 @@
                         r,
                         g,
                         b,
+                        max_bri: getLightMaxBri(id),
                     }));
                     // DTLS tt=0 → interpolación smoothstep en Go
                     audioWs.send(
@@ -4729,9 +5333,12 @@
                             document.getElementById("sync-interval").value,
                         ) * 1000,
                     );
-                    const interval = entActive()
-                        ? Math.min(sliderMs, 50)
-                        : sliderMs;
+                    const audioActive = isHomeAudioReactive() && inTauri();
+                    const interval = audioActive
+                        ? Math.min(sliderMs, 33)
+                        : entActive()
+                          ? Math.min(sliderMs, 50)
+                          : sliderMs;
 
                     // Skip si la captura previa todavía está en vuelo (Rust > intervalo).
                     if (!inflight) {
@@ -4755,7 +5362,13 @@
                                         c[1],
                                         c[2],
                                     );
-                                    return { id, r, g, b };
+                                    return {
+                                        id,
+                                        r,
+                                        g,
+                                        b,
+                                        max_bri: getLightMaxBri(id),
+                                    };
                                 },
                             );
 
@@ -4790,10 +5403,11 @@
                             const tt = entActive()
                                 ? 0
                                 : Math.max(1, Math.round(sliderMs / 100));
+                            const bri = await computeSyncBri();
                             syncWs.send(
                                 JSON.stringify({
                                     lights: lightsPayload,
-                                    bri: globalBri,
+                                    bri,
                                     transitiontime: tt,
                                 }),
                             );
@@ -4928,6 +5542,36 @@
                 } catch (e) {
                     console.error("close failed:", e);
                 }
+            }
+
+            // Shutdown protocol: Rust emite `spectra:before-quit` cuando la
+            // X o el tray "Salir" disparan un cierre real. Apagamos las luces
+            // del ambiente sincronizado antes de invocar `confirm_quit`, que
+            // del lado Rust ejecuta cleanup + app.exit(0). Si fallamos o el
+            // bridge tarda, un watchdog en Rust (~1.5 s) fuerza la salida.
+            async function shutdownAndExit() {
+                const zone = activeZoneID;
+                try {
+                    if (syncRunning) stopSync();
+                    if (audioSyncRunning) stopAudioSync();
+                    if (zone) {
+                        await turnOffLightsForZone(zone);
+                    }
+                } catch (e) {
+                    console.warn("[shutdown] light-off failed:", e);
+                }
+                try {
+                    await window.__TAURI__.core.invoke("confirm_quit");
+                } catch (e) {
+                    console.warn("[shutdown] confirm_quit failed:", e);
+                }
+            }
+            if (window.__TAURI__?.event?.listen) {
+                window.__TAURI__.event
+                    .listen("spectra:before-quit", () => shutdownAndExit())
+                    .catch((e) =>
+                        console.warn("[shutdown] listen failed:", e),
+                    );
             }
 
             // Drag-to-move: data-tauri-drag-region is unreliable on Linux/Wayland in
@@ -5086,7 +5730,13 @@
                         (g / cnt) | 0,
                         (b / cnt) | 0,
                     );
-                    return { id, r: rb, g: gb, b: bb };
+                    return {
+                        id,
+                        r: rb,
+                        g: gb,
+                        b: bb,
+                        max_bri: getLightMaxBri(id),
+                    };
                 });
             }
 
