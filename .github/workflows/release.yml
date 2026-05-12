@@ -43,6 +43,12 @@ jobs:
       - name: go test
         working-directory: backend
         run: go test ./...
+      # tauri.conf.json declara backend/spectractl como bundle.resource — el
+      # build.rs de tauri-build valida la ruta a compile-time. Sin el binario
+      # presente, "cargo test" falla con "resource path doesn't exist".
+      - name: Pre-build Go backend (required by Tauri resource check)
+        working-directory: backend
+        run: go build -o spectractl .
       - name: cargo test
         working-directory: src-tauri
         run: cargo test
