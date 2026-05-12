@@ -34,7 +34,7 @@
     "copyright": "Copyright (c) 2026 Sebas Contreras",
     "license": "MIT",
     "licenseFile": "../LICENSE",
-    "homepage": "https://github.com/sebascode/SpectraControl_App",
+    "homepage": "https://sebascode.github.io/SpectraControl_App/",
     "category": "Utility",
     "shortDescription": "Sync Philips Hue lights with your screen",
     "longDescription": "SpectraControl samples colors from your monitor and pushes them to Philips Hue lights in real time, with customizable per-light regions, scenes, and tray integration.",

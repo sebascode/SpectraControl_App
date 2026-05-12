@@ -3,6 +3,10 @@ name = "spectra-control"
 version = "0.2.13"
 edition = "2021"
 license = "MIT"
+authors = ["Sebas Contreras <swf.sebas@gmail.com>"]
+description = "Linux desktop app for Philips Hue, with screen-to-light sync over Hue Entertainment API v2."
+homepage = "https://sebascode.github.io/SpectraControl_App/"
+repository = "https://github.com/sebascode/SpectraControl_App"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

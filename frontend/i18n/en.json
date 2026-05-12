@@ -133,6 +133,8 @@
   "settings.profileHint": "Includes bridge credentials. Treat the file like a password.",
   "settings.aboutSection": "About",
   "settings.version": "Version {version}",
+  "settings.createdBy": "Created by",
+  "settings.website": "Website",
   "settings.checkUpdates": "Check for updates",
   "settings.checkUpdatesBusy": "Checking...",
 
