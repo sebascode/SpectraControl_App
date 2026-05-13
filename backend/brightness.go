@@ -12,7 +12,10 @@ import (
 var globalBri atomic.Uint32 // stored as uint8 0..255 widened to uint32
 
 func init() {
-	globalBri.Store(200)
+	// 254 ≈ máximo útil para Hue (la API v1 acepta 1..254). Default alto
+	// para que el usuario no perciba las luces "oscurecidas" antes de tocar
+	// el slider de la zona.
+	globalBri.Store(254)
 }
 
 func getBri() uint8 {

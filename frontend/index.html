@@ -1838,7 +1838,7 @@
                             id="zone-bri-slider"
                             min="1"
                             max="255"
-                            value="200"
+                            value="254"
                             oninput="onZoneBriInput(this.value)"
                         />
                     </div>
@@ -2738,7 +2738,7 @@
             let activeSceneID = null;
 
             const BRI_KEY = "globalBri";
-            let globalBri = parseInt(localStorage.getItem(BRI_KEY) || "200", 10);
+            let globalBri = parseInt(localStorage.getItem(BRI_KEY) || "254", 10);
             let briCommitTimer = null;
 
             const COLOR_PRESETS = [
@@ -3659,7 +3659,7 @@
                 const map = loadZoneBri();
                 if (typeof map[zoneID] === "number") return map[zoneID];
                 // Fallback: legacy global value during migration.
-                return globalBri || 200;
+                return globalBri || 254;
             }
             function setZoneBri(zoneID, v) {
                 const map = loadZoneBri();
@@ -4173,7 +4173,7 @@
             // sync). Detecta transientes contra un promedio largo del bass
             // y devuelve un 0..1 que cae rápido entre golpes.
             function createBeatTracker() {
-                return { bassAvg: 0, beatPeak: 0 };
+                return { bassAvg: 0, beatPeak: 0, silent: true };
             }
 
             function bassFromBins(buf) {
@@ -4181,6 +4181,11 @@
                 for (let i = 1; i < 9; i++) bass += buf[i];
                 return bass / 8 / 255;
             }
+
+            // Umbral debajo del cual consideramos "silencio" — los dos modos
+            // audio-reactive lo usan para no atenuar el brillo cuando no hay
+            // música. El bass típico con música es 0.4..0.9; sin música, < 0.02.
+            const BEAT_SILENT_THRESHOLD = 0.03;
 
             function ingestBeat(tracker, bass) {
                 tracker.bassAvg =
@@ -4190,6 +4195,7 @@
                 const dev = Math.max(0, bass - tracker.bassAvg * 1.15);
                 const beat = Math.min(1, dev * 5);
                 tracker.beatPeak = Math.max(beat, tracker.beatPeak * 0.78);
+                tracker.silent = tracker.bassAvg < BEAT_SILENT_THRESHOLD;
                 return tracker.beatPeak;
             }
 
@@ -4247,6 +4253,11 @@
                     const factor = await sampleAudioBeatFactor(
                         homeAudioTracker,
                     );
+                    // Silencio → no atenuar; el toggle no debería oscurecer
+                    // cuando no hay nada que reaccione.
+                    if (homeAudioTracker.silent) {
+                        return globalBri;
+                    }
                     const ceiling = globalBri;
                     const floor = Math.max(1, Math.round(ceiling * 0.8));
                     return Math.round(
@@ -4356,12 +4367,23 @@
                     try {
                         const factor = await sampleAudioBeatFactor(tracker);
                         const ceiling = Math.max(1, globalBri);
-                        // Piso 8% del ceiling — la luz no se apaga del todo
-                        // entre beats pero queda claramente atenuada.
-                        const floor = Math.max(1, Math.round(ceiling * 0.08));
-                        const bri = Math.round(
-                            floor + (ceiling - floor) * factor,
-                        );
+                        // En silencio devolvemos el bri global tal cual:
+                        // la escena queda con su animación de color y el
+                        // brillo del usuario, sin atenuarse.
+                        const bri = tracker.silent
+                            ? ceiling
+                            : (() => {
+                                  // Piso 8% del ceiling — la luz no se apaga
+                                  // del todo entre beats pero queda claramente
+                                  // atenuada.
+                                  const floor = Math.max(
+                                      1,
+                                      Math.round(ceiling * 0.08),
+                                  );
+                                  return Math.round(
+                                      floor + (ceiling - floor) * factor,
+                                  );
+                              })();
                         sceneAudioWs.send(JSON.stringify({ bri }));
                     } catch (e) {
                         console.error("[scene-audio] sample error:", e);
