@@ -4,6 +4,7 @@
 // In release builds, this binary spawns the bundled `spectractl` from resource_dir
 // and kills it on window close.
 
+mod autostart;
 mod runtime;
 
 use std::io::{BufRead, BufReader, Read};
@@ -783,7 +784,8 @@ fn main() {
             notify_native,
             confirm_quit,
             resize_window,
-            runtime::runtime_environment
+            runtime::runtime_environment,
+            autostart::set_autostart_portal
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -5940,9 +5940,21 @@
             // Invocamos los comandos del plugin directamente — el contrato
             // `plugin:autostart|<cmd>` es estable mientras esté registrado en
             // Rust (ver main.rs) y declarado en capabilities/default.json.
+            //
+            // En Flatpak el plugin no funciona: escribiría el .desktop dentro
+            // del sandbox, invisible al XDG autostart del host. Ahí vamos por
+            // `set_autostart_portal` (org.freedesktop.portal.Background) y
+            // persistimos la última intención en localStorage — el portal no
+            // expone "get current state", solo aplica.
+            const AUTOSTART_PORTAL_KEY = "autostart.portal.enabled";
+
             async function getAutostartEnabled() {
                 const invoke = window.__TAURI__?.core?.invoke;
                 if (!invoke) return false;
+                const rt = await getRuntimeInfo();
+                if (rt?.is_flatpak) {
+                    return localStorage.getItem(AUTOSTART_PORTAL_KEY) === "1";
+                }
                 try {
                     return await invoke("plugin:autostart|is_enabled");
                 } catch (e) {
@@ -5954,10 +5966,28 @@
             async function setAutostart(on) {
                 const invoke = window.__TAURI__?.core?.invoke;
                 if (!invoke) return;
+                const rt = await getRuntimeInfo();
                 try {
-                    await invoke(
-                        on ? "plugin:autostart|enable" : "plugin:autostart|disable",
-                    );
+                    if (rt?.is_flatpak) {
+                        // El portal devuelve el `auto_start` realmente
+                        // otorgado (puede denegarse). Persistimos eso, no
+                        // lo que pidió el usuario.
+                        const granted = await invoke("set_autostart_portal", {
+                            enabled: !!on,
+                        });
+                        localStorage.setItem(
+                            AUTOSTART_PORTAL_KEY,
+                            granted ? "1" : "0",
+                        );
+                        if (granted !== !!on) {
+                            document.getElementById("autostart-toggle").checked = granted;
+                            on = granted;
+                        }
+                    } else {
+                        await invoke(
+                            on ? "plugin:autostart|enable" : "plugin:autostart|disable",
+                        );
+                    }
                     syncAutostartSyncRowState(on);
                 } catch (e) {
                     console.error("[autostart] toggle falló", e);
