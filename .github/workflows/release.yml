@@ -176,6 +176,20 @@ jobs:
           (cd dist && sha256sum *.AppImage *.deb *.rpm > SHA256SUMS)
           cat dist/SHA256SUMS
 
+      - name: Generate Flatpak offline sources
+        # Produces the inputs flathub/casa.scode.SpectraControl needs to build
+        # offline: cargo-sources.json (every crate from src-tauri/Cargo.lock)
+        # and backend-vendor.tar.gz (Go module cache). Published as release
+        # assets so the Flathub manifest can reference them by URL+sha256
+        # instead of regenerating from a network-enabled checkout.
+        run: |
+          packaging/flatpak/generate-sources.sh
+          cp packaging/flatpak/cargo-sources.json    dist/cargo-sources.json
+          cp packaging/flatpak/backend-vendor.tar.gz dist/backend-vendor.tar.gz
+          (cd dist && sha256sum cargo-sources.json backend-vendor.tar.gz >> SHA256SUMS)
+          echo "→ SHA256SUMS (con sources Flatpak):"
+          cat dist/SHA256SUMS
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -197,4 +211,6 @@ jobs:
             dist/*.deb
             dist/*.rpm
             dist/latest.json
+            dist/cargo-sources.json
+            dist/backend-vendor.tar.gz
             dist/SHA256SUMS

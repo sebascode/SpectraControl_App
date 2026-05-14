@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>casa.scode.SpectraControl</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>SpectraControl</name>
+  <summary>Sync Philips Hue lights with your screen</summary>
+
+  <developer id="casa.scode">
+    <name>Sebas Contreras</name>
+  </developer>
+
+  <description>
+    <p>
+      SpectraControl is a Linux desktop app for Philips Hue. It samples
+      colors from your monitor and pushes them to your Hue lights in real
+      time over the Hue Entertainment API v2, with low enough latency for
+      bias lighting and ambient effects.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Real-time screen-to-light sync over Hue Entertainment v2 (DTLS).</li>
+      <li>Per-light monitor regions: bind any light to a specific rectangle of the screen.</li>
+      <li>Physical light positioning relative to the monitor for accurate sampling.</li>
+      <li>Audio-reactive mode that pulses brightness with system audio.</li>
+      <li>Dynamic, animated scenes with an in-app editor.</li>
+      <li>Real-time state sync from the bridge — external changes are reflected immediately.</li>
+      <li>System tray, desktop notifications and autostart.</li>
+      <li>Profile save and export.</li>
+      <li>Internationalization with a language picker on first run (English, Spanish).</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">casa.scode.SpectraControl.desktop</launchable>
+
+  <url type="homepage">https://spectracontrol.scode.casa/</url>
+  <url type="bugtracker">https://github.com/sebascode/SpectraControl_App/issues</url>
+  <url type="vcs-browser">https://github.com/sebascode/SpectraControl_App</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Home screen with sync controls</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_03_home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Initial setup and bridge pairing</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_01_initial_setup.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Per-light monitor zone selector</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_02_zone_selector.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Light configurator with physical positioning</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_04_light_config.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Lights overview</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_05_lights.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Dynamic scenes editor</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_06_scenes.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_07_settings.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>Utility</category>
+    <category>AudioVideo</category>
+  </categories>
+
+  <keywords>
+    <keyword>hue</keyword>
+    <keyword>philips</keyword>
+    <keyword>ambient</keyword>
+    <keyword>ambilight</keyword>
+    <keyword>bias lighting</keyword>
+    <keyword>rgb</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1" />
+
+  <branding>
+    <color type="primary" scheme_preference="light">#ffd9b3</color>
+    <color type="primary" scheme_preference="dark">#3a2a1f</color>
+  </branding>
+
+  <releases>
+    <release version="0.2.15" date="2026-05-14">
+      <description>
+        <p>First Flathub submission. Sandbox-aware build:</p>
+        <ul>
+          <li>Notifications routed through xdg-desktop-portal.</li>
+          <li>Autostart routed through xdg-desktop-portal Background.</li>
+          <li>In-app updater disabled inside the sandbox (Flathub owns updates).</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

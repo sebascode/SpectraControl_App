@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=SpectraControl
+GenericName=Hue Light Controller
+Comment=Sync Philips Hue lights with your screen
+Exec=spectra-control
+Icon=casa.scode.SpectraControl
+Terminal=false
+Categories=Utility;AudioVideo;
+Keywords=hue;philips;lights;ambient;ambilight;bias;sync;rgb;
+StartupWMClass=SpectraControl
+StartupNotify=true

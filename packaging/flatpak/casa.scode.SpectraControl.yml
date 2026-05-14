@@ -1,0 +1,90 @@
+id: casa.scode.SpectraControl
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.golang
+command: spectra-control
+
+finish-args:
+  - --share=ipc
+  # Hue bridge lives on the LAN and the Entertainment API speaks DTLS/UDP
+  # directly to it. Portals do not cover raw socket access, so we need the
+  # network share.
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  # Audio-reactive sync samples the system output.
+  - --socket=pulseaudio
+  # WebKit GPU acceleration.
+  - --device=dri
+  # System tray icon (Ayatana AppIndicator).
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Notifications and autostart already go through xdg-desktop-portal
+  # (org.freedesktop.portal.Notification / Background) — portals are
+  # auto-talkable, no extra rules required.
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/golang/bin
+  env:
+    CARGO_HOME: /run/build/spectra-control/cargo
+    GOFLAGS: '-mod=vendor'
+    GOPROXY: 'off'
+    GOSUMDB: 'off'
+    GOFLAGS_TEST: '-mod=vendor'
+
+modules:
+  - name: spectra-control
+    buildsystem: simple
+    build-options:
+      env:
+        SPECTRA_VERSION: '0.2.15'
+    build-commands:
+      # 1. Go backend. tauri-build's resource check (tauri.conf.json
+      # bundle.resources -> backend/spectractl) runs at cargo compile time,
+      # so the binary must exist before `cargo build`.
+      - cd backend && go build -ldflags="-s -w -X main.Version=${SPECTRA_VERSION}" -o spectractl .
+
+      # 2. Tauri (Rust). Cargo runs fully offline using vendored sources
+      # materialised from cargo-sources.json.
+      - cd src-tauri && cargo --offline build --release --locked
+
+      # 3. Install.
+      - install -Dm755 src-tauri/target/release/spectra-control /app/bin/spectra-control
+      - install -Dm755 backend/spectractl /app/bin/spectractl
+
+      # Frontend assets the embedded Go server returns at runtime.
+      - install -Dm644 frontend/index.html       /app/share/spectra-control/frontend/index.html
+      - install -Dm644 frontend/logo.png         /app/share/spectra-control/frontend/logo.png
+      - install -Dm644 frontend/i18n/en.json     /app/share/spectra-control/frontend/i18n/en.json
+      - install -Dm644 frontend/i18n/es.json     /app/share/spectra-control/frontend/i18n/es.json
+
+      # Icons (hicolor + scalable sizes).
+      - install -Dm644 src-tauri/icons/32x32.png      /app/share/icons/hicolor/32x32/apps/casa.scode.SpectraControl.png
+      - install -Dm644 src-tauri/icons/64x64.png      /app/share/icons/hicolor/64x64/apps/casa.scode.SpectraControl.png
+      - install -Dm644 src-tauri/icons/128x128.png    /app/share/icons/hicolor/128x128/apps/casa.scode.SpectraControl.png
+      - install -Dm644 src-tauri/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/casa.scode.SpectraControl.png
+      - install -Dm644 src-tauri/icons/icon.png       /app/share/icons/hicolor/512x512/apps/casa.scode.SpectraControl.png
+
+      # Desktop entry + AppStream metainfo.
+      - install -Dm644 packaging/flatpak/casa.scode.SpectraControl.desktop      /app/share/applications/casa.scode.SpectraControl.desktop
+      - install -Dm644 packaging/flatpak/casa.scode.SpectraControl.metainfo.xml /app/share/metainfo/casa.scode.SpectraControl.metainfo.xml
+
+    sources:
+      # For local builds, point at the working tree. For Flathub submission,
+      # this is replaced by a `git` source pinned to the release tag plus a
+      # `commit:` SHA — see packaging/flatpak/README.md.
+      - type: dir
+        path: ../..
+
+      # Cargo dependencies, generated from src-tauri/Cargo.lock by
+      # flatpak-cargo-generator.py (see packaging/flatpak/generate-sources.sh).
+      - cargo-sources.json
+
+      # Go dependencies. `go mod vendor` is run by the generator script and
+      # the resulting backend/vendor/ tree is shipped inside this archive so
+      # the offline build can resolve every import.
+      - type: archive
+        path: backend-vendor.tar.gz
+        dest: backend/vendor
