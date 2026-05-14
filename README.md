@@ -6,7 +6,7 @@
 
 Linux desktop app for Philips Hue lights, with screen-to-light sync over the official Hue Entertainment API v2. Fills the gap left by the Hue Sync app, which has no Linux version.
 
-**→ Landing page with screenshots: [sebascode.github.io/SpectraControl_App](https://sebascode.github.io/SpectraControl_App/)**
+**→ Landing page with screenshots: [spectracontrol.scode.casa](https://spectracontrol.scode.casa/)**
 
 Tested on Bazzite (Fedora 44 immutable) + GNOME Wayland with NVIDIA. Should also work on KDE Plasma Wayland and any compositor that exposes `xdg-desktop-portal` Screencast.
 

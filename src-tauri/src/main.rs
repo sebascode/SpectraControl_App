@@ -573,7 +573,7 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 fn notify_native(title: String, body: String) -> Result<(), String> {
     let output = std::process::Command::new("notify-send")
         .arg("--app-name=SpectraControl")
-        .arg("--icon=dev.spectracontrol")
+        .arg("--icon=casa.scode.SpectraControl")
         .arg("--expire-time=5000")
         .arg(&title)
         .arg(&body)
