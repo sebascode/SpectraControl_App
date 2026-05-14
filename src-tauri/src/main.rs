@@ -5,6 +5,7 @@
 // and kills it on window close.
 
 mod autostart;
+mod notifications;
 mod runtime;
 
 use std::io::{BufRead, BufReader, Read};
@@ -561,33 +562,6 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 // de tokio, donde el block_on de zbus dentro de notify-rust panic'ea con
 // "Cannot start a runtime from within a runtime". std::thread::spawn aísla
 // la llamada en un OS thread sin contexto tokio.
-// Shell-out a `notify-send` (libnotify-bin):
-// - tauri-plugin-notification 2.x panic'ea en Linux: spawnea notify-rust en
-//   un worker de tokio donde el block_on interno de zbus dispara "Cannot
-//   start a runtime from within a runtime".
-// - Llamar notify-rust directamente desde un std::thread evita el panic y
-//   dbus responde OK con un id, pero GNOME Shell descarta la notificación
-//   silenciosamente incluso con DesktopEntry / urgency / icon hints
-//   (parece ser credenciales del sender que libnotify maneja y notify-rust
-//   no).
-// - notify-send es parte de libnotify-bin, ubicuo en escritorios Linux, y
-//   verificado que renderiza en GNOME Shell.
-#[tauri::command]
-fn notify_native(title: String, body: String) -> Result<(), String> {
-    let output = std::process::Command::new("notify-send")
-        .arg("--app-name=SpectraControl")
-        .arg("--icon=casa.scode.SpectraControl")
-        .arg("--expire-time=5000")
-        .arg(&title)
-        .arg(&body)
-        .output()
-        .map_err(|e| format!("spawn notify-send: {}", e))?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("notify-send exit {}: {}", output.status, stderr));
-    }
-    Ok(())
-}
 
 fn force_exit(app: &tauri::AppHandle) {
     app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
@@ -781,7 +755,7 @@ fn main() {
             set_tray_menu_labels,
             set_quit_on_close,
             write_text_file,
-            notify_native,
+            notifications::notify_native,
             confirm_quit,
             resize_window,
             runtime::runtime_environment,
