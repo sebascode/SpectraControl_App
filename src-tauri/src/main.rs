@@ -660,13 +660,24 @@ fn main() {
         .setup(|app| {
             #[cfg(not(debug_assertions))]
             {
-                let resource_dir = app.path().resource_dir()
-                    .expect("cannot determine resource directory");
-                let backend_bin = resource_dir.join("backend").join("spectractl");
-                let child = std::process::Command::new(&backend_bin)
-                    .args(["-addr", "127.0.0.1:8000"])
-                    .spawn()
-                    .expect("failed to start backend");
+                let mut cmd = if runtime::is_flatpak() {
+                    // Flatpak install layout (packaging/flatpak/casa.scode.SpectraControl.yml):
+                    // backend lives at /app/bin and frontend assets at /app/share/spectra-control/frontend.
+                    // Tauri's resource_dir resolves to a /usr/lib/* path that doesn't exist in the
+                    // sandbox, so the locations are passed explicitly.
+                    let mut c = std::process::Command::new("/app/bin/spectractl");
+                    c.args(["-addr", "127.0.0.1:8000",
+                            "-frontend", "/app/share/spectra-control/frontend"]);
+                    c
+                } else {
+                    let resource_dir = app.path().resource_dir()
+                        .expect("cannot determine resource directory");
+                    let backend_bin = resource_dir.join("backend").join("spectractl");
+                    let mut c = std::process::Command::new(&backend_bin);
+                    c.args(["-addr", "127.0.0.1:8000"]);
+                    c
+                };
+                let child = cmd.spawn().expect("failed to start backend");
                 *app.state::<BackendProcess>().0.lock().unwrap() = Some(child);
                 std::thread::sleep(std::time::Duration::from_millis(300));
             }
