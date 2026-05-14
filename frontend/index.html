@@ -2103,6 +2103,19 @@
                     </span>
                 </label>
                 <label class="settings-row">
+                    <span data-i18n="settings.lightsOffOnClose">
+                        Apagar las luces al cerrar (si está sincronizando)
+                    </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="lights-off-on-close-toggle"
+                            onchange="setLightsOffOnClose(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
+                </label>
+                <label class="settings-row">
                     <span data-i18n="settings.autostart">
                         Iniciar con el sistema
                     </span>
@@ -4607,7 +4620,9 @@
                 );
             }
 
-            function stopSync() {
+            // opts.skipLightsOff: lo usa el shutdown protocol para respetar el
+            // toggle "Apagar luces al cerrar". Stop manual siempre apaga.
+            function stopSync(opts = {}) {
                 const zoneBeingStopped = activeZoneID;
                 syncRunning = false;
                 homeAudioTracker = null;
@@ -4636,7 +4651,7 @@
                 // después de cerrar el WS y el stream de entertainment para
                 // que el "off" no compita con un frame de color que aún esté
                 // en vuelo y reencienda la luz.
-                if (zoneBeingStopped) {
+                if (zoneBeingStopped && !opts.skipLightsOff) {
                     turnOffLightsForZone(zoneBeingStopped);
                 }
                 updateSyncUI();
@@ -4914,7 +4929,7 @@
                 };
             }
 
-            function stopAudioSync() {
+            function stopAudioSync(opts = {}) {
                 const zoneBeingStopped = activeZoneID;
                 audioSyncRunning = false;
                 if (audioRafId) {
@@ -4946,7 +4961,7 @@
                     updateEntBadge(false);
                     activeZoneID = null;
                 }
-                if (zoneBeingStopped) {
+                if (zoneBeingStopped && !opts.skipLightsOff) {
                     turnOffLightsForZone(zoneBeingStopped);
                 }
                 updateSyncUI();
@@ -5572,11 +5587,20 @@
             // del lado Rust ejecuta cleanup + app.exit(0). Si fallamos o el
             // bridge tarda, un watchdog en Rust (~1.5 s) fuerza la salida.
             async function shutdownAndExit() {
+                // Capturar el flag de sync antes de stopSync/stopAudioSync (que
+                // lo resetean). La preferencia "Apagar luces al cerrar" se
+                // aplica solo si estábamos sincronizando — si no, respetamos
+                // el estado manual del usuario.
+                const wasSyncing = syncRunning || audioSyncRunning;
                 const zone = activeZoneID;
+                const lightsOff = wasSyncing && lightsOffOnCloseEnabled();
                 try {
-                    if (syncRunning) stopSync();
-                    if (audioSyncRunning) stopAudioSync();
-                    if (zone) {
+                    // skipLightsOff invierte el default de stopSync para evitar
+                    // que apague las luces aunque el toggle esté off. El await
+                    // final consolida un único batch de PUTs "on:false".
+                    if (syncRunning) stopSync({ skipLightsOff: true });
+                    if (audioSyncRunning) stopAudioSync({ skipLightsOff: true });
+                    if (zone && lightsOff) {
                         await turnOffLightsForZone(zone);
                     }
                 } catch (e) {
@@ -5895,6 +5919,8 @@
                     notificationsEnabled();
                 document.getElementById("quit-on-close-toggle").checked =
                     quitOnCloseEnabled();
+                document.getElementById("lights-off-on-close-toggle").checked =
+                    lightsOffOnCloseEnabled();
                 pushQuitOnCloseToRust();
                 getAutostartEnabled().then((on) => {
                     document.getElementById("autostart-toggle").checked = on;
@@ -5913,9 +5939,21 @@
             // Rust (close-behavior). En cada arranque empujamos el estado a
             // Rust para que sobreviva a reinicios.
             const QUIT_ON_CLOSE_KEY = "close-behavior-quit";
+            const LIGHTS_OFF_ON_CLOSE_KEY = "close-behavior-lights-off";
 
             function quitOnCloseEnabled() {
                 return localStorage.getItem(QUIT_ON_CLOSE_KEY) === "1";
+            }
+
+            // Solo se aplica cuando había sync activo al cerrar; el manejador
+            // está en shutdownAndExit(). No hay default true — el usuario
+            // tiene que optar explícitamente.
+            function lightsOffOnCloseEnabled() {
+                return localStorage.getItem(LIGHTS_OFF_ON_CLOSE_KEY) === "1";
+            }
+
+            function setLightsOffOnClose(on) {
+                localStorage.setItem(LIGHTS_OFF_ON_CLOSE_KEY, on ? "1" : "0");
             }
 
             async function pushQuitOnCloseToRust() {

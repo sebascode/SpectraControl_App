@@ -112,6 +112,7 @@
   "settings.toggleTheme": "Cambiar tema",
   "settings.notifications": "Notificaciones del sistema",
   "settings.quitOnClose": "Al cerrar, salir de la app (en vez de minimizar al tray)",
+  "settings.lightsOffOnClose": "Apagar las luces al cerrar (si está sincronizando)",
   "settings.autostart": "Iniciar con el sistema",
   "settings.autostartSync": "Iniciar Screen Sync al arrancar",
   "settings.logout": "Cerrar sesión del bridge",
