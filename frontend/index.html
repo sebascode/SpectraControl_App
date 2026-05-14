@@ -2380,7 +2380,7 @@
                     "
                 >
                     <span data-i18n="settings.website">Sitio web</span>:
-                    <span style="color: var(--text-dim)">sebascode.github.io/SpectraControl_App</span>
+                    <span style="color: var(--text-dim)">spectracontrol.scode.casa</span>
                 </div>
                 <button
                     class="btn btn-ghost"
@@ -5880,7 +5880,16 @@
                 });
                 initBrightness();
                 loadAll();
-                checkForUpdate();
+                // En Flatpak el updater está desactivado (Flathub lo gestiona),
+                // así que escondemos el botón y saltamos el chequeo de boot.
+                getRuntimeInfo().then((info) => {
+                    if (info?.is_flatpak) {
+                        const btn = document.getElementById("check-updates-btn");
+                        if (btn) btn.hidden = true;
+                    } else {
+                        checkForUpdate();
+                    }
+                });
                 getCurrentAppVersion().then(renderAppVersionLine);
                 document.getElementById("notifications-toggle").checked =
                     notificationsEnabled();
@@ -6194,6 +6203,24 @@
             // `tauri dev` window.__TAURI__ existe pero no hay endpoint válido
             // hasta que se publique un release.
             let pendingUpdate = null;
+
+            // Cachea el resultado de runtime_environment (Rust). Lo usan el
+            // updater (Flatpak lo apaga), autostart (Flatpak va por portal)
+            // y notificaciones. Fuera de Tauri devolvemos un info "neutro".
+            let runtimeInfoPromise = null;
+            function getRuntimeInfo() {
+                if (runtimeInfoPromise) return runtimeInfoPromise;
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) {
+                    runtimeInfoPromise = Promise.resolve({ is_flatpak: false });
+                    return runtimeInfoPromise;
+                }
+                runtimeInfoPromise = invoke("runtime_environment").catch((e) => {
+                    console.warn("[runtime] runtime_environment falló", e);
+                    return { is_flatpak: false };
+                });
+                return runtimeInfoPromise;
+            }
 
             // Lee la versión del binario empacado vía Tauri. Fuera de Tauri
             // (dev en browser) no hay forma confiable; devolvemos null.

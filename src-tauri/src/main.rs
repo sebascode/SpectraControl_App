@@ -4,6 +4,8 @@
 // In release builds, this binary spawns the bundled `spectractl` from resource_dir
 // and kills it on window close.
 
+mod runtime;
+
 use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -658,8 +660,18 @@ fn cleanup_children(app: &tauri::AppHandle) {
 
 fn main() {
     setup_logger();
-    tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
+    // Flathub no permite auto-update: el repo maneja el ciclo. Saltamos el
+    // registro del plugin para que el frontend ni siquiera vea el namespace
+    // `__TAURI__.updater` y el botón de la UI se esconda solo.
+    let in_flatpak = runtime::is_flatpak();
+    if in_flatpak {
+        info!("flatpak runtime detected; updater plugin disabled");
+    }
+    let mut builder = tauri::Builder::default();
+    if !in_flatpak {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+    builder
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
@@ -770,7 +782,8 @@ fn main() {
             write_text_file,
             notify_native,
             confirm_quit,
-            resize_window
+            resize_window,
+            runtime::runtime_environment
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
