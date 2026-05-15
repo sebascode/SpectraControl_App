@@ -91,6 +91,19 @@
   </branding>
 
   <releases>
+    <release version="0.3.0" date="2026-05-15">
+      <description>
+        <p>Sync experience overhaul and Flatpak hardening:</p>
+        <ul>
+          <li>Sync intensity modes (Subtle/Medium/High/Intense) with non-linear gain curve.</li>
+          <li>Per-light spatial glow on the active zone card.</li>
+          <li>0-100 sliders and gamma curve for finer color response.</li>
+          <li>Optional shutdown toggle: turn lights off when closing while syncing.</li>
+          <li>Entertainment: break other active streams before claiming the bridge.</li>
+          <li>Flatpak manifest, AppStream metadata and offline build sources published as release assets.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.15" date="2026-05-14">
       <description>
         <p>First Flathub submission. Sandbox-aware build:</p>

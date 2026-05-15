@@ -39,7 +39,7 @@ modules:
     buildsystem: simple
     build-options:
       env:
-        SPECTRA_VERSION: '0.2.15'
+        SPECTRA_VERSION: '0.3.0'
     build-commands:
       # 1. Go backend. tauri-build's resource check (tauri.conf.json
       # bundle.resources -> backend/spectractl) runs at cargo compile time,
