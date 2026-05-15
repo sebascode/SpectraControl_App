@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"strings"
@@ -590,8 +591,13 @@ func pushToEntertainment(lights []lightCmd) bool {
 		if l.MaxBri != nil && *l.MaxBri >= 0 && *l.MaxBri < int(effBri) {
 			effBri = uint8(*l.MaxBri)
 		}
-		briScale := float64(effBri) / 255.0
 		// HueStream v2 has no brightness channel — scale RGB pre-encoding.
+		// Linear briScale against gamma-encoded RGB feels too dark (slider at
+		// 50% looked closer to 25% perceived). Apply an inverse-gamma curve so
+		// the slider tracks human perception: pow(x, 1/2.2) lifts the midrange
+		// while still hitting 0 and 1 at the extremes.
+		linear := float64(effBri) / 255.0
+		briScale := math.Pow(linear, 1.0/2.2)
 		// 0-255 → 0-65535 (×257 = 65535/255 exacto)
 		colors = append(colors, chanColor{
 			id: chID,

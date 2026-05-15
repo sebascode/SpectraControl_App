@@ -72,6 +72,12 @@
   "zoneConfig.brightness": "Global Sync brightness",
   "zoneConfig.perLightMaxLabel": "Per-light max brightness",
   "zoneConfig.noLights": "This zone has no lights assigned",
+  "zoneConfig.intensity": "Sync intensity",
+  "zoneConfig.intensityHint": "How much captured screen colors are amplified.",
+  "zoneConfig.intensitySubtle": "Subtle",
+  "zoneConfig.intensityMedium": "Medium",
+  "zoneConfig.intensityHigh": "High",
+  "zoneConfig.intensityIntense": "Intense",
 
   "zoneCard.syncing": "Syncing",
   "zoneCard.activating": "Activating...",
@@ -184,5 +190,9 @@
   "toasts.logoutError": "Sign-out failed: {err}",
   "toasts.sceneAudioTauriOnly": "Sound-reactive mode needs the desktop app (native audio capture).",
   "toasts.otherSyncBroken": "Other entertainment syncs stopped: {count}",
-  "toasts.noOtherSync": "No other entertainment syncs are active"
+  "toasts.noOtherSync": "No other entertainment syncs are active",
+  "foreignSync.title": "Sync active on another entertainment zone",
+  "foreignSync.subtitleOne": "{name}",
+  "foreignSync.subtitleMany": "{name} and {extra} more",
+  "foreignSync.detain": "Stop"
 }

@@ -72,6 +72,12 @@
   "zoneConfig.brightness": "Brillo Global del sync",
   "zoneConfig.perLightMaxLabel": "Brillo máximo por luz",
   "zoneConfig.noLights": "Esta zona no tiene luces asignadas",
+  "zoneConfig.intensity": "Intensidad del sync",
+  "zoneConfig.intensityHint": "Cuánto se realzan los colores capturados de la pantalla.",
+  "zoneConfig.intensitySubtle": "Sutil",
+  "zoneConfig.intensityMedium": "Media",
+  "zoneConfig.intensityHigh": "Alta",
+  "zoneConfig.intensityIntense": "Intensa",
 
   "zoneCard.syncing": "Sincronizando",
   "zoneCard.activating": "Activando...",
@@ -184,5 +190,9 @@
   "toasts.logoutError": "No se pudo cerrar sesión: {err}",
   "toasts.sceneAudioTauriOnly": "El modo reactivo necesita la app de escritorio (captura de audio nativa).",
   "toasts.otherSyncBroken": "Sincronizaciones ajenas detenidas: {count}",
-  "toasts.noOtherSync": "No hay otras sincronizaciones activas"
+  "toasts.noOtherSync": "No hay otras sincronizaciones activas",
+  "foreignSync.title": "Sync activo en otra zona de entretenimiento",
+  "foreignSync.subtitleOne": "{name}",
+  "foreignSync.subtitleMany": "{name} y {extra} más",
+  "foreignSync.detain": "Detener"
 }

@@ -161,6 +161,40 @@
                 border: none;
                 box-shadow: 0 0 6px var(--accent);
             }
+            .intensity-segment {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+                background: var(--surface2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 3px;
+            }
+            .intensity-segment button {
+                background: transparent;
+                border: none;
+                color: var(--text-dim);
+                font-family: var(--mono);
+                font-size: 0.72rem;
+                padding: 7px 4px;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background 0.12s, color 0.12s;
+            }
+            .intensity-segment button:hover {
+                color: var(--text);
+            }
+            .intensity-segment button.active {
+                background: var(--accent);
+                color: #000;
+                font-weight: 600;
+            }
+            .intensity-hint {
+                margin-top: 8px;
+                font-size: 0.65rem;
+                color: var(--text-muted);
+                font-family: var(--mono);
+            }
             .logo {
                 display: flex;
                 align-items: center;
@@ -1195,6 +1229,46 @@
                 gap: 12px;
             }
 
+            .foreign-sync-banner {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                padding: 12px 16px;
+                margin-bottom: 14px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--accent);
+                border-radius: 12px;
+            }
+            .foreign-sync-banner[hidden] {
+                display: none;
+            }
+            .foreign-sync-text {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            .foreign-sync-title {
+                font-size: 0.82rem;
+                font-weight: 600;
+                color: var(--text);
+                line-height: 1.25;
+            }
+            .foreign-sync-subtitle {
+                font-family: var(--mono);
+                font-size: 0.68rem;
+                color: var(--text-dim);
+                margin-top: 2px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .foreign-sync-stop {
+                flex: 0 0 auto;
+                width: auto;
+                min-width: 96px;
+                font-size: 0.75rem;
+                padding: 7px 14px;
+            }
             .zone-card {
                 background: var(--surface);
                 border: 2px solid var(--border);
@@ -1219,11 +1293,17 @@
             }
             .zone-card.active {
                 border-color: var(--sync);
-                background: linear-gradient(
-                    135deg,
-                    var(--surface) 0%,
-                    var(--sync-dim) 100%
+                background: var(
+                    --zone-glow,
+                    linear-gradient(
+                        135deg,
+                        var(--surface) 0%,
+                        var(--sync-dim) 100%
+                    )
                 );
+                transition:
+                    background 120ms linear,
+                    border-color var(--transition);
             }
             .zone-card-icon {
                 font-size: 1.4rem;
@@ -1673,6 +1753,33 @@
                     >
                         Zonas de Entretenimiento
                     </div>
+                    <div
+                        class="foreign-sync-banner"
+                        id="foreign-sync-banner"
+                        hidden
+                    >
+                        <div class="foreign-sync-text">
+                            <div
+                                class="foreign-sync-title"
+                                data-i18n="foreignSync.title"
+                            >
+                                Sync activo en otra zona de entretenimiento
+                            </div>
+                            <div
+                                class="foreign-sync-subtitle"
+                                id="foreign-sync-subtitle"
+                            ></div>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-ghost foreign-sync-stop"
+                            id="foreign-sync-stop-btn"
+                            onclick="dismissForeignSync()"
+                            data-i18n="foreignSync.detain"
+                        >
+                            Detener
+                        </button>
+                    </div>
                     <div class="zones-grid" id="zones-grid">
                         <div
                             class="empty"
@@ -1831,16 +1938,53 @@
                             <span data-i18n="zoneConfig.brightness"
                                 >Brillo del sync</span
                             >
-                            <span class="zone-bri-value" id="zone-bri-value">200</span>
+                            <span class="zone-bri-value" id="zone-bri-value">100</span>
                         </div>
                         <input
                             type="range"
                             id="zone-bri-slider"
                             min="1"
-                            max="255"
-                            value="254"
+                            max="100"
+                            value="100"
                             oninput="onZoneBriInput(this.value)"
                         />
+                    </div>
+
+                    <div class="zone-bri-section">
+                        <div class="zone-bri-label">
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
+                            </svg>
+                            <span data-i18n="zoneConfig.intensity"
+                                >Intensidad del sync</span
+                            >
+                        </div>
+                        <div class="intensity-segment" id="zone-intensity-segment">
+                            <button type="button" data-mode="sutil"
+                                onclick="onZoneIntensityClick('sutil')"
+                                data-i18n="zoneConfig.intensitySubtle">Sutil</button>
+                            <button type="button" data-mode="media"
+                                onclick="onZoneIntensityClick('media')"
+                                data-i18n="zoneConfig.intensityMedium">Media</button>
+                            <button type="button" data-mode="alta"
+                                onclick="onZoneIntensityClick('alta')"
+                                data-i18n="zoneConfig.intensityHigh">Alta</button>
+                            <button type="button" data-mode="intensa"
+                                onclick="onZoneIntensityClick('intensa')"
+                                data-i18n="zoneConfig.intensityIntense">Intensa</button>
+                        </div>
+                        <div class="intensity-hint" data-i18n="zoneConfig.intensityHint">
+                            Cuánto se realzan los colores capturados de la pantalla.
+                        </div>
                     </div>
 
                     <div class="zone-bri-section">
@@ -2783,6 +2927,68 @@
             let globalBri = parseInt(localStorage.getItem(BRI_KEY) || "254", 10);
             let briCommitTimer = null;
 
+            // Hue API speaks 1-254 for brightness; the UI shows 1-100% so users
+            // think in percentages, not raw bytes. Convert at the slider boundary.
+            const BRI_API_MAX = 254;
+            function briToPct(bri) {
+                const n = parseInt(bri, 10);
+                if (isNaN(n) || n < 1) return 1;
+                return Math.max(1, Math.min(100, Math.round((n / BRI_API_MAX) * 100)));
+            }
+            function pctToBri(pct) {
+                const n = parseInt(pct, 10);
+                if (isNaN(n) || n < 1) return 1;
+                return Math.max(1, Math.min(BRI_API_MAX, Math.round((n / 100) * BRI_API_MAX)));
+            }
+
+            // Sync intensity: stretches captured screen colors toward a ceiling
+            // before they hit the bridge. Mirrors the Subtle/Medium/High/Intense
+            // modes from the Hue Sync app — the official app is brighter because
+            // it does luminance gain on the captured frame, not just slider×RGB.
+            const ZONE_INTENSITY_KEY = "zoneIntensity";
+            const INTENSITY_DEFAULT = "alta";
+            const INTENSITY_MODES = ["sutil", "media", "alta", "intensa"];
+            // ceiling: target value for the dominant channel (max of r,g,b).
+            // gainCap: hard limit so a near-black frame doesn't amplify noise.
+            const INTENSITY_PROFILES = {
+                sutil:   { ceiling: 200, gainCap: 1.10 },
+                media:   { ceiling: 230, gainCap: 1.35 },
+                alta:    { ceiling: 255, gainCap: 1.70 },
+                intensa: { ceiling: 255, gainCap: 2.20 },
+            };
+            function loadZoneIntensity() {
+                try {
+                    const v = JSON.parse(
+                        localStorage.getItem(ZONE_INTENSITY_KEY) || "{}",
+                    );
+                    return v && typeof v === "object" ? v : {};
+                } catch {
+                    return {};
+                }
+            }
+            function getZoneIntensity(zoneID) {
+                const map = loadZoneIntensity();
+                const v = map[zoneID];
+                return INTENSITY_MODES.includes(v) ? v : INTENSITY_DEFAULT;
+            }
+            function setZoneIntensity(zoneID, mode) {
+                if (!INTENSITY_MODES.includes(mode)) return;
+                const map = loadZoneIntensity();
+                map[zoneID] = mode;
+                localStorage.setItem(ZONE_INTENSITY_KEY, JSON.stringify(map));
+            }
+            function applyIntensity(r, g, b, mode) {
+                const profile = INTENSITY_PROFILES[mode] || INTENSITY_PROFILES[INTENSITY_DEFAULT];
+                const max = Math.max(r, g, b);
+                if (max < 8) return [r, g, b]; // frame is near-black, don't amplify noise
+                const gain = Math.min(profile.gainCap, profile.ceiling / max);
+                return [
+                    Math.min(255, Math.round(r * gain)),
+                    Math.min(255, Math.round(g * gain)),
+                    Math.min(255, Math.round(b * gain)),
+                ];
+            }
+
             const COLOR_PRESETS = [
                 "#FF6A00",
                 "#FFB347",
@@ -3010,11 +3216,11 @@
         <div class="slider-row">
           <div class="slider-header">
             <span class="slider-label">BRILLO</span>
-            <span class="slider-val" id="bri-val-${l.id}">${Math.round(((l.bri || 254) / 254) * 100)}%</span>
+            <span class="slider-val" id="bri-val-${l.id}">${briToPct(l.bri || 254)}%</span>
           </div>
-          <input type="range" min="1" max="254" value="${l.bri || 254}"
-            oninput="updateSliderVal('bri-val-${l.id}', Math.round(this.value/254*100)+'%')"
-            onchange="setLightBri('${l.id}', +this.value)" />
+          <input type="range" min="1" max="100" value="${briToPct(l.bri || 254)}"
+            oninput="updateSliderVal('bri-val-${l.id}', this.value+'%')"
+            onchange="setLightBri('${l.id}', pctToBri(this.value))" />
         </div>
       </div>
 
@@ -3054,14 +3260,15 @@
                 populateSceneTargetSelect();
             }
 
-            function briGradient(bri) {
-                const pct = ((bri / 254) * 100).toFixed(1);
+            // Acepta un percent (0-100); el llamador convierte desde bri si hace falta.
+            function briGradient(pct) {
                 return `linear-gradient(to right, rgba(255,255,255,0.75) ${pct}%, rgba(255,255,255,0.12) ${pct}%)`;
             }
 
             function updateRoomSlider(el, id) {
-                el.style.background = briGradient(+el.value);
-                setGroupBri(id, +el.value);
+                const pct = +el.value;
+                el.style.background = briGradient(pct);
+                setGroupBri(id, pctToBri(pct));
             }
 
             function renderGroups() {
@@ -3092,9 +3299,9 @@
       <span class="toggle-track"></span>
     </label>
   </div>
-  <input type="range" class="room-bri-slider" min="1" max="254" value="${bri}"
+  <input type="range" class="room-bri-slider" min="1" max="100" value="${briToPct(bri)}"
     oninput="updateRoomSlider(this,'${g.id}')"
-    style="${briGradient(bri)}">
+    style="${briGradient(briToPct(bri))}">
 </div>`;
                     })
                     .join("");
@@ -3191,12 +3398,13 @@
                     !recentlyUserEdited("light", ev.id, "bri")
                 ) {
                     light.bri = ev.bri;
+                    const pct = briToPct(ev.bri);
                     const slider = card.querySelector('input[type="range"]');
                     if (slider && document.activeElement !== slider) {
-                        slider.value = ev.bri;
+                        slider.value = pct;
                     }
                     const label = document.getElementById(`bri-val-${ev.id}`);
-                    if (label) label.textContent = `${Math.round((ev.bri / 254) * 100)}%`;
+                    if (label) label.textContent = `${pct}%`;
                 }
                 if (
                     ev.xy != null &&
@@ -3238,12 +3446,13 @@
                     !recentlyUserEdited("group", ev.id, "bri")
                 ) {
                     group.bri = ev.bri;
+                    const pct = briToPct(ev.bri);
                     const slider = row.querySelector(
                         'input[type="range"].room-bri-slider',
                     );
                     if (slider && document.activeElement !== slider) {
-                        slider.value = ev.bri;
-                        slider.style.background = briGradient(ev.bri);
+                        slider.value = pct;
+                        slider.style.background = briGradient(pct);
                     }
                 }
                 if (
@@ -3497,6 +3706,7 @@
                 renderZoneLayout(ids);
                 renderZoneLightCaps(ids);
                 applyZoneBriUI(zoneID);
+                applyZoneIntensityUI(zoneID);
                 switchPage("zone-config");
             }
 
@@ -3514,25 +3724,25 @@
                 wrap.innerHTML = lightIds
                     .map((id) => {
                         const name = lightById[id] ? lightById[id].name : id;
-                        const v = getLightMaxBri(id);
+                        const pct = briToPct(getLightMaxBri(id));
                         return `
 <div style="display:flex;align-items:center;gap:10px">
   <div style="flex:0 0 38%;min-width:0;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</div>
-  <input type="range" min="1" max="255" value="${v}" data-light-id="${id}"
+  <input type="range" min="1" max="100" value="${pct}" data-light-id="${id}"
          oninput="onLightMaxBriInput('${id}', this.value)" style="flex:1" />
-  <div class="zone-bri-value" id="light-max-bri-val-${id}" style="flex:0 0 32px;text-align:right">${v}</div>
+  <div class="zone-bri-value" id="light-max-bri-val-${id}" style="flex:0 0 32px;text-align:right">${pct}</div>
 </div>`;
                     })
                     .join("");
             }
 
-            function onLightMaxBriInput(id, v) {
-                v = parseInt(v, 10);
-                if (isNaN(v) || v < 1) v = 1;
-                if (v > 255) v = 255;
-                setLightMaxBri(id, v);
+            function onLightMaxBriInput(id, pct) {
+                pct = parseInt(pct, 10);
+                if (isNaN(pct) || pct < 1) pct = 1;
+                if (pct > 100) pct = 100;
+                setLightMaxBri(id, pctToBri(pct));
                 const lbl = document.getElementById(`light-max-bri-val-${id}`);
-                if (lbl) lbl.textContent = v;
+                if (lbl) lbl.textContent = pct;
             }
 
             function renderZoneLayout(lightIds) {
@@ -3719,10 +3929,11 @@
                 } catch (e) {}
             }
 
-            function onZoneBriInput(v) {
-                v = parseInt(v, 10);
-                if (isNaN(v) || !selectedZoneID) return;
-                document.getElementById("zone-bri-value").textContent = v;
+            function onZoneBriInput(pct) {
+                pct = parseInt(pct, 10);
+                if (isNaN(pct) || !selectedZoneID) return;
+                const v = pctToBri(pct);
+                document.getElementById("zone-bri-value").textContent = pct;
                 setZoneBri(selectedZoneID, v);
                 // Si esta zona es la que está sincronizando ahora, aplicar en vivo.
                 if (selectedZoneID === activeZoneID && syncRunning) {
@@ -3739,10 +3950,26 @@
 
             function applyZoneBriUI(zoneID) {
                 const v = getZoneBri(zoneID);
+                const pct = briToPct(v);
                 const slider = document.getElementById("zone-bri-slider");
                 const label = document.getElementById("zone-bri-value");
-                if (slider) slider.value = v;
-                if (label) label.textContent = v;
+                if (slider) slider.value = pct;
+                if (label) label.textContent = pct;
+            }
+
+            function applyZoneIntensityUI(zoneID) {
+                const mode = getZoneIntensity(zoneID);
+                const seg = document.getElementById("zone-intensity-segment");
+                if (!seg) return;
+                seg.querySelectorAll("button").forEach((b) => {
+                    b.classList.toggle("active", b.dataset.mode === mode);
+                });
+            }
+
+            function onZoneIntensityClick(mode) {
+                if (!selectedZoneID) return;
+                setZoneIntensity(selectedZoneID, mode);
+                applyZoneIntensityUI(selectedZoneID);
             }
 
             // Stub kept so any stale callers don't crash. Real bri now lives per-zone.
@@ -4588,6 +4815,7 @@
                             const tt = entActive()
                                 ? 0
                                 : Math.max(1, Math.round(sliderMs / 100));
+                            recordSyncFrame(lightsPayload);
                             syncWs.send(
                                 JSON.stringify({
                                     lights: lightsPayload,
@@ -4672,6 +4900,12 @@
                             2500,
                         );
                     }
+                    if (broken.length) {
+                        // Refresh inmediato — el banner debe desaparecer sin
+                        // esperar al próximo tick de polling.
+                        foreignSyncs = [];
+                        renderForeignSyncBanner();
+                    }
                     return broken;
                 } catch (e) {
                     console.warn("[sync] break-others failed:", e);
@@ -4727,8 +4961,10 @@
                 if (zoneBeingStopped && !opts.skipLightsOff) {
                     turnOffLightsForZone(zoneBeingStopped);
                 }
+                clearActiveZoneGlow();
                 updateSyncUI();
                 renderZones();
+                refreshForeignSyncs();
                 notifyIfHidden(
                     t("notify.syncStoppedTitle"),
                     t("notify.syncStoppedBody"),
@@ -4860,6 +5096,7 @@
                             b,
                             max_bri: getLightMaxBri(id),
                         }));
+                        recordSyncFrame(lightsPayload);
                         audioWs.send(
                             JSON.stringify({
                                 lights: lightsPayload,
@@ -5044,8 +5281,10 @@
                 if (zoneBeingStopped && !opts.skipLightsOff) {
                     turnOffLightsForZone(zoneBeingStopped);
                 }
+                clearActiveZoneGlow();
                 updateSyncUI();
                 renderZones();
+                refreshForeignSyncs();
                 notifyIfHidden(
                     t("notify.audioSyncStoppedTitle"),
                     t("notify.audioSyncStoppedBody"),
@@ -5083,6 +5322,7 @@
                         max_bri: getLightMaxBri(id),
                     }));
                     // DTLS tt=0 → interpolación smoothstep en Go
+                    recordSyncFrame(lightsPayload);
                     audioWs.send(
                         JSON.stringify({
                             lights: lightsPayload,
@@ -5194,8 +5434,19 @@
                               : cfg.status === "active"
                                 ? "● " + t("zoneCard.active")
                                 : "○ " + t("zoneCard.inactive");
+                        // Re-aplicar el glow inline en la card activa: el
+                        // innerHTML regenera el DOM y borra cualquier
+                        // setProperty previo de --zone-glow.
+                        let inlineStyle = "";
+                        if (isActive && lastSyncFrame.length) {
+                            const grad =
+                                buildZoneGlowGradient(lastSyncFrame);
+                            if (grad) {
+                                inlineStyle = ` style="--zone-glow: ${grad}"`;
+                            }
+                        }
                         return `
-<div class="zone-card${cardClass}" onclick="activateZone('${cfg.id}')">
+<div class="zone-card${cardClass}"${inlineStyle} onclick="activateZone('${cfg.id}')">
   <span class="zone-card-icon">${icon}</span>
   <div>
     <div class="zone-card-name">${cfg.name}</div>
@@ -5205,6 +5456,167 @@
 </div>`;
                     })
                     .join("");
+            }
+
+            // ── FOREIGN-SYNC BANNER ─────────────────────────────────────
+            // Pollea /api/entertainment cada FOREIGN_SYNC_POLL_MS para detectar
+            // sesiones de entertainment activas en otras zonas (Sync Box, otra
+            // app, otra instancia). El SSE del bridge NO propaga cambios de
+            // entertainment_configuration, así que el polling es la única
+            // forma de mantener el banner en sync con el estado real. Se
+            // pausa cuando el documento está oculto para no pegarle al CPU.
+            const FOREIGN_SYNC_POLL_MS = 5000;
+            let foreignSyncs = [];
+            let foreignSyncPollTimer = null;
+
+            async function refreshForeignSyncs() {
+                try {
+                    const r = await fetch(`${API}/api/entertainment`);
+                    if (!r.ok) return;
+                    const data = await r.json();
+                    const configs = data.configs || [];
+                    foreignSyncs = configs.filter(
+                        (c) =>
+                            c.status === "active" && c.id !== activeZoneID,
+                    );
+                    renderForeignSyncBanner();
+                } catch (_) {
+                    // Silencioso: el banner no debe spammear errores cuando el
+                    // bridge tiene un blip de red.
+                }
+            }
+
+            function renderForeignSyncBanner() {
+                const banner = document.getElementById("foreign-sync-banner");
+                if (!banner) return;
+                if (!foreignSyncs.length) {
+                    banner.hidden = true;
+                    return;
+                }
+                const subtitleEl = document.getElementById(
+                    "foreign-sync-subtitle",
+                );
+                if (subtitleEl) {
+                    const first = foreignSyncs[0].name || foreignSyncs[0].id;
+                    if (foreignSyncs.length === 1) {
+                        subtitleEl.textContent = tf(
+                            "foreignSync.subtitleOne",
+                            { name: first },
+                        );
+                    } else {
+                        subtitleEl.textContent = tf(
+                            "foreignSync.subtitleMany",
+                            {
+                                name: first,
+                                extra: foreignSyncs.length - 1,
+                            },
+                        );
+                    }
+                }
+                banner.hidden = false;
+            }
+
+            // Llamado por el botón "Detener" del banner. Cierra cualquier
+            // sesión ajena y refresca de inmediato — si el bridge confirma,
+            // el banner desaparece sin esperar al próximo poll.
+            async function dismissForeignSync() {
+                const btn = document.getElementById("foreign-sync-stop-btn");
+                if (btn) btn.disabled = true;
+                try {
+                    await breakOtherSyncs(false);
+                    foreignSyncs = [];
+                    renderForeignSyncBanner();
+                } finally {
+                    if (btn) btn.disabled = false;
+                    refreshForeignSyncs();
+                }
+            }
+
+            function startForeignSyncPolling() {
+                if (foreignSyncPollTimer) return;
+                refreshForeignSyncs();
+                foreignSyncPollTimer = setInterval(() => {
+                    if (document.visibilityState !== "visible") return;
+                    refreshForeignSyncs();
+                }, FOREIGN_SYNC_POLL_MS);
+            }
+
+            // ── ACTIVE ZONE GLOW ────────────────────────────────────────
+            // Captura el último frame de colores enviado por sync (screen o
+            // audio) y lo aplica como background de la card activa, dando
+            // feedback visual ambient. Throttle a ~10fps para no pelear con
+            // el render de la grilla (los frames llegan a ~30fps).
+            const ZONE_GLOW_THROTTLE_MS = 100;
+            // Halo de cada luz como radial-gradient en la card. Alpha bajo
+            // para que el glow sea ambient y no compita con el texto.
+            const ZONE_GLOW_ALPHA = 0.4;
+            const ZONE_GLOW_FALLOFF_PCT = 45;
+            let lastSyncFrame = []; // [{id, color}]
+            let zoneGlowDirty = false;
+            let zoneGlowTimer = null;
+
+            function recordSyncFrame(lightsPayload) {
+                if (!Array.isArray(lightsPayload) || !lightsPayload.length) {
+                    return;
+                }
+                lastSyncFrame = lightsPayload.map((l) => ({
+                    id: l.id,
+                    r: l.r | 0,
+                    g: l.g | 0,
+                    b: l.b | 0,
+                }));
+                zoneGlowDirty = true;
+                if (zoneGlowTimer) return;
+                zoneGlowTimer = setTimeout(() => {
+                    zoneGlowTimer = null;
+                    if (zoneGlowDirty) {
+                        zoneGlowDirty = false;
+                        applyActiveZoneGlow();
+                    }
+                }, ZONE_GLOW_THROTTLE_MS);
+            }
+
+            // Reproduce el layout del canvas de configuración de la zona: cada
+            // luz se pinta como un radial-gradient en su posición normalizada
+            // (lightPositions[id] = {x,y} en 0..1). El último stop es la
+            // superficie de la card para que el texto siga legible donde no
+            // hay halo.
+            function buildZoneGlowGradient(frame) {
+                if (!frame.length) return null;
+                const positions = loadLightPositions();
+                const layers = frame.map((entry) => {
+                    const p = positions[entry.id] || { x: 0.5, y: 0.5 };
+                    const x = Math.round(p.x * 100);
+                    const y = Math.round(p.y * 100);
+                    const rgba = `rgba(${entry.r}, ${entry.g}, ${entry.b}, ${ZONE_GLOW_ALPHA})`;
+                    return `radial-gradient(circle at ${x}% ${y}%, ${rgba} 0%, transparent ${ZONE_GLOW_FALLOFF_PCT}%)`;
+                });
+                // La superficie base va al final (último layer = más al fondo).
+                layers.push("var(--surface)");
+                return layers.join(", ");
+            }
+
+            function applyActiveZoneGlow() {
+                if (!activeZoneID) return;
+                if (!syncRunning && !audioSyncRunning) return;
+                const card = document.querySelector(".zone-card.active");
+                if (!card) return;
+                const grad = buildZoneGlowGradient(lastSyncFrame);
+                if (grad) {
+                    card.style.setProperty("--zone-glow", grad);
+                }
+            }
+
+            function clearActiveZoneGlow() {
+                lastSyncFrame = [];
+                zoneGlowDirty = false;
+                if (zoneGlowTimer) {
+                    clearTimeout(zoneGlowTimer);
+                    zoneGlowTimer = null;
+                }
+                document
+                    .querySelectorAll(".zone-card")
+                    .forEach((el) => el.style.removeProperty("--zone-glow"));
             }
 
             // Detecta si la app corre en Tauri (con captura nativa por Rust).
@@ -5473,13 +5885,19 @@
                                 { positions: positionList },
                             );
 
+                            const intensityMode = activeZoneID
+                                ? getZoneIntensity(activeZoneID)
+                                : INTENSITY_DEFAULT;
                             const lightsPayload = syncLightIds.map(
                                 (id, idx) => {
                                     const c = regionColors[idx] || [0, 0, 0];
-                                    const [r, g, b] = boostSaturation(
+                                    let [r, g, b] = boostSaturation(
                                         c[0],
                                         c[1],
                                         c[2],
+                                    );
+                                    [r, g, b] = applyIntensity(
+                                        r, g, b, intensityMode,
                                     );
                                     return {
                                         id,
@@ -5523,6 +5941,7 @@
                                 ? 0
                                 : Math.max(1, Math.round(sliderMs / 100));
                             const bri = await computeSyncBri();
+                            recordSyncFrame(lightsPayload);
                             syncWs.send(
                                 JSON.stringify({
                                     lights: lightsPayload,
@@ -5850,6 +6269,9 @@
                 const sw = Math.max(4, Math.round(W * 0.12));
                 const sh = sw;
                 const positions = ensurePositionsFor(syncLightIds);
+                const intensityMode = activeZoneID
+                    ? getZoneIntensity(activeZoneID)
+                    : INTENSITY_DEFAULT;
                 return syncLightIds.map((id) => {
                     const p = positions[id] || { x: 0.5, y: 0.5 };
                     const x = Math.max(0, Math.round(p.x * W - sw / 2));
@@ -5866,11 +6288,12 @@
                         g += px[i + 1];
                         b += px[i + 2];
                     }
-                    const [rb, gb, bb] = boostSaturation(
+                    let [rb, gb, bb] = boostSaturation(
                         (r / cnt) | 0,
                         (g / cnt) | 0,
                         (b / cnt) | 0,
                     );
+                    [rb, gb, bb] = applyIntensity(rb, gb, bb, intensityMode);
                     return {
                         id,
                         r: rb,
@@ -5999,6 +6422,7 @@
                 });
                 initBrightness();
                 loadAll();
+                startForeignSyncPolling();
                 // En Flatpak el updater está desactivado (Flathub lo gestiona),
                 // así que escondemos el botón y saltamos el chequeo de boot.
                 getRuntimeInfo().then((info) => {
