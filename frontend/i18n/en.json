@@ -124,6 +124,8 @@
   "settings.screenSync": "Screen Sync",
   "settings.syncTargetHint": "Entertainment area used by the Sync button",
   "settings.syncTargetEmpty": "No entertainment areas — create one in the Hue Sync app",
+  "settings.breakOthersOnStart": "Break other entertainment syncs when starting",
+  "settings.breakOthersNow": "Stop other apps' entertainment syncs now",
   "settings.speed": "Speed:",
   "settings.entertainment": "Entertainment",
   "settings.entActive": "ACTIVE",
@@ -180,5 +182,7 @@
   "toasts.updateUnavailable": "Updates are only available in the installed app",
   "toasts.logoutConfirm": "Sign out from the bridge? You'll need to re-pair it next time.",
   "toasts.logoutError": "Sign-out failed: {err}",
-  "toasts.sceneAudioTauriOnly": "Sound-reactive mode needs the desktop app (native audio capture)."
+  "toasts.sceneAudioTauriOnly": "Sound-reactive mode needs the desktop app (native audio capture).",
+  "toasts.otherSyncBroken": "Other entertainment syncs stopped: {count}",
+  "toasts.noOtherSync": "No other entertainment syncs are active"
 }

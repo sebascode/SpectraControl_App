@@ -329,6 +329,7 @@ func startEntertainmentStreaming(configID string) error {
 
 	conn, err := dtls.Dial("udp4", addr, dtlsCfg)
 	if err != nil {
+		logInfof("[ent] DTLS dial fallido a %s:2100 — appID=%s err=%v", ip, appID, err)
 		// Revertir streaming mode en el bridge
 		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
 		return fmt.Errorf("DTLS dial: %w", err)
@@ -376,6 +377,47 @@ func stopEntertainmentStreaming() {
 		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
 		logInfof("[ent] streaming detenido")
 	}
+}
+
+// breakOtherActiveEntertainment cierra cualquier sesión de entertainment activa
+// en el bridge (Hue Sync Box, consola, otra instancia de la app) excepto
+// excludeID si se pasa. El bridge permite un único stream activo a la vez;
+// startEntertainmentStreaming ya stoppea su propio configID antes de arrancar,
+// pero NO ve áreas distintas. Esta función recorre toda la lista y devuelve
+// los IDs detenidos para que el frontend reporte cuántos rompió.
+func breakOtherActiveEntertainment(excludeID string) ([]string, error) {
+	configs, err := getEntertainmentConfigs()
+	if err != nil {
+		return nil, err
+	}
+	broken := make([]string, 0)
+	for _, c := range configs {
+		id, _ := c["id"].(string)
+		status, _ := c["status"].(string)
+		name, _ := c["name"].(string)
+		logDebugf("[ent] config encontrada — id=%s name=%q status=%q exclude=%v", id, name, status, id == excludeID)
+		if id == "" || id == excludeID || status != "active" {
+			continue
+		}
+		if _, err := clipDo(http.MethodPut,
+			"entertainment_configuration/"+id,
+			map[string]string{"action": "stop"},
+		); err != nil {
+			logInfof("[ent] no se pudo detener stream ajeno %s: %v", id, err)
+			continue
+		}
+		broken = append(broken, id)
+		logInfof("[ent] stream ajeno detenido — config %s", id)
+	}
+	// El bridge necesita un beat para liberar el slot DTLS interno tras el
+	// action:stop; sin esto el handshake DTLS del start siguiente expira
+	// (mismo padding que startEntertainmentStreaming usa para su propia
+	// config — 250ms acá porque cerrar una sesión ajena con keepalives
+	// suele ser un poco más lento que cerrar la propia).
+	if len(broken) > 0 {
+		time.Sleep(250 * time.Millisecond)
+	}
+	return broken, nil
 }
 
 // ── DTLS SENDER GOROUTINE ────────────────────────────────────────────────────
@@ -638,4 +680,22 @@ func handleStartEntertainment(w http.ResponseWriter, r *http.Request) {
 func handleStopEntertainment(w http.ResponseWriter, r *http.Request) {
 	stopEntertainmentStreaming()
 	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// handleBreakOtherEntertainment lo llama el frontend antes de iniciar nuestro
+// sync (si el toggle está on) y desde el botón manual de Settings. No toca el
+// stream propio — solo cierra los ajenos.
+func handleBreakOtherEntertainment(w http.ResponseWriter, r *http.Request) {
+	if !requireConfig(w) {
+		return
+	}
+	ent.mu.Lock()
+	ownID := ent.configID
+	ent.mu.Unlock()
+	broken, err := breakOtherActiveEntertainment(ownID)
+	if err != nil {
+		writeErr(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+	writeJSON(w, map[string]any{"broken": broken})
 }

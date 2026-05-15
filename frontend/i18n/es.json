@@ -124,6 +124,8 @@
   "settings.screenSync": "Screen Sync",
   "settings.syncTargetHint": "Entertainment area que usa el botón Sync",
   "settings.syncTargetEmpty": "Sin Entertainment areas — créalas en la app Hue Sync",
+  "settings.breakOthersOnStart": "Romper otras sincronizaciones al iniciar",
+  "settings.breakOthersNow": "Detener sincronizaciones de otras apps ahora",
   "settings.speed": "Velocidad:",
   "settings.entertainment": "Entertainment",
   "settings.entActive": "ACTIVO",
@@ -140,7 +142,7 @@
   "settings.version": "Versión {version}",
   "settings.createdBy": "Creado por",
   "settings.website": "Sitio web",
-  "settings.checkUpdates": "Chequear actualizaciones",
+  "settings.checkUpdates": "Buscar actualizaciones",
   "settings.checkUpdatesBusy": "Buscando...",
 
   "sync.stopped": "Detenido",
@@ -180,5 +182,7 @@
   "toasts.updateUnavailable": "Las actualizaciones solo están disponibles en la app instalada",
   "toasts.logoutConfirm": "¿Cerrar sesión del bridge? Tendrás que volver a vincularlo.",
   "toasts.logoutError": "No se pudo cerrar sesión: {err}",
-  "toasts.sceneAudioTauriOnly": "El modo reactivo necesita la app de escritorio (captura de audio nativa)."
+  "toasts.sceneAudioTauriOnly": "El modo reactivo necesita la app de escritorio (captura de audio nativa).",
+  "toasts.otherSyncBroken": "Sincronizaciones ajenas detenidas: {count}",
+  "toasts.noOtherSync": "No hay otras sincronizaciones activas"
 }

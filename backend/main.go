@@ -752,6 +752,7 @@ func main() {
 	r.Get("/api/entertainment", handleListEntertainment)
 	r.Post("/api/entertainment/start", handleStartEntertainment)
 	r.Post("/api/entertainment/stop", handleStopEntertainment)
+	r.Post("/api/entertainment/break-others", handleBreakOtherEntertainment)
 
 	// Dynamic scenes
 	r.Get("/api/scenes", handleListScenes)

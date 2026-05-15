@@ -2186,6 +2186,35 @@
                     class="setup-lang-select"
                     onchange="setSyncTargetZone(this.value)"
                 ></select>
+                <label
+                    class="settings-row"
+                    style="margin-top: 10px; padding: 0"
+                >
+                    <span data-i18n="settings.breakOthersOnStart">
+                        Romper otras sincronizaciones al iniciar
+                    </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="break-others-on-start-toggle"
+                            onchange="setBreakOthersOnStart(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
+                </label>
+                <button
+                    class="btn btn-ghost"
+                    style="
+                        width: 100%;
+                        font-size: 0.75rem;
+                        padding: 7px;
+                        margin-top: 6px;
+                    "
+                    onclick="manualBreakOtherSyncs()"
+                    data-i18n="settings.breakOthersNow"
+                >
+                    Detener sincronizaciones de otras apps ahora
+                </button>
                 <!-- Slider de velocidad, lista de habitaciones y status quedan
                      ocultos: los lee la lógica de sync con su valor default.
                      Si en el futuro queremos exponerlos otra vez, basta con
@@ -4620,8 +4649,48 @@
                 );
             }
 
+            // El bridge sólo permite UN stream de entertainment activo a la
+            // vez. Si la Sync Box o una consola tomaron el lock, nuestro start
+            // falla silenciosamente. Esto pide al backend cerrar todas las
+            // sesiones activas ajenas y devuelve los IDs detenidos. silent=true
+            // suprime el toast (auto-llamado antes de cada start).
+            async function breakOtherSyncs(silent = false) {
+                try {
+                    const r = await fetch(
+                        `${API}/api/entertainment/break-others`,
+                        { method: "POST" },
+                    );
+                    if (!r.ok) return [];
+                    const data = await r.json();
+                    const broken = data.broken || [];
+                    if (broken.length && !silent) {
+                        toast(
+                            tf("toasts.otherSyncBroken", {
+                                count: broken.length,
+                            }),
+                            "info",
+                            2500,
+                        );
+                    }
+                    return broken;
+                } catch (e) {
+                    console.warn("[sync] break-others failed:", e);
+                    return [];
+                }
+            }
+
+            // Hook que cada start de entertainment llama antes de pedir el
+            // stream propio. Se respeta el toggle BREAK_OTHERS_KEY (default on).
+            async function maybeBreakOtherSyncsBeforeStart() {
+                if (!breakOthersOnStartEnabled()) return;
+                await breakOtherSyncs(true);
+            }
+
             // opts.skipLightsOff: lo usa el shutdown protocol para respetar el
             // toggle "Apagar luces al cerrar". Stop manual siempre apaga.
+            // Devuelve la promise del POST /entertainment/stop para que el
+            // shutdown pueda awaitarla antes de mandar on:false (sin esto los
+            // frames DTLS en vuelo pisan el "off" y las luces quedan en color).
             function stopSync(opts = {}) {
                 const zoneBeingStopped = activeZoneID;
                 syncRunning = false;
@@ -4642,8 +4711,12 @@
                     syncStream.getTracks().forEach((t) => t.stop());
                     syncStream = null;
                 }
+                let backendStopPromise = null;
                 if (activeZoneID) {
-                    fetch(`${API}/api/entertainment/stop`, { method: "POST" });
+                    backendStopPromise = fetch(
+                        `${API}/api/entertainment/stop`,
+                        { method: "POST" },
+                    ).catch(() => {});
                     updateEntBadge(false);
                     activeZoneID = null;
                 }
@@ -4660,6 +4733,7 @@
                     t("notify.syncStoppedTitle"),
                     t("notify.syncStoppedBody"),
                 );
+                return backendStopPromise;
             }
 
             // ── AUDIO SYNC ──
@@ -4694,6 +4768,7 @@
             async function startAudioSyncTauri(zoneID) {
                 let entOk = false;
                 try {
+                    await maybeBreakOtherSyncsBeforeStart();
                     const r = await fetch(`${API}/api/entertainment/start`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -4853,6 +4928,7 @@
                 // Arrancar entertainment en la zona elegida.
                 let entOk = false;
                 try {
+                    await maybeBreakOtherSyncsBeforeStart();
                     const r = await fetch(`${API}/api/entertainment/start`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -4956,8 +5032,12 @@
                     audioStream.getTracks().forEach((tr) => tr.stop());
                     audioStream = null;
                 }
+                let backendStopPromise = null;
                 if (activeZoneID) {
-                    fetch(`${API}/api/entertainment/stop`, { method: "POST" });
+                    backendStopPromise = fetch(
+                        `${API}/api/entertainment/stop`,
+                        { method: "POST" },
+                    ).catch(() => {});
                     updateEntBadge(false);
                     activeZoneID = null;
                 }
@@ -4970,6 +5050,7 @@
                     t("notify.audioSyncStoppedTitle"),
                     t("notify.audioSyncStoppedBody"),
                 );
+                return backendStopPromise;
             }
 
             function scheduleAudioSample() {
@@ -5219,6 +5300,7 @@
                         // Start new entertainment
                         let entOk = false;
                         try {
+                            await maybeBreakOtherSyncsBeforeStart();
                             const r = await fetch(
                                 `${API}/api/entertainment/start`,
                                 {
@@ -5596,10 +5678,22 @@
                 const lightsOff = wasSyncing && lightsOffOnCloseEnabled();
                 try {
                     // skipLightsOff invierte el default de stopSync para evitar
-                    // que apague las luces aunque el toggle esté off. El await
-                    // final consolida un único batch de PUTs "on:false".
-                    if (syncRunning) stopSync({ skipLightsOff: true });
-                    if (audioSyncRunning) stopAudioSync({ skipLightsOff: true });
+                    // que apague las luces aunque el toggle esté off. Hay que
+                    // esperar al POST /entertainment/stop ANTES de mandar
+                    // on:false: el backend cierra el stream DTLS y le manda
+                    // action:stop al bridge en esa request, y sin awaitarlo
+                    // los frames de color en vuelo pisan el "off" y las luces
+                    // quedan en el último color del sync.
+                    const stopPromises = [];
+                    if (syncRunning) {
+                        stopPromises.push(stopSync({ skipLightsOff: true }));
+                    }
+                    if (audioSyncRunning) {
+                        stopPromises.push(
+                            stopAudioSync({ skipLightsOff: true }),
+                        );
+                    }
+                    await Promise.all(stopPromises.filter(Boolean));
                     if (zone && lightsOff) {
                         await turnOffLightsForZone(zone);
                     }
@@ -5709,6 +5803,7 @@
                 const statusEl = document.getElementById("ent-status");
                 statusEl.textContent = "Conectando DTLS...";
                 try {
+                    await maybeBreakOtherSyncsBeforeStart();
                     const r = await fetch(`${API}/api/entertainment/start`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -5921,6 +6016,8 @@
                     quitOnCloseEnabled();
                 document.getElementById("lights-off-on-close-toggle").checked =
                     lightsOffOnCloseEnabled();
+                document.getElementById("break-others-on-start-toggle").checked =
+                    breakOthersOnStartEnabled();
                 pushQuitOnCloseToRust();
                 getAutostartEnabled().then((on) => {
                     document.getElementById("autostart-toggle").checked = on;
@@ -5954,6 +6051,35 @@
 
             function setLightsOffOnClose(on) {
                 localStorage.setItem(LIGHTS_OFF_ON_CLOSE_KEY, on ? "1" : "0");
+            }
+
+            // Default on: si el usuario nunca tocó la pref, queremos romper las
+            // sesiones ajenas al iniciar (es lo que evita que Hue Sync Box /
+            // consola pisen nuestros frames). Una vez seteada respetamos lo que
+            // diga el storage.
+            const BREAK_OTHERS_KEY = "sync.break-others-on-start";
+
+            function breakOthersOnStartEnabled() {
+                const v = localStorage.getItem(BREAK_OTHERS_KEY);
+                return v === null ? true : v === "1";
+            }
+
+            function setBreakOthersOnStart(on) {
+                localStorage.setItem(BREAK_OTHERS_KEY, on ? "1" : "0");
+            }
+
+            // Handler del botón "Detener sincronizaciones de otras apps ahora".
+            async function manualBreakOtherSyncs() {
+                const broken = await breakOtherSyncs(true);
+                if (broken.length) {
+                    toast(
+                        tf("toasts.otherSyncBroken", { count: broken.length }),
+                        "success",
+                        2500,
+                    );
+                } else {
+                    toast(t("toasts.noOtherSync"), "info", 2500);
+                }
             }
 
             async function pushQuitOnCloseToRust() {
