@@ -20,8 +20,17 @@ GENERATOR="$OUT_DIR/.flatpak-cargo-generator.py"
 echo "→ Fetching flatpak-cargo-generator.py"
 curl -fsSL "$GENERATOR_URL" -o "$GENERATOR"
 
+# flatpak-cargo-generator.py needs aiohttp + toml. Install into a throwaway
+# venv so we don't depend on distro packaging (Fedora 41+ blocks --user pip
+# installs by default, and GH runners have an externally-managed system
+# Python).
+VENV_DIR="$OUT_DIR/.venv-cargo-gen"
+python3 -m venv "$VENV_DIR"
+"$VENV_DIR/bin/pip" install --quiet --upgrade pip
+"$VENV_DIR/bin/pip" install --quiet aiohttp tomlkit
+
 echo "→ Generating cargo-sources.json from src-tauri/Cargo.lock"
-python3 "$GENERATOR" "$REPO_ROOT/src-tauri/Cargo.lock" -o "$OUT_DIR/cargo-sources.json"
+"$VENV_DIR/bin/python" "$GENERATOR" "$REPO_ROOT/src-tauri/Cargo.lock" -o "$OUT_DIR/cargo-sources.json"
 
 echo "→ Vendoring Go modules from backend/go.mod"
 (
@@ -33,6 +42,7 @@ echo "→ Vendoring Go modules from backend/go.mod"
 )
 
 rm -f "$GENERATOR"
+rm -rf "$VENV_DIR"
 
 echo
 echo "Generated:"

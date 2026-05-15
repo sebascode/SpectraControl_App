@@ -7,3 +7,4 @@ backend-vendor.tar.gz
 build-dir/
 .flatpak-builder/
 .flatpak-cargo-generator.py
+.venv-cargo-gen/
