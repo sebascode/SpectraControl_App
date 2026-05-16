@@ -9,6 +9,7 @@ mod notifications;
 mod runtime;
 
 use std::io::{BufRead, BufReader, Read};
+use std::net::TcpStream;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -615,6 +616,38 @@ fn resize_window(
         .map_err(|e| e.to_string())
 }
 
+// Polling al puerto del backend Go. El Tauri `frontendDist` lo apunta a este
+// mismo localhost:8000, así que si construimos el WebView antes de que el
+// Go acepte conexiones, WebKit2GTK pinta su error nativo "Connection refused"
+// (visible en autostart de boot frío). Esto bloquea el setup hasta que el
+// socket conteste o se agote el budget — sin sleeps fijos.
+fn wait_for_backend(addr: &str, budget: Duration) {
+    let start = std::time::Instant::now();
+    let connect_timeout = Duration::from_millis(200);
+    let retry_delay = Duration::from_millis(50);
+    let parsed: std::net::SocketAddr = match addr.parse() {
+        Ok(a) => a,
+        Err(e) => {
+            warn!("wait_for_backend: bad addr {addr}: {e}");
+            return;
+        }
+    };
+    loop {
+        if TcpStream::connect_timeout(&parsed, connect_timeout).is_ok() {
+            info!("backend listening at {addr} after {:?}", start.elapsed());
+            return;
+        }
+        if start.elapsed() >= budget {
+            warn!(
+                "backend not ready after {:?} — loading WebView anyway",
+                budget
+            );
+            return;
+        }
+        thread::sleep(retry_delay);
+    }
+}
+
 fn cleanup_children(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<BackendProcess>() {
         if let Some(mut child) = state.0.lock().unwrap().take() {
@@ -679,7 +712,11 @@ fn main() {
                 };
                 let child = cmd.spawn().expect("failed to start backend");
                 *app.state::<BackendProcess>().0.lock().unwrap() = Some(child);
-                std::thread::sleep(std::time::Duration::from_millis(300));
+                // `frontendDist` apunta a http://localhost:8000, así que el WebView
+                // se rompe (página nativa "Connection refused") si lo construimos
+                // antes de que el Go bindee el puerto. En autostart de boot frío
+                // 300 ms no alcanzan; polleamos hasta que el socket acepte.
+                wait_for_backend("127.0.0.1:8000", Duration::from_secs(15));
             }
             #[cfg(target_os = "linux")]
             allow_display_capture(app);
