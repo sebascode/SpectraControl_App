@@ -91,6 +91,14 @@
   </branding>
 
   <releases>
+    <release version="0.3.1" date="2026-05-16">
+      <description>
+        <p>Hotfix:</p>
+        <ul>
+          <li>Autostart cold boot: WebView no longer shows a native "Could not connect to localhost" error when the Go backend is slow to bind on cold boot. The shell now polls the backend port before constructing the WebView.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-05-15">
       <description>
         <p>Sync experience overhaul and Flatpak hardening:</p>
