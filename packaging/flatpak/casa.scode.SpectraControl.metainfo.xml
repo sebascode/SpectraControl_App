@@ -91,6 +91,14 @@
   </branding>
 
   <releases>
+    <release version="0.3.2" date="2026-05-16">
+      <description>
+        <p>Hotfix:</p>
+        <ul>
+          <li>Tray "Show" / left-click reliably brings the window to the foreground after autostart on Wayland. Previously, on GNOME/Mutter the first show() from the tray hit an unmapped WebKitGTK surface and the window stayed invisible.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-05-16">
       <description>
         <p>Hotfix:</p>
