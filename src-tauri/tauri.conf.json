@@ -20,7 +20,9 @@
         "minWidth": 360,
         "minHeight": 500,
         "decorations": false,
-        "transparent": true
+        "transparent": true,
+        "center": true,
+        "visible": false
       }
     ],
     "security": {

@@ -599,6 +599,19 @@ fn confirm_quit(app: tauri::AppHandle) {
     force_exit(&app);
 }
 
+// Trae la ventana principal al frente desde el tray. El orden importa en
+// Wayland/WebKitGTK: show() primero para garantizar que la surface esté
+// mapeada, después unminimize() (no-op en Wayland pero necesario en X11/
+// otros WMs), y por último set_focus() — GTK lo traduce a gtk_window_present
+// que pide al compositor mover la ventana al workspace actual. center() no
+// se llama porque Wayland ignora el posicionamiento de cliente y en X11 el
+// WM ya recuerda la última posición.
+fn present_main_window(window: &tauri::WebviewWindow) {
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+}
+
 // Redimensiona la ventana principal a un tamaño lógico (DPI-independent).
 // Lo expone Rust porque `window.__TAURI__.window.LogicalSize` no siempre
 // llega cuando `withGlobalTauri:true` está activo.
@@ -684,7 +697,10 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
+            // `--autostart` deja al setup distinguir "GNOME me lanzó al boot" de
+            // un doble-click manual. Tray-first solo en el primer caso; la
+            // ventana se queda oculta hasta que el usuario abre desde el tray.
+            Some(vec!["--autostart"]),
         ))
         .manage(BackendProcess(Mutex::new(None)))
         .manage(IsQuitting(AtomicBool::new(false)))
@@ -746,9 +762,7 @@ fn main() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.unminimize();
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                            present_main_window(&window);
                         }
                     }
                     "quit" => {
@@ -766,13 +780,31 @@ fn main() {
                     {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.unminimize();
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                            present_main_window(&window);
                         }
                     }
                 })
                 .build(app)?;
+
+            // La ventana se crea con `visible: false` (tauri.conf.json) para
+            // poder decidir en este punto si mostrarla. En autostart el plugin
+            // pasa `--autostart` → quedamos tray-first. Lanzamiento manual no
+            // tiene el flag → mostramos centrada apenas el backend respondió.
+            //
+            // Wayland/WebKitGTK: aun en el camino autostart hacemos show()+hide()
+            // para forzar el realize+map de la GtkWindow una vez. Sin eso, el
+            // primer show() disparado desde el tray ocurre sobre una surface
+            // que nunca se mapeó y Mutter no la presenta — la ventana queda
+            // invisible aunque Tauri reporte éxito.
+            let autostarted = std::env::args().any(|a| a == "--autostart");
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                if autostarted {
+                    let _ = window.hide();
+                } else {
+                    let _ = window.set_focus();
+                }
+            }
 
             Ok(())
         })
