@@ -43,27 +43,32 @@
                 <span>SpectraControl</span>
             </a>
             <nav>
-                <a href="#features">Features</a>
-                <a href="#screenshots">Screenshots</a>
-                <a href="#install">Install</a>
+                <a href="#features" data-i18n="nav.features">Features</a>
+                <a href="#screenshots" data-i18n="nav.screenshots">Screenshots</a>
+                <a href="#install" data-i18n="nav.install">Install</a>
                 <a
                     href="https://github.com/sebascode/SpectraControl_App"
                     rel="noopener"
                     target="_blank"
+                    data-i18n="nav.github"
                     >GitHub ↗</a
                 >
+                <div class="lang-toggle" role="group" aria-label="Language">
+                    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+                    <button type="button" data-lang="es" aria-pressed="false">ES</button>
+                </div>
             </nav>
         </header>
 
         <main id="top">
             <section class="hero">
                 <div class="hero-copy">
-                    <div class="eyebrow">Open source · Linux · MIT</div>
-                    <h1>
+                    <div class="eyebrow" data-i18n="hero.eyebrow">Open source · Linux · MIT</div>
+                    <h1 data-i18n="hero.title">
                         Philips Hue for Linux,<br />with <em>real</em> screen
                         sync.
                     </h1>
-                    <p class="lede">
+                    <p class="lede" data-i18n="hero.lede">
                         SpectraControl fills the gap left by Hue Sync — which
                         has no Linux build. Per-light control, animated scenes,
                         and screen-to-light sync over the official Hue
@@ -75,14 +80,15 @@
                             class="btn primary"
                             href="https://github.com/sebascode/SpectraControl_App/releases/latest"
                             rel="noopener"
+                            data-i18n="hero.download"
                         >
                             Download AppImage
                         </a>
                         <a
                             class="btn ghost"
-                            href="
-            https://github.com/sebascode/SpectraControl_App"
+                            href="https://github.com/sebascode/SpectraControl_App"
                             rel="noopener"
+                            data-i18n="hero.source"
                         >
                             View source ↗
                         </a>
@@ -111,12 +117,12 @@
             </section>
 
             <section id="features" class="features">
-                <h2 class="section-title">What it does</h2>
+                <h2 class="section-title" data-i18n="features.title">What it does</h2>
                 <div class="feature-grid">
                     <article class="feature">
                         <div class="feature-icon" aria-hidden="true">◐</div>
-                        <h3>Screen Sync, the real way</h3>
-                        <p>
+                        <h3 data-i18n="features.screen.title">Screen Sync, the real way</h3>
+                        <p data-i18n="features.screen.body">
                             DTLS streaming directly to your bridge on UDP 2100
                             (HueStream v2). Shows up as
                             <em>"synchronized"</em> in the Hue mobile app —
@@ -125,8 +131,8 @@
                     </article>
                     <article class="feature">
                         <div class="feature-icon" aria-hidden="true">▶</div>
-                        <h3>Native Wayland capture</h3>
-                        <p>
+                        <h3 data-i18n="features.wayland.title">Native Wayland capture</h3>
+                        <p data-i18n="features.wayland.body">
                             <code>xdg-desktop-portal</code> Screencast +
                             GStreamer <code>pipewiresrc</code>, wrapped in
                             Tauri. Bypasses WebKitGTK's broken
@@ -135,8 +141,8 @@
                     </article>
                     <article class="feature">
                         <div class="feature-icon" aria-hidden="true">✦</div>
-                        <h3>Dynamic scenes</h3>
-                        <p>
+                        <h3 data-i18n="features.scenes.title">Dynamic scenes</h3>
+                        <p data-i18n="features.scenes.body">
                             Animated color loops with adjustable tempo. Ship
                             with Northern Lights, Savanna Sunset, Tropical
                             Twilight — or design your own in the in-app keyframe
@@ -145,8 +151,8 @@
                     </article>
                     <article class="feature">
                         <div class="feature-icon" aria-hidden="true">◇</div>
-                        <h3>Light Configurator</h3>
-                        <p>
+                        <h3 data-i18n="features.lights.title">Light Configurator</h3>
+                        <p data-i18n="features.lights.body">
                             Drag each bulb to its real-world position in front
                             of your monitor. The sync engine maps screen regions
                             to lights using the layout.
@@ -154,8 +160,8 @@
                     </article>
                     <article class="feature">
                         <div class="feature-icon" aria-hidden="true">↻</div>
-                        <h3>Signed auto-updates</h3>
-                        <p>
+                        <h3 data-i18n="features.updates.title">Signed auto-updates</h3>
+                        <p data-i18n="features.updates.body">
                             In-place AppImage updates via
                             <code>tauri-plugin-updater</code>. Every release is
                             signed with minisign — the public key is embedded in
@@ -164,8 +170,8 @@
                     </article>
                     <article class="feature">
                         <div class="feature-icon" aria-hidden="true">⌘</div>
-                        <h3>Desktop-native</h3>
-                        <p>
+                        <h3 data-i18n="features.desktop.title">Desktop-native</h3>
+                        <p data-i18n="features.desktop.body">
                             System tray with show / quit, minimize-on-close,
                             start-with-system, native notifications, light/dark
                             theme, borderless titlebar. Spanish &amp; English,
@@ -176,8 +182,8 @@
             </section>
 
             <section id="screenshots" class="shots">
-                <h2 class="section-title">A look around</h2>
-                <p class="section-lede">
+                <h2 class="section-title" data-i18n="shots.title">A look around</h2>
+                <p class="section-lede" data-i18n="shots.lede">
                     The app ships bilingual (EN / ES) with a one-time picker on
                     first launch — screenshots below are in English.
                 </p>
@@ -187,7 +193,7 @@
                         src="screenshots/en/en_01_initial_setup.png"
                         alt="First-run wizard prompting for language and Hue bridge IP / API key, with a discover button."
                     />
-                    <figcaption>
+                    <figcaption data-i18n="shots.01.cap">
                         <span class="cap-num">01</span> First-run pairing —
                         language pick, bridge discovery, push-link button.
                     </figcaption>
@@ -199,7 +205,7 @@
                             src="screenshots/en/en_02_zone_selector.png"
                             alt="Room picker asking which room should play dynamic scenes."
                         />
-                        <figcaption>
+                        <figcaption data-i18n="shots.02.cap">
                             <span class="cap-num">02</span> First-run scene room
                             — pick where dynamic scenes play.
                         </figcaption>
@@ -209,7 +215,7 @@
                             src="screenshots/en/en_03_home.png"
                             alt="Home tab listing entertainment zones as cards, with a 'Sound reactive' toggle below."
                         />
-                        <figcaption>
+                        <figcaption data-i18n="shots.03.cap">
                             <span class="cap-num">03</span> Home — entertainment
                             zones with a sound-reactive toggle for screen sync.
                         </figcaption>
@@ -219,7 +225,7 @@
                             src="screenshots/en/en_04_light_config.png"
                             alt="Zone configuration showing the monitor area with draggable light chips, a global sync brightness slider, and per-light max-brightness sliders."
                         />
-                        <figcaption>
+                        <figcaption data-i18n="shots.04.cap">
                             <span class="cap-num">04</span> Zone setup — drag
                             lights to their real positions, set per-light
                             brightness caps.
@@ -230,7 +236,7 @@
                             src="screenshots/en/en_05_lights.png"
                             alt="Lights tab listing rooms with brightness sliders and color tinted backgrounds, plus individual lights."
                         />
-                        <figcaption>
+                        <figcaption data-i18n="shots.05.cap">
                             <span class="cap-num">05</span> Lights &amp; rooms —
                             per-light color, brightness, on/off.
                         </figcaption>
@@ -240,7 +246,7 @@
                             src="screenshots/en/en_06_scenes.png"
                             alt="Dynamic scenes tab with a 'Sound reactive' toggle and preset cards."
                         />
-                        <figcaption>
+                        <figcaption data-i18n="shots.06.cap">
                             <span class="cap-num">06</span> Dynamic scenes —
                             animated loops, optionally sound-reactive.
                         </figcaption>
@@ -250,7 +256,7 @@
                             src="screenshots/en/en_07_settings.png"
                             alt="Settings drawer with theme, language, notifications, quit-on-close, autostart, and profile export/import."
                         />
-                        <figcaption>
+                        <figcaption data-i18n="shots.07.cap">
                             <span class="cap-num">07</span> Settings — theme,
                             autostart, language, profile import/export.
                         </figcaption>
@@ -259,8 +265,8 @@
             </section>
 
             <section id="install" class="install">
-                <h2 class="section-title">Install</h2>
-                <p class="section-lede">
+                <h2 class="section-title" data-i18n="install.title">Install</h2>
+                <p class="section-lede" data-i18n="install.lede">
                     Pre-built bundles for every tagged release live on
                     <a
                         href="https://github.com/sebascode/SpectraControl_App/releases"
@@ -272,50 +278,50 @@
 
                 <div class="install-grid">
                     <div class="install-card">
-                        <h3>
+                        <h3 data-i18n="install.appimage.title">
                             AppImage<span class="tag tag-accent"
                                 >recommended</span
                             >
                         </h3>
-                        <p>Distro-agnostic. Supports the in-app updater.</p>
+                        <p data-i18n="install.appimage.body">Distro-agnostic. Supports the in-app updater.</p>
                         <pre><code>chmod +x SpectraControl_*_amd64.AppImage
 ./SpectraControl_*_amd64.AppImage</code></pre>
-                        <small
+                        <small data-i18n="install.appimage.small"
                             >Needs <code>libfuse2</code> (Fedora:
                             <code>fuse-libs</code>). Fallback:
                             <code>--appimage-extract-and-run</code>.</small
                         >
                     </div>
                     <div class="install-card">
-                        <h3>Debian / Ubuntu</h3>
-                        <p><code>.deb</code> bundle. Updates via re-install.</p>
+                        <h3 data-i18n="install.deb.title">Debian / Ubuntu</h3>
+                        <p data-i18n="install.deb.body"><code>.deb</code> bundle. Updates via re-install.</p>
                         <pre><code>sudo dpkg -i SpectraControl_*_amd64.deb</code></pre>
                     </div>
                     <div class="install-card">
-                        <h3>Fedora / RHEL</h3>
-                        <p><code>.rpm</code> bundle. Updates via re-install.</p>
+                        <h3 data-i18n="install.rpm.title">Fedora / RHEL</h3>
+                        <p data-i18n="install.rpm.body"><code>.rpm</code> bundle. Updates via re-install.</p>
                         <pre><code>sudo rpm -i SpectraControl-*.x86_64.rpm</code></pre>
                     </div>
                 </div>
 
                 <details class="reqs">
-                    <summary>Requirements &amp; bridge setup</summary>
+                    <summary data-i18n="install.reqs.summary">Requirements &amp; bridge setup</summary>
                     <ul>
-                        <li>
+                        <li data-i18n="install.reqs.li1">
                             Linux with Wayland +
                             <code>xdg-desktop-portal</code> (GNOME or KDE).
                         </li>
-                        <li>
+                        <li data-i18n="install.reqs.li2">
                             GStreamer with <code>pipewiresrc</code> — package
                             <code>gstreamer1-plugin-pipewire</code> on most
                             distros.
                         </li>
-                        <li>
+                        <li data-i18n="install.reqs.li3">
                             A Philips Hue Bridge v2. Pair it with
                             <code>generateclientkey: true</code> — required for
                             the Entertainment v2 DTLS PSK.
                         </li>
-                        <li>
+                        <li data-i18n="install.reqs.li4">
                             Config persists to
                             <code>~/.config/spectracontrol/hue_config.json</code
                             >; user scenes are loaded from
@@ -323,7 +329,7 @@
                             (overrides built-ins by <code>id</code>).
                         </li>
                     </ul>
-                    <p>
+                    <p data-i18n="install.reqs.tested">
                         Tested on Bazzite (Fedora 44 immutable) + GNOME Wayland
                         with NVIDIA. Should also work on KDE Plasma Wayland and
                         any compositor that exposes the Screencast portal.
@@ -332,51 +338,51 @@
             </section>
 
             <section class="stack">
-                <h2 class="section-title">Under the hood</h2>
+                <h2 class="section-title" data-i18n="stack.title">Under the hood</h2>
                 <div class="stack-grid">
                     <div>
-                        <strong>Backend</strong
-                        ><span>Go · chi · gorilla/websocket · pion/dtls</span>
+                        <strong data-i18n="stack.backend.k">Backend</strong
+                        ><span data-i18n="stack.backend.v">Go · chi · gorilla/websocket · pion/dtls</span>
                     </div>
                     <div>
-                        <strong>Desktop shell</strong
-                        ><span>Tauri 2 (Rust)</span>
+                        <strong data-i18n="stack.shell.k">Desktop shell</strong
+                        ><span data-i18n="stack.shell.v">Tauri 2 (Rust)</span>
                     </div>
                     <div>
-                        <strong>Frontend</strong
-                        ><span>Vanilla HTML / CSS / JS — no bundler</span>
+                        <strong data-i18n="stack.fe.k">Frontend</strong
+                        ><span data-i18n="stack.fe.v">Vanilla HTML / CSS / JS — no bundler</span>
                     </div>
                     <div>
-                        <strong>Capture (Tauri)</strong
-                        ><span>ashpd + GStreamer pipewiresrc</span>
+                        <strong data-i18n="stack.capt.k">Capture (Tauri)</strong
+                        ><span data-i18n="stack.capt.v">ashpd + GStreamer pipewiresrc</span>
                     </div>
                     <div>
-                        <strong>Capture (browser)</strong
-                        ><span
+                        <strong data-i18n="stack.captb.k">Capture (browser)</strong
+                        ><span data-i18n="stack.captb.v"
                             >getDisplayMedia() — Firefox only on Wayland</span
                         >
                     </div>
                     <div>
-                        <strong>Streaming</strong
-                        ><span>UDP / DTLS · HueStream v2 · bridge :2100</span>
+                        <strong data-i18n="stack.stream.k">Streaming</strong
+                        ><span data-i18n="stack.stream.v">UDP / DTLS · HueStream v2 · bridge :2100</span>
                     </div>
                     <div>
-                        <strong>Updates</strong
-                        ><span
+                        <strong data-i18n="stack.upd.k">Updates</strong
+                        ><span data-i18n="stack.upd.v"
                             >tauri-plugin-updater + minisign-signed
                             latest.json</span
                         >
                     </div>
                     <div>
-                        <strong>i18n</strong
-                        ><span>File-based JSON, runtime-swappable</span>
+                        <strong data-i18n="stack.i18n.k">i18n</strong
+                        ><span data-i18n="stack.i18n.v">File-based JSON, runtime-swappable</span>
                     </div>
                 </div>
             </section>
 
             <section class="cta-foot">
-                <h2>Help shape it.</h2>
-                <p>
+                <h2 data-i18n="cta.title">Help shape it.</h2>
+                <p data-i18n="cta.body">
                     The roadmap is public — audio sync, per-light screen
                     regions, real-time bridge state, and more. Contributions,
                     bug reports, and "this doesn't work on my distro" are all
@@ -387,12 +393,14 @@
                         class="btn primary"
                         href="https://github.com/users/sebascode/projects/4"
                         rel="noopener"
+                        data-i18n="cta.roadmap"
                         >Roadmap (Project #4)</a
                     >
                     <a
                         class="btn ghost"
                         href="https://github.com/sebascode/SpectraControl_App/blob/master/CONTRIBUTING.md"
                         rel="noopener"
+                        data-i18n="cta.contributing"
                         >Contributing guide</a
                     >
                 </div>
@@ -400,7 +408,7 @@
         </main>
 
         <footer class="foot">
-            <div>
+            <div data-i18n="foot.line">
                 <strong>SpectraControl</strong> · MIT-licensed · created by
                 <a href="https://github.com/sebascode" rel="noopener"
                     >Sebas Contreras</a
@@ -412,10 +420,222 @@
                     >source on GitHub</a
                 >
             </div>
-            <div class="foot-fine">
+            <div class="foot-fine" data-i18n="foot.fine">
                 Not affiliated with or endorsed by Signify / Philips Hue. "Hue"
                 and "Philips Hue" are trademarks of their respective owners.
             </div>
         </footer>
+
+        <script>
+            // Landing i18n. El HTML por defecto está en inglés (mejor para SEO
+            // y crawlers que no ejecutan JS). Al cargar swap-eamos a ES si el
+            // visitante ya eligió ES o si navigator.language empieza con "es".
+            // innerHTML está bien acá: todos los strings son first-party.
+            (function () {
+                const I18N = {
+                    en: {
+                        "nav.features": "Features",
+                        "nav.screenshots": "Screenshots",
+                        "nav.install": "Install",
+                        "nav.github": "GitHub ↗",
+                        "hero.eyebrow": "Open source · Linux · MIT",
+                        "hero.title": "Philips Hue for Linux,<br>with <em>real</em> screen sync.",
+                        "hero.lede": "SpectraControl fills the gap left by Hue Sync — which has no Linux build. Per-light control, animated scenes, and screen-to-light sync over the official Hue Entertainment API v2. Native Wayland capture. No browser hacks.",
+                        "hero.download": "Download AppImage",
+                        "hero.source": "View source ↗",
+                        "features.title": "What it does",
+                        "features.screen.title": "Screen Sync, the real way",
+                        "features.screen.body": "DTLS streaming directly to your bridge on UDP 2100 (HueStream v2). Shows up as <em>\"synchronized\"</em> in the Hue mobile app — exactly like Hue Sync would.",
+                        "features.wayland.title": "Native Wayland capture",
+                        "features.wayland.body": "<code>xdg-desktop-portal</code> Screencast + GStreamer <code>pipewiresrc</code>, wrapped in Tauri. Bypasses WebKitGTK's broken <code>getDisplayMedia</code> entirely.",
+                        "features.scenes.title": "Dynamic scenes",
+                        "features.scenes.body": "Animated color loops with adjustable tempo. Ship with Northern Lights, Savanna Sunset, Tropical Twilight — or design your own in the in-app keyframe editor.",
+                        "features.lights.title": "Light Configurator",
+                        "features.lights.body": "Drag each bulb to its real-world position in front of your monitor. The sync engine maps screen regions to lights using the layout.",
+                        "features.updates.title": "Signed auto-updates",
+                        "features.updates.body": "In-place AppImage updates via <code>tauri-plugin-updater</code>. Every release is signed with minisign — the public key is embedded in the binary.",
+                        "features.desktop.title": "Desktop-native",
+                        "features.desktop.body": "System tray with show / quit, minimize-on-close, start-with-system, native notifications, light/dark theme, borderless titlebar. Spanish &amp; English, file-based i18n.",
+                        "shots.title": "A look around",
+                        "shots.lede": "The app ships bilingual (EN / ES) with a one-time picker on first launch — screenshots below are in English.",
+                        "shots.01.cap": "<span class=\"cap-num\">01</span> First-run pairing — language pick, bridge discovery, push-link button.",
+                        "shots.02.cap": "<span class=\"cap-num\">02</span> First-run scene room — pick where dynamic scenes play.",
+                        "shots.03.cap": "<span class=\"cap-num\">03</span> Home — entertainment zones with a sound-reactive toggle for screen sync.",
+                        "shots.04.cap": "<span class=\"cap-num\">04</span> Zone setup — drag lights to their real positions, set per-light brightness caps.",
+                        "shots.05.cap": "<span class=\"cap-num\">05</span> Lights &amp; rooms — per-light color, brightness, on/off.",
+                        "shots.06.cap": "<span class=\"cap-num\">06</span> Dynamic scenes — animated loops, optionally sound-reactive.",
+                        "shots.07.cap": "<span class=\"cap-num\">07</span> Settings — theme, autostart, language, profile import/export.",
+                        "install.title": "Install",
+                        "install.lede": "Pre-built bundles for every tagged release live on <a href=\"https://github.com/sebascode/SpectraControl_App/releases\" rel=\"noopener\">GitHub Releases</a>. AppImage is recommended — it's the only bundle that supports in-place auto-updates.",
+                        "install.appimage.title": "AppImage<span class=\"tag tag-accent\">recommended</span>",
+                        "install.appimage.body": "Distro-agnostic. Supports the in-app updater.",
+                        "install.appimage.small": "Needs <code>libfuse2</code> (Fedora: <code>fuse-libs</code>). Fallback: <code>--appimage-extract-and-run</code>.",
+                        "install.deb.title": "Debian / Ubuntu",
+                        "install.deb.body": "<code>.deb</code> bundle. Updates via re-install.",
+                        "install.rpm.title": "Fedora / RHEL",
+                        "install.rpm.body": "<code>.rpm</code> bundle. Updates via re-install.",
+                        "install.reqs.summary": "Requirements &amp; bridge setup",
+                        "install.reqs.li1": "Linux with Wayland + <code>xdg-desktop-portal</code> (GNOME or KDE).",
+                        "install.reqs.li2": "GStreamer with <code>pipewiresrc</code> — package <code>gstreamer1-plugin-pipewire</code> on most distros.",
+                        "install.reqs.li3": "A Philips Hue Bridge v2. Pair it with <code>generateclientkey: true</code> — required for the Entertainment v2 DTLS PSK.",
+                        "install.reqs.li4": "Config persists to <code>~/.config/spectracontrol/hue_config.json</code>; user scenes are loaded from <code>~/.config/spectracontrol/scenes/*.json</code> (overrides built-ins by <code>id</code>).",
+                        "install.reqs.tested": "Tested on Bazzite (Fedora 44 immutable) + GNOME Wayland with NVIDIA. Should also work on KDE Plasma Wayland and any compositor that exposes the Screencast portal.",
+                        "stack.title": "Under the hood",
+                        "stack.backend.k": "Backend",
+                        "stack.backend.v": "Go · chi · gorilla/websocket · pion/dtls",
+                        "stack.shell.k": "Desktop shell",
+                        "stack.shell.v": "Tauri 2 (Rust)",
+                        "stack.fe.k": "Frontend",
+                        "stack.fe.v": "Vanilla HTML / CSS / JS — no bundler",
+                        "stack.capt.k": "Capture (Tauri)",
+                        "stack.capt.v": "ashpd + GStreamer pipewiresrc",
+                        "stack.captb.k": "Capture (browser)",
+                        "stack.captb.v": "getDisplayMedia() — Firefox only on Wayland",
+                        "stack.stream.k": "Streaming",
+                        "stack.stream.v": "UDP / DTLS · HueStream v2 · bridge :2100",
+                        "stack.upd.k": "Updates",
+                        "stack.upd.v": "tauri-plugin-updater + minisign-signed latest.json",
+                        "stack.i18n.k": "i18n",
+                        "stack.i18n.v": "File-based JSON, runtime-swappable",
+                        "cta.title": "Help shape it.",
+                        "cta.body": "The roadmap is public — audio sync, per-light screen regions, real-time bridge state, and more. Contributions, bug reports, and \"this doesn't work on my distro\" are all welcome.",
+                        "cta.roadmap": "Roadmap (Project #4)",
+                        "cta.contributing": "Contributing guide",
+                        "foot.line": "<strong>SpectraControl</strong> · MIT-licensed · created by <a href=\"https://github.com/sebascode\" rel=\"noopener\">Sebas Contreras</a> · <a href=\"https://github.com/sebascode/SpectraControl_App\" rel=\"noopener\">source on GitHub</a>",
+                        "foot.fine": "Not affiliated with or endorsed by Signify / Philips Hue. \"Hue\" and \"Philips Hue\" are trademarks of their respective owners.",
+                    },
+                    es: {
+                        "nav.features": "Características",
+                        "nav.screenshots": "Capturas",
+                        "nav.install": "Instalar",
+                        "nav.github": "GitHub ↗",
+                        "hero.eyebrow": "Open source · Linux · MIT",
+                        "hero.title": "Philips Hue para Linux,<br>con sincronización <em>real</em> de pantalla.",
+                        "hero.lede": "SpectraControl cubre el hueco que dejó Hue Sync —que no tiene versión para Linux—. Control por luz, escenas animadas y sincronización pantalla-a-luces sobre la API oficial Hue Entertainment v2. Captura nativa de Wayland. Sin trucos del navegador.",
+                        "hero.download": "Descargar AppImage",
+                        "hero.source": "Ver código fuente ↗",
+                        "features.title": "Qué hace",
+                        "features.screen.title": "Screen Sync de verdad",
+                        "features.screen.body": "Streaming DTLS directo al bridge por UDP 2100 (HueStream v2). Aparece como <em>«sincronizado»</em> en la app móvil de Hue — exactamente como lo haría Hue Sync.",
+                        "features.wayland.title": "Captura nativa de Wayland",
+                        "features.wayland.body": "<code>xdg-desktop-portal</code> Screencast + GStreamer <code>pipewiresrc</code>, envuelto en Tauri. Esquiva por completo el <code>getDisplayMedia</code> roto de WebKitGTK.",
+                        "features.scenes.title": "Escenas dinámicas",
+                        "features.scenes.body": "Loops de color animados con tempo ajustable. Incluye Northern Lights, Savanna Sunset, Tropical Twilight — o diseña la tuya en el editor de keyframes integrado.",
+                        "features.lights.title": "Configurador de luces",
+                        "features.lights.body": "Arrastra cada bombilla a su posición real frente al monitor. El motor de sync mapea regiones de pantalla a luces usando esa distribución.",
+                        "features.updates.title": "Auto-update firmado",
+                        "features.updates.body": "Actualizaciones in-place del AppImage vía <code>tauri-plugin-updater</code>. Cada release se firma con minisign — la clave pública va embebida en el binario.",
+                        "features.desktop.title": "Nativa del escritorio",
+                        "features.desktop.body": "Bandeja del sistema con mostrar/salir, minimizar al cerrar, iniciar con el sistema, notificaciones nativas, tema claro/oscuro, titlebar sin bordes. Español e inglés, i18n por archivos.",
+                        "shots.title": "Un vistazo",
+                        "shots.lede": "La app llega bilingüe (EN / ES) con un selector único al primer inicio — las capturas de abajo están en inglés.",
+                        "shots.01.cap": "<span class=\"cap-num\">01</span> Pareo inicial — elección de idioma, descubrimiento del bridge, botón push-link.",
+                        "shots.02.cap": "<span class=\"cap-num\">02</span> Habitación de escenas — elige dónde se reproducen las escenas dinámicas.",
+                        "shots.03.cap": "<span class=\"cap-num\">03</span> Inicio — zonas de entertainment con toggle sound-reactive para screen sync.",
+                        "shots.04.cap": "<span class=\"cap-num\">04</span> Configuración de zona — arrastra las luces a su posición real, ajusta el tope de brillo por luz.",
+                        "shots.05.cap": "<span class=\"cap-num\">05</span> Luces y habitaciones — color, brillo y on/off por luz.",
+                        "shots.06.cap": "<span class=\"cap-num\">06</span> Escenas dinámicas — loops animados, opcionalmente sound-reactive.",
+                        "shots.07.cap": "<span class=\"cap-num\">07</span> Ajustes — tema, autoarranque, idioma, importar/exportar perfil.",
+                        "install.title": "Instalar",
+                        "install.lede": "Los bundles pre-armados de cada release están en <a href=\"https://github.com/sebascode/SpectraControl_App/releases\" rel=\"noopener\">GitHub Releases</a>. AppImage es el recomendado — es el único bundle que soporta auto-update in-place.",
+                        "install.appimage.title": "AppImage<span class=\"tag tag-accent\">recomendado</span>",
+                        "install.appimage.body": "Independiente de la distro. Soporta el updater integrado.",
+                        "install.appimage.small": "Requiere <code>libfuse2</code> (Fedora: <code>fuse-libs</code>). Fallback: <code>--appimage-extract-and-run</code>.",
+                        "install.deb.title": "Debian / Ubuntu",
+                        "install.deb.body": "Bundle <code>.deb</code>. Las actualizaciones requieren reinstalar.",
+                        "install.rpm.title": "Fedora / RHEL",
+                        "install.rpm.body": "Bundle <code>.rpm</code>. Las actualizaciones requieren reinstalar.",
+                        "install.reqs.summary": "Requisitos y configuración del bridge",
+                        "install.reqs.li1": "Linux con Wayland + <code>xdg-desktop-portal</code> (GNOME o KDE).",
+                        "install.reqs.li2": "GStreamer con <code>pipewiresrc</code> — paquete <code>gstreamer1-plugin-pipewire</code> en la mayoría de distros.",
+                        "install.reqs.li3": "Un Philips Hue Bridge v2. Pareo con <code>generateclientkey: true</code> — necesario para el PSK DTLS de Entertainment v2.",
+                        "install.reqs.li4": "La config persiste en <code>~/.config/spectracontrol/hue_config.json</code>; las escenas de usuario se cargan desde <code>~/.config/spectracontrol/scenes/*.json</code> (sobreescriben las built-in por <code>id</code>).",
+                        "install.reqs.tested": "Probado en Bazzite (Fedora 44 inmutable) + GNOME Wayland con NVIDIA. Debería funcionar también en KDE Plasma Wayland y cualquier compositor que exponga el portal Screencast.",
+                        "stack.title": "Por dentro",
+                        "stack.backend.k": "Backend",
+                        "stack.backend.v": "Go · chi · gorilla/websocket · pion/dtls",
+                        "stack.shell.k": "Shell de escritorio",
+                        "stack.shell.v": "Tauri 2 (Rust)",
+                        "stack.fe.k": "Frontend",
+                        "stack.fe.v": "HTML / CSS / JS sin bundler",
+                        "stack.capt.k": "Captura (Tauri)",
+                        "stack.capt.v": "ashpd + GStreamer pipewiresrc",
+                        "stack.captb.k": "Captura (browser)",
+                        "stack.captb.v": "getDisplayMedia() — solo Firefox en Wayland",
+                        "stack.stream.k": "Streaming",
+                        "stack.stream.v": "UDP / DTLS · HueStream v2 · bridge :2100",
+                        "stack.upd.k": "Actualizaciones",
+                        "stack.upd.v": "tauri-plugin-updater + latest.json firmado con minisign",
+                        "stack.i18n.k": "i18n",
+                        "stack.i18n.v": "JSON por archivos, intercambiable en runtime",
+                        "cta.title": "Ayúdanos a moldearlo.",
+                        "cta.body": "La hoja de ruta es pública — audio sync, regiones de pantalla por luz, estado del bridge en tiempo real y más. Contribuciones, reportes de bugs y «esto no funciona en mi distro» son todos bienvenidos.",
+                        "cta.roadmap": "Hoja de ruta (Project #4)",
+                        "cta.contributing": "Guía para contribuir",
+                        "foot.line": "<strong>SpectraControl</strong> · Licencia MIT · creado por <a href=\"https://github.com/sebascode\" rel=\"noopener\">Sebas Contreras</a> · <a href=\"https://github.com/sebascode/SpectraControl_App\" rel=\"noopener\">código en GitHub</a>",
+                        "foot.fine": "No está afiliado ni respaldado por Signify / Philips Hue. «Hue» y «Philips Hue» son marcas de sus respectivos dueños.",
+                    },
+                };
+                const META = {
+                    en: {
+                        title: "SpectraControl — Philips Hue for Linux, with native screen sync",
+                        description:
+                            "Linux desktop app for Philips Hue. Per-light control, dynamic scenes, and screen-to-light sync over the official Hue Entertainment API v2. Native Wayland capture, no browser tricks.",
+                    },
+                    es: {
+                        title: "SpectraControl — Philips Hue para Linux, con screen sync nativo",
+                        description:
+                            "App de escritorio para Linux para Philips Hue. Control por luz, escenas dinámicas y sync pantalla-a-luces sobre la API oficial Hue Entertainment v2. Captura nativa de Wayland, sin trucos del navegador.",
+                    },
+                };
+                const STORAGE_KEY = "spectra-landing-lang";
+
+                function applyLang(lang) {
+                    if (!I18N[lang]) lang = "en";
+                    const dict = I18N[lang];
+                    document.documentElement.lang = lang;
+                    document.querySelectorAll("[data-i18n]").forEach((el) => {
+                        const k = el.getAttribute("data-i18n");
+                        if (dict[k] != null) el.innerHTML = dict[k];
+                    });
+                    const meta = META[lang];
+                    if (meta) {
+                        document.title = meta.title;
+                        const md = document.querySelector(
+                            'meta[name="description"]',
+                        );
+                        if (md) md.setAttribute("content", meta.description);
+                    }
+                    document
+                        .querySelectorAll(".lang-toggle button")
+                        .forEach((b) => {
+                            b.setAttribute(
+                                "aria-pressed",
+                                b.dataset.lang === lang ? "true" : "false",
+                            );
+                        });
+                    try {
+                        localStorage.setItem(STORAGE_KEY, lang);
+                    } catch (e) {}
+                }
+
+                let saved = null;
+                try {
+                    saved = localStorage.getItem(STORAGE_KEY);
+                } catch (e) {}
+                const nav = (navigator.language || "en")
+                    .slice(0, 2)
+                    .toLowerCase();
+                applyLang(saved || (nav === "es" ? "es" : "en"));
+
+                document
+                    .querySelectorAll(".lang-toggle button")
+                    .forEach((b) => {
+                        b.addEventListener("click", () =>
+                            applyLang(b.dataset.lang),
+                        );
+                    });
+            })();
+        </script>
     </body>
 </html>

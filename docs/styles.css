@@ -70,13 +70,39 @@ code, pre { font-family: var(--mono); font-weight: 400; }
   font-size: 1.05rem;
 }
 .brand img { display: block; }
-.nav nav { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.nav nav { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
 .nav nav a {
   color: var(--text-dim);
   font-size: 0.92rem;
   letter-spacing: 0.02em;
 }
 .nav nav a:hover { color: var(--text); }
+
+.lang-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-left: 0.25rem;
+}
+.lang-toggle button {
+  background: transparent;
+  color: var(--text-muted);
+  border: 0;
+  padding: 0.25rem 0.65rem;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  line-height: 1;
+}
+.lang-toggle button + button { border-left: 1px solid var(--border); }
+.lang-toggle button:hover { color: var(--text); }
+.lang-toggle button[aria-pressed="true"] {
+  background: var(--surface3);
+  color: var(--text);
+}
 
 /* ---------- Hero ---------- */
 .hero {
