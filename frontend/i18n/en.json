@@ -44,6 +44,10 @@
   "notify.audioSyncStartedBody": "Audio Sync started.",
   "notify.audioSyncStoppedTitle": "SpectraControl",
   "notify.audioSyncStoppedBody": "Audio Sync stopped.",
+  "notify.sceneStartedTitle": "SpectraControl",
+  "notify.sceneStartedBody": "Scene “{name}” activated.",
+  "notify.sceneStoppedTitle": "SpectraControl",
+  "notify.sceneStoppedBody": "Scene “{name}” stopped.",
   "notify.entStoppedTitle": "SpectraControl",
   "notify.entStoppedBody": "Entertainment streaming stopped.",
 

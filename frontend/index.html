@@ -4086,6 +4086,13 @@
                     if (isSceneAudioReactive()) {
                         startSceneAudio();
                     }
+                    const startedScene = scenes.find((s) => s.id === id);
+                    notifyIfHidden(
+                        t("notify.sceneStartedTitle"),
+                        tf("notify.sceneStartedBody", {
+                            name: startedScene?.name ?? "",
+                        }),
+                    );
                 } catch (e) {
                     toast(t("toasts.sceneStartError"), "error", 2500);
                 }
@@ -4429,12 +4436,19 @@
             }
 
             async function stopScene() {
+                const stoppedScene = scenes.find((s) => s.id === activeSceneID);
                 try {
                     await fetch(API + "/api/scenes/stop", { method: "POST" });
                 } catch (e) {}
                 stopSceneAudio();
                 activeSceneID = null;
                 renderScenes();
+                notifyIfHidden(
+                    t("notify.sceneStoppedTitle"),
+                    tf("notify.sceneStoppedBody", {
+                        name: stoppedScene?.name ?? "",
+                    }),
+                );
             }
 
             // ── AUDIO BEAT TRACKER ─────────────────────────────────────
