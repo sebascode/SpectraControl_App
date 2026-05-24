@@ -91,6 +91,15 @@
   </branding>
 
   <releases>
+    <release version="0.4.0" date="2026-05-24">
+      <description>
+        <p>Screen Sync improvements:</p>
+        <ul>
+          <li>Skip the "which monitor do you want to share?" portal dialog on every launch. The Screencast restore token is persisted between sessions, so once you pick a monitor the portal reuses it on the next sync. Falls back gracefully if the saved monitor is gone.</li>
+          <li>New "Remember last connected monitor" toggle in Settings → Screen Sync (on by default). Turning it off restores the legacy behavior — the portal asks every time and the saved token is wiped from disk.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-05-16">
       <description>
         <p>Hotfix:</p>
