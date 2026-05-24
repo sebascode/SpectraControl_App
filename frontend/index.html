@@ -2334,6 +2334,22 @@
                     class="settings-row"
                     style="margin-top: 10px; padding: 0"
                 >
+                    <span data-i18n="settings.rememberMonitor">
+                        Recordar último monitor conectado
+                    </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="remember-monitor-toggle"
+                            onchange="setRememberMonitor(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
+                </label>
+                <label
+                    class="settings-row"
+                    style="padding: 0"
+                >
                     <span data-i18n="settings.breakOthersOnStart">
                         Romper otras sincronizaciones al iniciar
                     </span>
@@ -6456,7 +6472,10 @@
                     lightsOffOnCloseEnabled();
                 document.getElementById("break-others-on-start-toggle").checked =
                     breakOthersOnStartEnabled();
+                document.getElementById("remember-monitor-toggle").checked =
+                    rememberMonitorEnabled();
                 pushQuitOnCloseToRust();
+                pushRememberMonitorToRust();
                 getAutostartEnabled().then((on) => {
                     document.getElementById("autostart-toggle").checked = on;
                     document.getElementById("autostart-sync-toggle").checked =
@@ -6504,6 +6523,34 @@
 
             function setBreakOthersOnStart(on) {
                 localStorage.setItem(BREAK_OTHERS_KEY, on ? "1" : "0");
+            }
+
+            // Default on: la mayoría de usuarios prefiere no re-elegir monitor
+            // en cada arranque. Cuando está activo, Rust pasa el restore_token
+            // del portal Screencast en la próxima sesión y el diálogo no aparece.
+            // Al desactivarlo, set_remember_monitor borra el token guardado.
+            const REMEMBER_MONITOR_KEY = "sync.remember-monitor";
+
+            function rememberMonitorEnabled() {
+                const v = localStorage.getItem(REMEMBER_MONITOR_KEY);
+                return v === null ? true : v === "1";
+            }
+
+            async function pushRememberMonitorToRust() {
+                const invoke = window.__TAURI__?.core?.invoke;
+                if (!invoke) return;
+                try {
+                    await invoke("set_remember_monitor", {
+                        on: rememberMonitorEnabled(),
+                    });
+                } catch (e) {
+                    console.warn("[settings] set_remember_monitor falló", e);
+                }
+            }
+
+            function setRememberMonitor(on) {
+                localStorage.setItem(REMEMBER_MONITOR_KEY, on ? "1" : "0");
+                pushRememberMonitorToRust();
             }
 
             // Handler del botón "Detener sincronizaciones de otras apps ahora".

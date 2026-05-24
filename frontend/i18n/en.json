@@ -134,6 +134,7 @@
   "settings.screenSync": "Screen Sync",
   "settings.syncTargetHint": "Entertainment area used by the Sync button",
   "settings.syncTargetEmpty": "No entertainment areas — create one in the Hue Sync app",
+  "settings.rememberMonitor": "Remember last connected monitor",
   "settings.breakOthersOnStart": "Break other entertainment syncs when starting",
   "settings.breakOthersNow": "Stop other apps' entertainment syncs now",
   "settings.speed": "Speed:",

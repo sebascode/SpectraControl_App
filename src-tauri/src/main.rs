@@ -8,8 +8,10 @@ mod autostart;
 mod notifications;
 mod runtime;
 
+use std::fs;
 use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -91,6 +93,44 @@ struct CaptureState {
 
 static CAPTURE: OnceLock<CaptureState> = OnceLock::new();
 
+// Ruta del archivo donde persistimos el restore_token del portal Screencast.
+// Se inicializa en setup() con `app_config_dir/screencast_restore_token`. Si
+// nunca se inicializó (camino de tests) los helpers no-opean.
+static TOKEN_FILE: OnceLock<PathBuf> = OnceLock::new();
+
+fn load_restore_token() -> Option<String> {
+    let path = TOKEN_FILE.get()?;
+    let raw = fs::read_to_string(path).ok()?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn save_restore_token(tok: &str) {
+    let Some(path) = TOKEN_FILE.get() else { return };
+    if let Some(parent) = path.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            warn!("[capture] no se pudo crear dir para restore token: {e}");
+            return;
+        }
+    }
+    if let Err(e) = fs::write(path, tok) {
+        warn!("[capture] no se pudo guardar restore token: {e}");
+    }
+}
+
+fn delete_restore_token() {
+    let Some(path) = TOKEN_FILE.get() else { return };
+    match fs::remove_file(path) {
+        Ok(()) => info!("[capture] restore token borrado"),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => warn!("[capture] no se pudo borrar restore token: {e}"),
+    }
+}
+
 fn capture_state() -> &'static CaptureState {
     CAPTURE.get_or_init(|| CaptureState {
         latest: Arc::new(Mutex::new(None)),
@@ -99,14 +139,19 @@ fn capture_state() -> &'static CaptureState {
     })
 }
 
-async fn ensure_capture_initialized() -> Result<(), String> {
+async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String> {
     let state = capture_state();
     let mut init = state.init_lock.lock().await;
     if *init {
         return Ok(());
     }
 
-    // 1) Negociar Screencast con el portal
+    // 1) Negociar Screencast con el portal.
+    //    Si remember_monitor=true cargamos el restore_token de una sesión
+    //    previa y le pedimos al portal que persista la selección — así no
+    //    vuelve a abrir el diálogo de monitor. Si el token está vencido o
+    //    el monitor ya no existe, el portal degrada solo (vuelve a mostrar
+    //    el diálogo) y nos devuelve un token nuevo que reemplaza al viejo.
     let proxy = Screencast::new()
         .await
         .map_err(|e| format!("portal proxy: {e}"))?;
@@ -114,14 +159,24 @@ async fn ensure_capture_initialized() -> Result<(), String> {
         .create_session()
         .await
         .map_err(|e| format!("create_session: {e}"))?;
+    let restore_token = if remember_monitor {
+        load_restore_token()
+    } else {
+        None
+    };
+    let persist_mode = if remember_monitor {
+        PersistMode::ExplicitlyRevoked
+    } else {
+        PersistMode::DoNot
+    };
     proxy
         .select_sources(
             &session,
             CursorMode::Hidden,
             SourceType::Monitor.into(),
             false,
-            None,
-            PersistMode::DoNot,
+            restore_token.as_deref(),
+            persist_mode,
         )
         .await
         .map_err(|e| format!("select_sources: {e}"))?;
@@ -131,6 +186,11 @@ async fn ensure_capture_initialized() -> Result<(), String> {
         .map_err(|e| format!("start: {e}"))?
         .response()
         .map_err(|e| format!("start response: {e}"))?;
+    if remember_monitor {
+        if let Some(tok) = response.restore_token() {
+            save_restore_token(tok);
+        }
+    }
     let streams: Vec<_> = response.streams().to_vec();
     let stream_info = streams.first().ok_or_else(|| "sin streams".to_string())?;
     let node_id = stream_info.pipe_wire_node_id();
@@ -205,8 +265,12 @@ async fn ensure_capture_initialized() -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn sample_screen_regions(positions: Vec<[f32; 2]>) -> Result<Vec<[u8; 3]>, String> {
-    ensure_capture_initialized().await?;
+async fn sample_screen_regions(
+    positions: Vec<[f32; 2]>,
+    remember: tauri::State<'_, RememberMonitor>,
+) -> Result<Vec<[u8; 3]>, String> {
+    let remember_monitor = remember.0.load(Ordering::SeqCst);
+    ensure_capture_initialized(remember_monitor).await?;
 
     // Esperar el primer frame (hasta 1.5s la primera vez tras negociar el portal)
     let state = capture_state();
@@ -513,6 +577,12 @@ struct IsQuitting(AtomicBool);
 // el toggle de Apariencia con set_quit_on_close.
 struct QuitOnClose(AtomicBool);
 
+// remember_monitor=true → guardamos el restore_token que devuelve el portal
+// Screencast y se lo pasamos en la próxima sesión: el portal salta el diálogo
+// de "qué monitor compartir". false → cada sesión renegocia desde cero y el
+// portal pregunta siempre. El frontend lo empuja con set_remember_monitor.
+struct RememberMonitor(AtomicBool);
+
 // graceful_quit: cuando el usuario pide cerrar (tray "Salir" o X con
 // quit_on_close=true), no salimos inmediato. Emitimos `spectra:before-quit`
 // y dejamos al frontend apagar las luces del ambiente sincronizado, que
@@ -524,6 +594,16 @@ struct QuitRequested(AtomicBool);
 #[tauri::command]
 fn set_quit_on_close(on: bool, state: tauri::State<'_, QuitOnClose>) {
     state.0.store(on, Ordering::SeqCst);
+}
+
+// Apagar el toggle también limpia el token persistido: si el usuario revoca
+// la preferencia, el archivo no se queda atrás esperando a que la reactive.
+#[tauri::command]
+fn set_remember_monitor(on: bool, state: tauri::State<'_, RememberMonitor>) {
+    state.0.store(on, Ordering::SeqCst);
+    if !on {
+        delete_restore_token();
+    }
 }
 
 // Referencias a los items del menú del tray para poder reescribir sus labels
@@ -706,7 +786,16 @@ fn main() {
         .manage(IsQuitting(AtomicBool::new(false)))
         .manage(QuitOnClose(AtomicBool::new(false)))
         .manage(QuitRequested(AtomicBool::new(false)))
+        .manage(RememberMonitor(AtomicBool::new(true)))
         .setup(|app| {
+            // Ubicación del restore_token del Screencast portal. Se hace acá
+            // (no en el primer uso) para que `delete_restore_token` desde el
+            // command funcione aunque la captura nunca se haya inicializado.
+            if let Ok(dir) = app.path().app_config_dir() {
+                let _ = TOKEN_FILE.set(dir.join("screencast_restore_token"));
+            } else {
+                warn!("[capture] app_config_dir no resoluble; restore token deshabilitado");
+            }
             #[cfg(not(debug_assertions))]
             {
                 let mut cmd = if runtime::is_flatpak() {
@@ -834,6 +923,7 @@ fn main() {
             sample_audio_bins,
             set_tray_menu_labels,
             set_quit_on_close,
+            set_remember_monitor,
             write_text_file,
             notifications::notify_native,
             confirm_quit,
