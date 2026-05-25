@@ -5510,6 +5510,14 @@
                             c.status === "active" && c.id !== activeZoneID,
                     );
                     renderForeignSyncBanner();
+                    // Cold-boot recovery: si la carga inicial falló (zonas
+                    // vacías) pero ahora el bridge contesta con configs,
+                    // reusamos esta misma respuesta sin gastar un fetch
+                    // extra del budget de loadEntertainmentConfigs.
+                    if (configs.length && entConfigs.length === 0) {
+                        applyEntertainmentData(data);
+                        entLoadAttempts.length = 0;
+                    }
                 } catch (_) {
                     // Silencioso: el banner no debe spammear errores cuando el
                     // bridge tiene un blip de red.
@@ -6185,46 +6193,99 @@
             }
 
             // ── ENTERTAINMENT API ──
-            async function loadEntertainmentConfigs() {
+            // En autostart de boot frío el bridge HTTPS suele no contestar
+            // cuando arranca la primera fetch — agregamos backoff interno
+            // (cubre el primer paint) y un circuit breaker compartido para
+            // que el poller a 5 s no siga golpeando para siempre si el bridge
+            // nunca aparece. Budget: 10 fetches en ventana deslizante de 2 min;
+            // un 4xx (clientkey) o un éxito resetean el contador.
+            const ENT_LOAD_MAX_ATTEMPTS = 10;
+            const ENT_LOAD_WINDOW_MS = 120_000;
+            const entLoadAttempts = [];
+
+            function entLoadBudgetExhausted() {
+                const cutoff = Date.now() - ENT_LOAD_WINDOW_MS;
+                while (
+                    entLoadAttempts.length &&
+                    entLoadAttempts[0] < cutoff
+                ) {
+                    entLoadAttempts.shift();
+                }
+                return entLoadAttempts.length >= ENT_LOAD_MAX_ATTEMPTS;
+            }
+
+            function applyEntertainmentData(data) {
                 const sel = document.getElementById("ent-select");
-                try {
-                    const r = await fetch(`${API}/api/entertainment`);
-                    if (!r.ok) {
-                        const e = await r.json();
-                        const msg =
-                            e.detail || "Sin clientkey — re-vincula el bridge";
-                        sel.innerHTML = `<option value="">${msg}</option>`;
-                        entConfigs = [];
-                        renderZones();
-                        return;
+                entConfigs = data.configs || [];
+                sel.innerHTML = entConfigs.length
+                    ? entConfigs
+                          .map(
+                              (c) =>
+                                  `<option value="${c.id}" ${c.id === data.active_id ? "selected" : ""}>${c.name} (${c.status})</option>`,
+                          )
+                          .join("")
+                    : `<option value="">Sin áreas de entretenimiento</option>`;
+                if (data.active_id) {
+                    updateEntBadge(true);
+                    activeZoneID = data.active_id;
+                }
+                // Restaurar selección de zona persistida así el botón Sync
+                // del nav puede arrancar antes del primer tap manual.
+                if (!selectedZoneID) {
+                    const stored = getSyncTargetZone();
+                    if (stored && entConfigs.some((z) => z.id === stored)) {
+                        selectedZoneID = stored;
                     }
-                    const data = await r.json();
-                    entConfigs = data.configs || [];
-                    sel.innerHTML = entConfigs.length
-                        ? entConfigs
-                              .map(
-                                  (c) =>
-                                      `<option value="${c.id}" ${c.id === data.active_id ? "selected" : ""}>${c.name} (${c.status})</option>`,
-                              )
-                              .join("")
-                        : `<option value="">Sin áreas de entretenimiento</option>`;
-                    if (data.active_id) {
-                        updateEntBadge(true);
-                        activeZoneID = data.active_id;
+                }
+                populateSyncTargetSelect();
+                renderZones();
+                maybeAutostartSync();
+            }
+
+            async function loadEntertainmentConfigs() {
+                if (entLoadBudgetExhausted()) return;
+                const sel = document.getElementById("ent-select");
+                const backoffMs = [0, 500, 1500, 3000];
+                let lastError = null;
+                for (let i = 0; i < backoffMs.length; i++) {
+                    if (i > 0) {
+                        if (entLoadBudgetExhausted()) break;
+                        await new Promise((r) => setTimeout(r, backoffMs[i]));
                     }
-                    // Restaurar selección de zona persistida así el botón Sync
-                    // del nav puede arrancar antes del primer tap manual.
-                    if (!selectedZoneID) {
-                        const stored = getSyncTargetZone();
-                        if (stored && entConfigs.some((z) => z.id === stored)) {
-                            selectedZoneID = stored;
+                    entLoadAttempts.push(Date.now());
+                    try {
+                        const r = await fetch(`${API}/api/entertainment`);
+                        if (!r.ok) {
+                            if (r.status < 500) {
+                                // 4xx (clientkey faltante u otra respuesta
+                                // definitiva del backend): no reintentes y
+                                // liberá el budget — la condición no se
+                                // resuelve sola.
+                                const e = await r
+                                    .json()
+                                    .catch(() => ({}));
+                                const msg =
+                                    e.detail ||
+                                    "Sin clientkey — re-vincula el bridge";
+                                sel.innerHTML = `<option value="">${msg}</option>`;
+                                entConfigs = [];
+                                renderZones();
+                                entLoadAttempts.length = 0;
+                                return;
+                            }
+                            lastError = new Error(`HTTP ${r.status}`);
+                            continue;
                         }
+                        const data = await r.json();
+                        applyEntertainmentData(data);
+                        entLoadAttempts.length = 0;
+                        return;
+                    } catch (e) {
+                        lastError = e;
                     }
-                    populateSyncTargetSelect();
-                    renderZones();
-                    maybeAutostartSync();
-                } catch (e) {
-                    sel.innerHTML = `<option value="">Error: ${e.message}</option>`;
+                }
+                if (lastError) {
+                    sel.innerHTML = `<option value="">Error: ${lastError.message}</option>`;
                     entConfigs = [];
                     renderZones();
                 }
