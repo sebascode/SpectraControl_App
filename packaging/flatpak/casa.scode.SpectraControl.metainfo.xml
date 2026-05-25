@@ -91,6 +91,14 @@
   </branding>
 
   <releases>
+    <release version="0.4.1" date="2026-05-24">
+      <description>
+        <p>Hotfix:</p>
+        <ul>
+          <li>Home view no longer stays stuck on "No entertainment zones" when the app starts with the system. The first /clip/v2 fetch can race the bridge being reachable on cold boot, so the load now retries with a short backoff and the existing 5 s foreign-sync poll repopulates the zones grid once the bridge answers. A 10-fetch / 2-min budget keeps it from hammering when the bridge is genuinely unreachable.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-05-24">
       <description>
         <p>Screen Sync improvements:</p>
