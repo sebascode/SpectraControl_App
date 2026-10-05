@@ -5,6 +5,7 @@
 // and kills it on window close.
 
 mod autostart;
+mod fonts;
 mod notifications;
 mod runtime;
 
@@ -761,6 +762,7 @@ fn cleanup_children(app: &tauri::AppHandle) {
 
 fn main() {
     setup_logger();
+    fonts::guard_colrv1();
     // Flathub no permite auto-update: el repo maneja el ciclo. Saltamos el
     // registro del plugin para que el frontend ni siquiera vea el namespace
     // `__TAURI__.updater` y el botón de la UI se esconda solo.
