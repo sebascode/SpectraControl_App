@@ -91,6 +91,16 @@
   </branding>
 
   <releases>
+    <release version="0.4.2" date="2026-10-05">
+      <description>
+        <p>Fixes:</p>
+        <ul>
+          <li>Blank/black window on Fedora 44 and Bazzite. Recent Noto-COLRv1 emoji fonts crashed the bundled WebKit renderer; the app now excludes COLRv1 fonts for its own process (set SPECTRA_KEEP_COLRV1=1 to opt out).</li>
+          <li>Entertainment sync now yields when another device (PS5, Hue Sync Box, another PC) takes over the area: it stops sending frames, no longer kills the new owner's session or fights it with per-light HTTP updates, and shows a notice.</li>
+          <li>Log out / delete scene / import profile confirmation dialogs work again (missing dialog permissions).</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.1" date="2026-05-24">
       <description>
         <p>Hotfix:</p>
