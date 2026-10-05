@@ -3370,6 +3370,7 @@
                     }
                     if (ev.type === "light") applyLightUpdate(ev);
                     else if (ev.type === "group") applyGroupUpdate(ev);
+                    else if (ev.type === "ent_lost") handleEntertainmentLost();
                 };
                 stateWs.onclose = () => {
                     stateWs = null;
@@ -3382,6 +3383,17 @@
                     // onclose se dispara después; el handler de cierre arma la
                     // reconexión.
                 };
+            }
+
+            // Otro dispositivo (PS5, Sync Box, otra PC) tomó el stream de
+            // entertainment. El backend ya soltó la sesión sin detener al
+            // nuevo dueño; acá cerramos los sync locales para dejar de
+            // capturar y NO apagamos las luces (ahora las controla el otro).
+            function handleEntertainmentLost() {
+                if (!activeZoneID) return;
+                if (syncRunning) stopSync({ skipLightsOff: true });
+                if (audioSyncRunning) stopAudioSync({ skipLightsOff: true });
+                toast(t("toasts.syncTakenOver"), "info", 5000);
             }
 
             function disconnectStateWs() {

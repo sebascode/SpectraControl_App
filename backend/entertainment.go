@@ -124,6 +124,12 @@ type entConfig struct {
 		Name string `json:"name"`
 	} `json:"metadata"`
 	Status   string `json:"status"` // "inactive" | "active"
+	// ActiveStreamer identifica al cliente que tiene el stream abierto. Lo
+	// usamos solo para detectar que cambió de dueño (otro dispositivo tomó el
+	// control), no para interpretar su contenido.
+	ActiveStreamer struct {
+		RID string `json:"rid"`
+	} `json:"active_streamer"`
 	Channels []struct {
 		ChannelID int `json:"channel_id"`
 		Members   []struct {
@@ -144,6 +150,8 @@ type entState struct {
 	channelMap map[string]byte   // v1 light ID → channel ID
 	colorCh    chan []chanColor
 	seq        byte
+	done       chan struct{} // se cierra al terminar la sesión (frena el watcher)
+	yielded    bool          // true si perdimos el stream y no debemos reintentar por HTTP
 }
 
 var ent entState
@@ -261,6 +269,7 @@ func startEntertainmentStreaming(configID string) error {
 	if ent.conn != nil {
 		return fmt.Errorf("streaming ya activo en config %s", ent.configID)
 	}
+	ent.yielded = false
 
 	channelMap, err := buildChannelMap(configID)
 	if err != nil {
@@ -341,6 +350,7 @@ func startEntertainmentStreaming(configID string) error {
 	ent.channelMap = channelMap
 	ent.colorCh = make(chan []chanColor, 1)
 	ent.seq = 0
+	ent.done = make(chan struct{})
 
 	// Frame inicial en blanco al ~50% para todos los canales: mantiene la sesión
 	// DTLS viva mientras el usuario aprueba getDisplayMedia, y a la vez es visible
@@ -353,31 +363,139 @@ func startEntertainmentStreaming(configID string) error {
 	ent.colorCh <- initial
 
 	go entertainmentSender(ent.colorCh)
+	go watchEntertainmentSession(ent.done, configID, conn)
 	logInfof("[ent] DTLS conectado a %s:2100", ip)
 	return nil
 }
 
 func stopEntertainmentStreaming() {
+	teardownEntertainment(true, "")
+}
+
+// teardownEntertainment cierra la sesión local. Con sendStop=true también le
+// pide al bridge cerrar el área (stop manual). Con sendStop=false el stream
+// lo perdimos nosotros (otro cliente lo tomó o el DTLS cayó): NO mandamos
+// action:stop porque mataría la sesión del nuevo dueño. En ese caso lostReason
+// queda en el state para suprimir el fallback HTTP y se avisa a la UI.
+func teardownEntertainment(sendStop bool, lostReason string) {
 	ent.mu.Lock()
 	configID := ent.configID
 	conn := ent.conn
 	ch := ent.colorCh
+	done := ent.done
 	ent.conn = nil
 	ent.configID = ""
 	ent.channelMap = nil
 	ent.colorCh = nil
+	ent.done = nil
+	ent.yielded = lostReason != "" && conn != nil
 	ent.mu.Unlock()
 
+	if done != nil {
+		close(done)
+	}
 	if ch != nil {
 		close(ch)
 	}
 	if conn != nil {
 		conn.Close()
 	}
-	if configID != "" {
+	if configID == "" {
+		return
+	}
+	if sendStop {
 		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
 		logInfof("[ent] streaming detenido")
+		return
 	}
+	logWarnf("[ent] stream perdido (%s) — soltando control sin detener al nuevo dueño", lostReason)
+	bridgeStateHub.broadcast(stateEvent{Type: "ent_lost", ID: configID, Reason: lostReason})
+}
+
+// entertainmentYielded indica que perdimos el stream y la UI aún no lo
+// cerró; mientras sea true no hay que caer al HTTP PUT por luz.
+func entertainmentYielded() bool {
+	ent.mu.Lock()
+	defer ent.mu.Unlock()
+	return ent.yielded
+}
+
+// entTakenOver decide si el estado observado del área indica que otro cliente
+// tomó el stream: el área ya no está activa, o cambió el streamer respecto al
+// que vimos cuando era nuestro.
+func entTakenOver(status, snapshot, current string) bool {
+	if status != "active" {
+		return true
+	}
+	return snapshot != "" && current != "" && current != snapshot
+}
+
+// watchEntertainmentSession vigila una sesión DTLS propia y la suelta si otro
+// dispositivo (PS5, Sync Box, otra PC) toma el área. Dos señales: el bridge
+// cerrando el DTLS (lectura falla) y el estado del área vía CLIP v2. Se exige
+// 2 lecturas consecutivas "ajenas" para no reaccionar a un blip.
+func watchEntertainmentSession(done <-chan struct{}, configID string, conn net.Conn) {
+	go func() {
+		buf := make([]byte, 1500)
+		for {
+			if _, err := conn.Read(buf); err != nil {
+				select {
+				case <-done:
+				default:
+					releaseIfCurrent(done, "dtls-closed")
+				}
+				return
+			}
+		}
+	}()
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	snapshot := ""
+	strikes := 0
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+		}
+		data, err := clipDo(http.MethodGet, "entertainment_configuration/"+configID, nil)
+		if err != nil {
+			continue // blip de red: no decidimos nada
+		}
+		var resp struct {
+			Data []entConfig `json:"data"`
+		}
+		if json.Unmarshal(data, &resp) != nil || len(resp.Data) == 0 {
+			continue
+		}
+		cfg := resp.Data[0]
+		current := cfg.ActiveStreamer.RID
+		if snapshot == "" && cfg.Status == "active" {
+			snapshot = current
+		}
+		if entTakenOver(cfg.Status, snapshot, current) {
+			strikes++
+			if strikes >= 2 {
+				releaseIfCurrent(done, "taken-over")
+				return
+			}
+			continue
+		}
+		strikes = 0
+	}
+}
+
+// releaseIfCurrent suelta la sesión solo si sigue siendo la que originó la
+// señal (evita que un watcher viejo mate una sesión nueva).
+func releaseIfCurrent(done <-chan struct{}, reason string) {
+	ent.mu.Lock()
+	current := ent.done
+	ent.mu.Unlock()
+	if current == nil || current != done {
+		return
+	}
+	teardownEntertainment(false, reason)
 }
 
 // breakOtherActiveEntertainment cierra cualquier sesión de entertainment activa
@@ -514,8 +632,13 @@ func entertainmentSender(colorCh <-chan []chanColor) {
 
 		pkt := buildHueStreamPacket(seq, configID, frame)
 		if _, err := conn.Write(pkt); err != nil {
-			logErrorf("[ent] write error — limpiando estado: %v", err)
-			stopEntertainmentStreaming()
+			logErrorf("[ent] write error — soltando control: %v", err)
+			ent.mu.Lock()
+			done := ent.done
+			ent.mu.Unlock()
+			if done != nil {
+				releaseIfCurrent(done, "write-error")
+			}
 			return
 		}
 		// Heartbeat cada ~200 paquetes (≈5s a 40fps) para confirmar que el sender sigue vivo

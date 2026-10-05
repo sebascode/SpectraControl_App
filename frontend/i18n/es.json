@@ -195,6 +195,7 @@
   "toasts.logoutError": "No se pudo cerrar sesión: {err}",
   "toasts.sceneAudioTauriOnly": "El modo reactivo necesita la app de escritorio (captura de audio nativa).",
   "toasts.otherSyncBroken": "Sincronizaciones ajenas detenidas: {count}",
+  "toasts.syncTakenOver": "Otro dispositivo tomó el control de las luces. Sync detenido aquí.",
   "toasts.noOtherSync": "No hay otras sincronizaciones activas",
   "foreignSync.title": "Sync activo en otra zona de entretenimiento",
   "foreignSync.subtitleOne": "{name}",

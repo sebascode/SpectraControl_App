@@ -598,6 +598,12 @@ func sendColorUpdate(u colorUpdate) {
 		if pushToEntertainment(u.lights) {
 			return
 		}
+		// Perdimos el stream porque otro cliente (PS5, Sync Box) lo tomó:
+		// caer al HTTP PUT pelearía con el nuevo dueño y haría parpadear las
+		// luces. Descartamos frames hasta que la UI cierre el sync.
+		if entertainmentYielded() {
+			return
+		}
 		var wg sync.WaitGroup
 		for _, l := range u.lights {
 			wg.Add(1)
