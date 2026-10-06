@@ -91,6 +91,15 @@
   </branding>
 
   <releases>
+    <release version="0.4.3" date="2026-10-06">
+      <description>
+        <p>Improvements:</p>
+        <ul>
+          <li>Zone settings now show each light's name instead of its numeric ID in the per-light brightness list and layout chips.</li>
+          <li>Clicking a light in the zone layout editor makes it blink for a few seconds so you can tell which one it is.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.2" date="2026-10-05">
       <description>
         <p>Fixes:</p>
