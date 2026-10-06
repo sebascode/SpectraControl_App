@@ -3723,7 +3723,7 @@
                 wrap.style.display = selectedZoneID ? "flex" : "none";
             }
 
-            function openZoneConfig(zoneID) {
+            async function openZoneConfig(zoneID) {
                 if (!zoneID) return;
                 const cfg = entConfigs.find((c) => c.id === zoneID);
                 if (!cfg) return;
@@ -3731,6 +3731,16 @@
                 document.getElementById("zone-config-name").textContent =
                     cfg.name;
                 const ids = lightsForZone(zoneID);
+                // Si la lista de luces está vacía o incompleta (p. ej. el bridge
+                // no respondió al arrancar), recargarla para mostrar nombres y
+                // no caer al id numérico.
+                if (ids.some((id) => !lights.some((l) => l.id === id))) {
+                    try {
+                        await loadLights();
+                    } catch (e) {
+                        console.error("[zones] loadLights:", e);
+                    }
+                }
                 renderZoneLayout(ids);
                 renderZoneLightCaps(ids);
                 applyZoneBriUI(zoneID);
@@ -3816,6 +3826,8 @@
                 chip.style.cursor = "grabbing";
                 const rect = monitor.getBoundingClientRect();
                 const id = chip.dataset.id;
+                const startX = e.clientX;
+                const startY = e.clientY;
 
                 const place = (clientX, clientY) => {
                     const x = Math.max(
@@ -3836,6 +3848,13 @@
                     chip.removeEventListener("pointerup", onUp);
                     chip.removeEventListener("pointercancel", onUp);
                     chip.style.cursor = "grab";
+                    // Clic sin arrastre: parpadear la luz para identificarla.
+                    if (
+                        Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4
+                    ) {
+                        identifyLight(id);
+                        return;
+                    }
                     const { x, y } = place(ev.clientX, ev.clientY);
                     const sx = snap01(x, SNAP_COLS);
                     const sy = snap01(y, SNAP_ROWS);
@@ -3848,6 +3867,20 @@
                 chip.addEventListener("pointermove", onMove);
                 chip.addEventListener("pointerup", onUp);
                 chip.addEventListener("pointercancel", onUp);
+            }
+
+            // Hace parpadear la luz ~3 s con el alert nativo de Hue.
+            const identifyTimers = {};
+            async function identifyLight(id) {
+                const put = (alert) =>
+                    fetch(`${API}/api/lights/${id}/state`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ alert }),
+                    }).catch((e) => console.error("[identify]", e));
+                clearTimeout(identifyTimers[id]);
+                await put("lselect");
+                identifyTimers[id] = setTimeout(() => put("none"), 3000);
             }
 
             async function loadSyncStatus() {
