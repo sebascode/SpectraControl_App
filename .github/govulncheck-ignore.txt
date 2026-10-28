@@ -1,0 +1,9 @@
+# Go vulnerability IDs accepted for the backend, one per line.
+# govulncheck has no native ignore list, so audit.yml filters on this file.
+#
+# GO-2026-4479: github.com/pion/dtls/v2 uses random nonces with AES-GCM, which
+# can leak the authentication key after very many messages. No fixed version
+# exists. Exposure here is limited to the LAN DTLS link to the user's own Hue
+# bridge (Entertainment API, PSK). Revisit when upstream ships a fix or the
+# project moves to another DTLS implementation.
+GO-2026-4479

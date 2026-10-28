@@ -56,6 +56,7 @@ jobs:
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: "1.26"
+          check-latest: true
           cache-dependency-path: backend/go.sum
 
       - name: Install govulncheck
@@ -63,4 +64,17 @@ jobs:
 
       - name: Run govulncheck
         working-directory: backend
-        run: govulncheck ./...
+        run: |
+          govulncheck -format json ./... > "$RUNNER_TEMP/govulncheck.json"
+          # Reachable findings only (a trace that starts at a function), minus
+          # the IDs we accepted on purpose in .github/govulncheck-ignore.txt.
+          jq -r 'select(.finding != null and .finding.trace[0].function != null) | .finding.osv' \
+            "$RUNNER_TEMP/govulncheck.json" | sort -u > "$RUNNER_TEMP/found.txt"
+          grep -vE '^\s*(#|$)' ../.github/govulncheck-ignore.txt | sort -u > "$RUNNER_TEMP/ignored.txt" || true
+          new=$(comm -23 "$RUNNER_TEMP/found.txt" "$RUNNER_TEMP/ignored.txt")
+          if [ -n "$new" ]; then
+            echo "Unaccepted vulnerabilities:"; echo "$new"
+            govulncheck ./... || true
+            exit 1
+          fi
+          echo "No unaccepted vulnerabilities (ignored: $(paste -sd, "$RUNNER_TEMP/ignored.txt"))"
