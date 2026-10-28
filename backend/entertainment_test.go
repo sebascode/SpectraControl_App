@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"net"
 	"testing"
 )
 
@@ -126,5 +127,64 @@ func TestSmoothstep_Monotonic(t *testing.T) {
 			t.Errorf("not monotonic at %d: %v < %v", i, cur, prev)
 		}
 		prev = cur
+	}
+}
+
+func TestEntTakenOver(t *testing.T) {
+	cases := []struct {
+		name                      string
+		status, snapshot, current string
+		want                      bool
+	}{
+		{"still ours", "active", "app-a", "app-a", false},
+		{"area went inactive", "inactive", "app-a", "", true},
+		{"streamer changed", "active", "app-a", "app-b", true},
+		{"no snapshot yet", "active", "", "app-b", false},
+		{"streamer field missing", "active", "app-a", "", false},
+	}
+	for _, c := range cases {
+		if got := entTakenOver(c.status, c.snapshot, c.current); got != c.want {
+			t.Errorf("%s: got %v want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestTeardownLostSetsYieldedAndBroadcasts(t *testing.T) {
+	ch := bridgeStateHub.subscribe()
+	defer bridgeStateHub.unsubscribe(ch)
+
+	srv, cli := net.Pipe()
+	defer srv.Close()
+	ent.mu.Lock()
+	ent.conn = cli
+	ent.configID = "cfg-1"
+	ent.colorCh = make(chan []chanColor, 1)
+	ent.done = make(chan struct{})
+	ent.mu.Unlock()
+
+	// lostReason != "" no debe llamar al bridge (sendStop=false): si lo
+	// hiciera, clipDo fallaría o colgaría sin bridge configurado.
+	teardownEntertainment(false, "taken-over")
+
+	if !entertainmentYielded() {
+		t.Fatal("expected yielded=true after lost teardown")
+	}
+	select {
+	case ev := <-ch:
+		if ev.Type != "ent_lost" || ev.ID != "cfg-1" || ev.Reason != "taken-over" {
+			t.Fatalf("unexpected event: %+v", ev)
+		}
+	default:
+		t.Fatal("expected ent_lost broadcast")
+	}
+
+	// Un stop explícito limpia el flag.
+	teardownEntertainment(true, "")
+	ent.mu.Lock()
+	ent.yielded = true
+	ent.mu.Unlock()
+	teardownEntertainment(true, "")
+	if entertainmentYielded() {
+		t.Fatal("explicit stop must clear yielded")
 	}
 }
