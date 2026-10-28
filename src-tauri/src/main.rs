@@ -18,7 +18,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
-use ashpd::desktop::screencast::{CursorMode, Screencast, SourceType};
+use ashpd::desktop::screencast::{
+    CursorMode, Screencast, SelectSourcesOptions, SourceType,
+    StartCastOptions,
+};
 use ashpd::desktop::PersistMode;
 use log::{debug, error, info, warn};
 use tauri::{
@@ -189,7 +192,7 @@ async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String
         .await
         .map_err(|e| format!("portal proxy: {e}"))?;
     let session = proxy
-        .create_session()
+        .create_session(Default::default())
         .await
         .map_err(|e| format!("create_session: {e}"))?;
     let restore_token = if remember_monitor {
@@ -205,16 +208,17 @@ async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String
     proxy
         .select_sources(
             &session,
-            CursorMode::Hidden,
-            SourceType::Monitor.into(),
-            false,
-            restore_token.as_deref(),
-            persist_mode,
+            SelectSourcesOptions::default()
+                .set_cursor_mode(CursorMode::Hidden)
+                .set_sources(ashpd::enumflags2::BitFlags::from_flag(SourceType::Monitor))
+                .set_multiple(false)
+                .set_restore_token(restore_token.as_deref())
+                .set_persist_mode(persist_mode),
         )
         .await
         .map_err(|e| format!("select_sources: {e}"))?;
     let response = proxy
-        .start(&session, None)
+        .start(&session, None, StartCastOptions::default())
         .await
         .map_err(|e| format!("start: {e}"))?
         .response()
