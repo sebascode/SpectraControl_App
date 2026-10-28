@@ -310,6 +310,22 @@
             }
 
             /* ── UPDATE BANNER ── */
+            .quick-actions {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-bottom: 20px;
+            }
+            .quick-actions input[type="color"] {
+                width: 44px;
+                height: 34px;
+                padding: 0;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: none;
+                cursor: pointer;
+            }
             .update-banner {
                 display: flex;
                 align-items: center;
@@ -2108,6 +2124,36 @@
                 <div id="page-lights" style="display: none">
                     <div
                         class="page-section-title"
+                        data-i18n="lights.quick"
+                    >
+                        Acciones rápidas
+                    </div>
+                    <div class="quick-actions">
+                        <input
+                            type="color"
+                            id="quick-color"
+                            value="#ffb347"
+                            aria-label="Color"
+                        />
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            onclick="setAllLightsColor(document.getElementById('quick-color').value)"
+                            data-i18n="lights.quickApply"
+                        >
+                            Aplicar a todas
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-ghost"
+                            onclick="turnAllLightsOff()"
+                            data-i18n="lights.quickOff"
+                        >
+                            Apagar todas
+                        </button>
+                    </div>
+                    <div
+                        class="page-section-title"
                         data-i18n="lights.rooms"
                     >
                         Habitaciones
@@ -2800,6 +2846,7 @@
                     await invoke("set_tray_menu_labels", {
                         show: t("tray.show"),
                         quit: t("tray.quit"),
+                        lightsOff: t("tray.lightsOff"),
                     });
                 } catch (e) {
                     console.warn("[i18n] set_tray_menu_labels falló", e);
@@ -3608,6 +3655,47 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ bri }),
                 });
+            }
+
+            // Acciones globales: usan el grupo 0 de Hue v1 ("todas las luces").
+            // Cualquier sync/escena en curso pisaría el color, así que se
+            // detienen antes (sin apagar: el siguiente comando define el estado).
+            async function stopAllEffects() {
+                if (syncRunning) stopSync({ skipLightsOff: true });
+                if (audioSyncRunning) stopAudioSync({ skipLightsOff: true });
+                if (activeSceneID) await stopScene();
+            }
+
+            async function turnAllLightsOff() {
+                await stopAllEffects();
+                try {
+                    const r = await fetch(`${API}/api/groups/0/action`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ on: false }),
+                    });
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    toast(t("toasts.allLightsOff"), "info", 1500);
+                } catch (e) {
+                    toast(t("toasts.bridgeConnect"), "error");
+                }
+            }
+
+            async function setAllLightsColor(hex) {
+                await stopAllEffects();
+                try {
+                    const r = await fetch(`${API}/api/groups/0/color`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            hex_color: hex.startsWith("#") ? hex : "#" + hex,
+                            bri: 200,
+                        }),
+                    });
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                } catch (e) {
+                    toast(t("toasts.bridgeConnect"), "error");
+                }
             }
 
             async function setGroupColor(id, hex) {
@@ -6256,6 +6344,11 @@
                 }
             }
             if (window.__TAURI__?.event?.listen) {
+                window.__TAURI__.event
+                    .listen("spectra:tray-lights-off", () => turnAllLightsOff())
+                    .catch((e) =>
+                        console.warn("[tray] listen lights-off failed:", e),
+                    );
                 window.__TAURI__.event
                     .listen("spectra:before-quit", () => shutdownAndExit())
                     .catch((e) =>

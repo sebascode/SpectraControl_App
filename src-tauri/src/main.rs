@@ -612,16 +612,19 @@ fn set_remember_monitor(on: bool, state: tauri::State<'_, RememberMonitor>) {
 // helper i18n del frontend).
 struct TrayMenuItems {
     show: MenuItem<tauri::Wry>,
+    lights_off: MenuItem<tauri::Wry>,
     quit: MenuItem<tauri::Wry>,
 }
 
 #[tauri::command]
 fn set_tray_menu_labels(
     show: String,
+    lights_off: String,
     quit: String,
     items: tauri::State<'_, TrayMenuItems>,
 ) -> Result<(), String> {
     items.show.set_text(show).map_err(|e| e.to_string())?;
+    items.lights_off.set_text(lights_off).map_err(|e| e.to_string())?;
     items.quit.set_text(quit).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -834,9 +837,17 @@ fn main() {
             // los placeholders quedan en español por si JS no llega a llamar.
             let show_item = MenuItem::with_id(app, "show", "Mostrar", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let lights_off_item = MenuItem::with_id(
+                app,
+                "lights_off",
+                "Apagar todas las luces",
+                true,
+                None::<&str>,
+            )?;
+            let menu = Menu::with_items(app, &[&show_item, &lights_off_item, &quit_item])?;
             app.manage(TrayMenuItems {
                 show: show_item.clone(),
+                lights_off: lights_off_item.clone(),
                 quit: quit_item.clone(),
             });
 
@@ -855,6 +866,11 @@ fn main() {
                         if let Some(window) = app.get_webview_window("main") {
                             present_main_window(&window);
                         }
+                    }
+                    "lights_off" => {
+                        // El frontend sigue vivo con la ventana oculta; él
+                        // detiene sync/escenas y habla con el backend.
+                        let _ = app.emit("spectra:tray-lights-off", ());
                     }
                     "quit" => {
                         request_graceful_quit(app);

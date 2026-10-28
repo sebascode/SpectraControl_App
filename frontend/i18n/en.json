@@ -23,6 +23,12 @@
   "bridge.relinkBanner": "The app lost access to the bridge. Link it again to regain control.",
   "bridge.relink": "Link again",
 
+  "lights.quick": "Quick actions",
+  "lights.quickApply": "Apply to all",
+  "lights.quickOff": "Turn all off",
+  "tray.lightsOff": "Turn all lights off",
+  "toasts.allLightsOff": "🌙 All lights off",
+
   "window.minimize": "Minimize",
   "window.close": "Close",
 
