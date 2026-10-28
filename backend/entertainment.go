@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -147,7 +148,7 @@ type entState struct {
 	mu         sync.Mutex
 	conn       net.Conn          // DTLS connection (nil = inactivo)
 	configID   string
-	channelMap map[string]byte   // v1 light ID → channel ID
+	channelMap map[string][]byte // v1 light ID → channel IDs (una Gradient Lightstrip tiene varios)
 	colorCh    chan []chanColor
 	seq        byte
 	done       chan struct{} // se cierra al terminar la sesión (frena el watcher)
@@ -230,8 +231,29 @@ func getEntertainmentConfigs() ([]map[string]any, error) {
 	return result, nil
 }
 
-// buildChannelMap construye el mapa v1 light ID → channel_id para una config dada.
-func buildChannelMap(configID string) (map[string]byte, error) {
+// channelMapFromConfig arma el mapa v1 light ID → channel IDs. Una luz puede
+// tener varios canales: la Gradient Lightstrip expone un segmento por canal,
+// todos sobre el mismo servicio de entretenimiento. Con un mapa luz→canal
+// único cada segmento pisaba al anterior y solo uno recibía color (#57).
+func channelMapFromConfig(cfg entConfig, entIDMap map[string]string) map[string][]byte {
+	result := make(map[string][]byte)
+	for _, ch := range cfg.Channels {
+		for _, m := range ch.Members {
+			v1, ok := entIDMap[m.Service.RID]
+			if !ok {
+				continue
+			}
+			id := byte(ch.ChannelID)
+			if !slices.Contains(result[v1], id) {
+				result[v1] = append(result[v1], id)
+			}
+		}
+	}
+	return result
+}
+
+// buildChannelMap construye el mapa v1 light ID → channel IDs para una config dada.
+func buildChannelMap(configID string) (map[string][]byte, error) {
 	data, err := clipDo(http.MethodGet, "entertainment_configuration/"+configID, nil)
 	if err != nil {
 		return nil, err
@@ -249,15 +271,7 @@ func buildChannelMap(configID string) (map[string]byte, error) {
 		return nil, err
 	}
 
-	result := make(map[string]byte)
-	for _, ch := range cfg.Channels {
-		for _, m := range ch.Members {
-			if v1, ok := entIDMap[m.Service.RID]; ok {
-				result[v1] = byte(ch.ChannelID)
-			}
-		}
-	}
-	return result, nil
+	return channelMapFromConfig(cfg, entIDMap), nil
 }
 
 // ── START / STOP ─────────────────────────────────────────────────────────────
@@ -357,8 +371,10 @@ func startEntertainmentStreaming(configID string) error {
 	// (negro = luz aparentemente apagada, hace imposible distinguir "stream activo
 	// pero sin frames" de "stream caído").
 	initial := make([]chanColor, 0, len(channelMap))
-	for _, chID := range channelMap {
-		initial = append(initial, chanColor{id: chID, r: 0x8000, g: 0x8000, b: 0x8000})
+	for _, chIDs := range channelMap {
+		for _, chID := range chIDs {
+			initial = append(initial, chanColor{id: chID, r: 0x8000, g: 0x8000, b: 0x8000})
+		}
 	}
 	ent.colorCh <- initial
 
@@ -706,7 +722,7 @@ func pushToEntertainment(lights []lightCmd) bool {
 	colors := make([]chanColor, 0, len(lights))
 	globalBri := getBri()
 	for _, l := range lights {
-		chID, ok := chMap[l.ID]
+		chIDs, ok := chMap[l.ID]
 		if !ok {
 			continue
 		}
@@ -722,12 +738,15 @@ func pushToEntertainment(lights []lightCmd) bool {
 		linear := float64(effBri) / 255.0
 		briScale := math.Pow(linear, 1.0/2.2)
 		// 0-255 → 0-65535 (×257 = 65535/255 exacto)
-		colors = append(colors, chanColor{
-			id: chID,
-			r:  uint16(l.R*briScale) * 257,
-			g:  uint16(l.G*briScale) * 257,
-			b:  uint16(l.B*briScale) * 257,
-		})
+		// Mismo color para todos los segmentos de la luz.
+		for _, chID := range chIDs {
+			colors = append(colors, chanColor{
+				id: chID,
+				r:  uint16(l.R*briScale) * 257,
+				g:  uint16(l.G*briScale) * 257,
+				b:  uint16(l.B*briScale) * 257,
+			})
+		}
 	}
 
 	// Diagnostic: log first 3 pushes + every ~30 s so the terminal shows what's happening.

@@ -188,3 +188,33 @@ func TestTeardownLostSetsYieldedAndBroadcasts(t *testing.T) {
 		t.Fatal("explicit stop must clear yielded")
 	}
 }
+
+func TestChannelMapFromConfigGradientStrip(t *testing.T) {
+	var cfg entConfig
+	for i, rid := range []string{"strip", "strip", "strip", "lamp"} {
+		ch := struct {
+			ChannelID int `json:"channel_id"`
+			Members   []struct {
+				Service struct {
+					RID   string `json:"rid"`
+					RType string `json:"rtype"`
+				} `json:"service"`
+			} `json:"members"`
+		}{ChannelID: i}
+		ch.Members = append(ch.Members, struct {
+			Service struct {
+				RID   string `json:"rid"`
+				RType string `json:"rtype"`
+			} `json:"service"`
+		}{})
+		ch.Members[0].Service.RID = rid
+		cfg.Channels = append(cfg.Channels, ch)
+	}
+	got := channelMapFromConfig(cfg, map[string]string{"strip": "7", "lamp": "3"})
+	if len(got["7"]) != 3 || got["7"][0] != 0 || got["7"][2] != 2 {
+		t.Errorf("strip should own channels 0,1,2, got %v", got["7"])
+	}
+	if len(got["3"]) != 1 || got["3"][0] != 3 {
+		t.Errorf("lamp should own channel 3, got %v", got["3"])
+	}
+}
