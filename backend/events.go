@@ -58,12 +58,15 @@ type hueV2Update struct {
 // stateEvent es lo que se envía al frontend. Usa IDs v1 para no romper la UI
 // existente (que ya está montada sobre v1).
 type stateEvent struct {
-	Type string      `json:"type"` // "light" | "group"
+	Type string      `json:"type"` // "light" | "group" | "ent_lost"
 	ID   string      `json:"id"`   // v1 id (string)
 	On   *bool       `json:"on,omitempty"`
 	Bri  *int        `json:"bri,omitempty"` // 1–254 (escala v1)
 	XY   *[2]float64 `json:"xy,omitempty"`
 	CT   *int        `json:"ct,omitempty"` // mirek
+	// Reason acompaña a Type "ent_lost": otro cliente tomó el stream de
+	// entertainment y soltamos el control.
+	Reason string `json:"reason,omitempty"`
 }
 
 // ── Hub ─────────────────────────────────────────────────────────────────────
