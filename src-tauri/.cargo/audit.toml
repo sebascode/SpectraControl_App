@@ -1,0 +1,18 @@
+# Advisories we knowingly accept. Review each time the dependency tree moves
+# (ashpd/zbus upgrades, gtk-rs upgrades) and drop the entry once it no longer
+# shows up in `cargo audit`.
+[advisories]
+ignore = [
+  # Unmaintained crates pulled in transitively by ashpd -> zbus (desktop
+  # portals: screencast, background, notifications). No vulnerability, no
+  # upstream replacement released yet.
+  "RUSTSEC-2026-0370", # zvariant: unmaintained
+  "RUSTSEC-2026-0371", # zbus_names: unmaintained
+  "RUSTSEC-2026-0372", # zvariant_derive: unmaintained
+  # proc-macro-error: unmaintained proc-macro dependency of the gtk-rs stack
+  # used by tauri/wry. Build-time only.
+  "RUSTSEC-2024-0370",
+  # glib: unsound VariantStrIter. The affected iterators are not used by this
+  # project; the crate comes in through tauri/wry's GTK bindings.
+  "RUSTSEC-2024-0429",
+]
