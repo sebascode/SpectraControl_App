@@ -18,3 +18,6 @@ __pycache__/
 CLAUDE.md
 CONTEXT.md
 .claude/
+
+# Binario local de desarrollo del backend
+backend/spectracontrol
