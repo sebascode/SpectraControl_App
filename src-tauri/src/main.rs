@@ -17,7 +17,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use ashpd::desktop::Session;
 use ashpd::desktop::screencast::{
     CursorMode, Screencast, SelectSourcesOptions, SourceType,
     StartCastOptions,
@@ -89,10 +90,23 @@ const CAP_H: u32 = 180;
 const CAP_FPS: u32 = 30;
 const FRAME_BYTES: usize = (CAP_W * CAP_H * 3) as usize;
 
+// Sin frames nuevos durante este tiempo la captura se considera trabada. Pasa
+// al despertar un monitor tras DPMS/lock: el portal se queda sin buffers y la
+// sesión nunca se recupera sola (#62).
+const CAP_STALL: Duration = Duration::from_secs(5);
+// Tiempo máximo hasta el primer frame de una sesión recién negociada. Si se
+// agota, el restore token probablemente apunta a una sesión rota.
+const CAP_FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(8);
+
 struct CaptureState {
     latest: Arc<Mutex<Option<Vec<u8>>>>,
     init_lock: tokio::sync::Mutex<bool>,
     gst_child: Mutex<Option<Child>>,
+    // Sesión del portal viva mientras dure la captura, para poder cerrarla
+    // explícitamente en el reinicio y liberar los buffers del lado del portal.
+    session: tokio::sync::Mutex<Option<Session<Screencast>>>,
+    started_at: Mutex<Option<Instant>>,
+    last_frame: Arc<Mutex<Option<Instant>>>,
 }
 
 static CAPTURE: OnceLock<CaptureState> = OnceLock::new();
@@ -172,7 +186,49 @@ fn capture_state() -> &'static CaptureState {
         latest: Arc::new(Mutex::new(None)),
         init_lock: tokio::sync::Mutex::new(false),
         gst_child: Mutex::new(None),
+        session: tokio::sync::Mutex::new(None),
+        started_at: Mutex::new(None),
+        last_frame: Arc::new(Mutex::new(None)),
     })
+}
+
+// Devuelve Some(había_frames) si la captura inicializada dejó de producir
+// frames. `había_frames=false` significa que ni siquiera entregó el primero.
+fn capture_stalled(state: &CaptureState) -> Option<bool> {
+    let last = *state.last_frame.lock().unwrap();
+    match last {
+        Some(t) if t.elapsed() > CAP_STALL => Some(true),
+        Some(_) => None,
+        None => {
+            let started = (*state.started_at.lock().unwrap())?;
+            (started.elapsed() > CAP_FIRST_FRAME_TIMEOUT).then_some(false)
+        }
+    }
+}
+
+// Mata gst-launch, cierra la sesión del portal y deja el estado listo para que
+// la próxima llamada renegocie. `drop_token` borra el restore token cuando la
+// sesión restaurada demostró estar rota.
+async fn reset_capture(state: &CaptureState, drop_token: bool) {
+    let mut init = state.init_lock.lock().await;
+    if let Some(mut child) = state.gst_child.lock().unwrap().take() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    if let Some(session) = state.session.lock().await.take() {
+        match tokio::time::timeout(Duration::from_secs(3), session.close()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => warn!("[capture] no se pudo cerrar la sesión del portal: {e}"),
+            Err(_) => warn!("[capture] timeout cerrando la sesión del portal"),
+        }
+    }
+    *state.latest.lock().unwrap() = None;
+    *state.last_frame.lock().unwrap() = None;
+    *state.started_at.lock().unwrap() = None;
+    if drop_token {
+        delete_restore_token();
+    }
+    *init = false;
 }
 
 async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String> {
@@ -275,6 +331,7 @@ async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String
 
     // 3) Reader thread: lee frames completos y los publica
     let latest = state.latest.clone();
+    let last_frame = state.last_frame.clone();
     thread::spawn(move || {
         let mut buf = vec![0u8; FRAME_BYTES];
         loop {
@@ -293,10 +350,14 @@ async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String
                 }
             }
             *latest.lock().unwrap() = Some(buf.clone());
+            *last_frame.lock().unwrap() = Some(Instant::now());
         }
     });
 
     *state.gst_child.lock().unwrap() = Some(child);
+    *state.session.lock().await = Some(session);
+    *state.last_frame.lock().unwrap() = None;
+    *state.started_at.lock().unwrap() = Some(Instant::now());
     *init = true;
     Ok(())
 }
@@ -308,6 +369,19 @@ async fn sample_screen_regions(
 ) -> Result<Vec<[u8; 3]>, String> {
     let remember_monitor = remember.0.load(Ordering::SeqCst);
     ensure_capture_initialized(remember_monitor).await?;
+
+    let state = capture_state();
+    if let Some(had_frames) = capture_stalled(state) {
+        // Primer intento tras un stall con frames: reiniciar conservando el
+        // token (el monitor ya despertó). Si la sesión nueva ni siquiera
+        // entrega un frame, el token está envenenado y se descarta.
+        warn!(
+            "[capture] sin frames — reiniciando captura (token {})",
+            if had_frames { "conservado" } else { "descartado" }
+        );
+        reset_capture(state, !had_frames).await;
+        ensure_capture_initialized(remember_monitor).await?;
+    }
 
     // Esperar el primer frame (hasta 1.5s la primera vez tras negociar el portal)
     let state = capture_state();
