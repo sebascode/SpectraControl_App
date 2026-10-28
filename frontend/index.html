@@ -310,6 +310,22 @@
             }
 
             /* ── UPDATE BANNER ── */
+            .quick-actions {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-bottom: 20px;
+            }
+            .quick-actions input[type="color"] {
+                width: 44px;
+                height: 34px;
+                padding: 0;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: none;
+                cursor: pointer;
+            }
             .update-banner {
                 display: flex;
                 align-items: center;
@@ -1725,6 +1741,10 @@
             </div>
 
             <div class="main">
+                <div class="update-banner" id="relink-banner" hidden>
+                    <span class="update-banner-text" data-i18n="bridge.relinkBanner"></span>
+                    <button onclick="relinkBridge()" data-i18n="bridge.relink"></button>
+                </div>
                 <div class="update-banner" id="update-banner" hidden>
                     <span class="update-banner-text" id="update-banner-text"></span>
                     <button
@@ -2104,6 +2124,36 @@
                 <div id="page-lights" style="display: none">
                     <div
                         class="page-section-title"
+                        data-i18n="lights.quick"
+                    >
+                        Acciones rápidas
+                    </div>
+                    <div class="quick-actions">
+                        <input
+                            type="color"
+                            id="quick-color"
+                            value="#ffb347"
+                            aria-label="Color"
+                        />
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            onclick="setAllLightsColor(document.getElementById('quick-color').value)"
+                            data-i18n="lights.quickApply"
+                        >
+                            Aplicar a todas
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-ghost"
+                            onclick="turnAllLightsOff()"
+                            data-i18n="lights.quickOff"
+                        >
+                            Apagar todas
+                        </button>
+                    </div>
+                    <div
+                        class="page-section-title"
                         data-i18n="lights.rooms"
                     >
                         Habitaciones
@@ -2268,6 +2318,19 @@
                             type="checkbox"
                             id="autostart-toggle"
                             onchange="setAutostart(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
+                </label>
+                <label class="settings-row">
+                    <span data-i18n="settings.startMinimized">
+                        Iniciar minimizado en la bandeja
+                    </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="start-minimized-toggle"
+                            onchange="setStartMinimized(this.checked)"
                         />
                         <span class="toggle-track"></span>
                     </span>
@@ -2796,6 +2859,7 @@
                     await invoke("set_tray_menu_labels", {
                         show: t("tray.show"),
                         quit: t("tray.quit"),
+                        lightsOff: t("tray.lightsOff"),
                     });
                 } catch (e) {
                     console.warn("[i18n] set_tray_menu_labels falló", e);
@@ -3181,19 +3245,61 @@
                     await Promise.all([loadLights(), loadGroups()]);
                     statusEl.textContent = t("status.sync");
                     statusEl.classList.add("connected");
+                    document.getElementById("relink-banner").hidden = true;
+                    lastLoadOk = Date.now();
+                    loadRetryDelay = LOAD_RETRY_MIN_MS;
                     connectStateWs();
                 } catch (e) {
                     statusEl.textContent = t("status.error");
                     statusEl.classList.remove("connected");
-                    toast(t("toasts.bridgeConnect"), "error");
+                    if (e.status === 401) {
+                        // La key fue rechazada: reintentar no sirve, hay que
+                        // re-vincular. El sync en curso (si hay) no se toca.
+                        document.getElementById("relink-banner").hidden = false;
+                    } else {
+                        toast(t("toasts.bridgeConnect"), "error");
+                        scheduleLoadRetry();
+                    }
                 }
                 await loadSyncStatus();
                 loadEntertainmentConfigs();
             }
 
+            // Si el bridge no contesta (boot en frío, cambio de IP, corte de
+            // red) reintentamos con backoff en vez de dejar la UI vacía hasta
+            // que el usuario cierre sesión. También refrescamos al volver a
+            // mostrar la ventana: la app pasa semanas en la bandeja y el
+            // estado cargado al arrancar queda viejo.
+            const LOAD_RETRY_MIN_MS = 5_000;
+            const LOAD_RETRY_MAX_MS = 60_000;
+            const LOAD_STALE_MS = 10 * 60_000;
+            let loadRetryDelay = LOAD_RETRY_MIN_MS;
+            let loadRetryTimer = null;
+            let lastLoadOk = 0;
+
+            function scheduleLoadRetry() {
+                if (loadRetryTimer) return;
+                loadRetryTimer = setTimeout(() => {
+                    loadRetryTimer = null;
+                    loadAll();
+                }, loadRetryDelay);
+                loadRetryDelay = Math.min(loadRetryDelay * 2, LOAD_RETRY_MAX_MS);
+            }
+
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState !== "visible") return;
+                if (Date.now() - lastLoadOk > LOAD_STALE_MS) loadAll();
+            });
+
+            function relinkBridge() {
+                document.getElementById("relink-banner").hidden = true;
+                showSetup();
+            }
+
             // ── LIGHTS ──
             async function loadLights() {
                 const r = await fetch(`${API}/api/lights`);
+                if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status });
                 const data = await r.json();
                 lights = data.lights || [];
                 renderLights();
@@ -3266,6 +3372,7 @@
             // ── GROUPS / ROOMS ──
             async function loadGroups() {
                 const r = await fetch(`${API}/api/groups`);
+                if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status });
                 const data = await r.json();
                 // Filtra solo las áreas de entretenimiento (protocolo Hue Sync, no son habitaciones)
                 groups = (data.groups || []).filter(
@@ -3308,7 +3415,7 @@
   <div class="room-row-top">
     <div>
       <div class="room-row-name">${g.name}</div>
-      <div class="room-row-meta">${g.lights.length} luz${g.lights.length !== 1 ? "es" : ""}</div>
+      <div class="room-row-meta">${g.lights.length} ${g.lights.length !== 1 ? "luces" : "luz"}</div>
     </div>
     <label class="toggle" style="flex-shrink:0">
       <input type="checkbox" ${g.on ? "checked" : ""} onchange="toggleGroup('${g.id}',this.checked)">
@@ -3563,6 +3670,47 @@
                 });
             }
 
+            // Acciones globales: usan el grupo 0 de Hue v1 ("todas las luces").
+            // Cualquier sync/escena en curso pisaría el color, así que se
+            // detienen antes (sin apagar: el siguiente comando define el estado).
+            async function stopAllEffects() {
+                if (syncRunning) stopSync({ skipLightsOff: true });
+                if (audioSyncRunning) stopAudioSync({ skipLightsOff: true });
+                if (activeSceneID) await stopScene();
+            }
+
+            async function turnAllLightsOff() {
+                await stopAllEffects();
+                try {
+                    const r = await fetch(`${API}/api/groups/0/action`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ on: false }),
+                    });
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    toast(t("toasts.allLightsOff"), "info", 1500);
+                } catch (e) {
+                    toast(t("toasts.bridgeConnect"), "error");
+                }
+            }
+
+            async function setAllLightsColor(hex) {
+                await stopAllEffects();
+                try {
+                    const r = await fetch(`${API}/api/groups/0/color`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            hex_color: hex.startsWith("#") ? hex : "#" + hex,
+                            bri: 200,
+                        }),
+                    });
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                } catch (e) {
+                    toast(t("toasts.bridgeConnect"), "error");
+                }
+            }
+
             async function setGroupColor(id, hex) {
                 markUserEdited("group", id, "color");
                 await fetch(`${API}/api/groups/${id}/color`, {
@@ -3608,7 +3756,7 @@
     <label class="light-check">
       <input type="checkbox" id="sync-group-${g.id}" value="${g.id}" onchange="onGroupChecked()" />
       <span class="light-check-label">${g.name}
-        <span style="color:var(--text-muted);font-size:0.65rem"> · ${g.type} · ${g.lights.length} luz${g.lights.length !== 1 ? "es" : ""}</span>
+        <span style="color:var(--text-muted);font-size:0.65rem"> · ${g.type} · ${g.lights.length} ${g.lights.length !== 1 ? "luces" : "luz"}</span>
       </span>
     </label>
   `,
@@ -5525,7 +5673,7 @@
   <span class="zone-card-icon">${icon}</span>
   <div>
     <div class="zone-card-name">${cfg.name}</div>
-    <div class="zone-card-meta">${lightIds.length} luz${lightIds.length !== 1 ? "es" : ""} · ${cfg.channels.length} canales</div>
+    <div class="zone-card-meta">${lightIds.length} ${lightIds.length !== 1 ? "luces" : "luz"} · ${cfg.channels.length} canales</div>
   </div>
   <div class="zone-card-status">${statusText}</div>
 </div>`;
@@ -6210,6 +6358,11 @@
             }
             if (window.__TAURI__?.event?.listen) {
                 window.__TAURI__.event
+                    .listen("spectra:tray-lights-off", () => turnAllLightsOff())
+                    .catch((e) =>
+                        console.warn("[tray] listen lights-off failed:", e),
+                    );
+                window.__TAURI__.event
                     .listen("spectra:before-quit", () => shutdownAndExit())
                     .catch((e) =>
                         console.warn("[shutdown] listen failed:", e),
@@ -6582,6 +6735,17 @@
                     rememberMonitorEnabled();
                 pushQuitOnCloseToRust();
                 pushRememberMonitorToRust();
+                // La pref vive en Rust (archivo en config dir), no en localStorage.
+                window.__TAURI__?.core
+                    ?.invoke("get_start_minimized")
+                    .then((on) => {
+                        document.getElementById(
+                            "start-minimized-toggle",
+                        ).checked = on;
+                    })
+                    .catch((e) =>
+                        console.warn("[settings] get_start_minimized falló", e),
+                    );
                 getAutostartEnabled().then((on) => {
                     document.getElementById("autostart-toggle").checked = on;
                     document.getElementById("autostart-sync-toggle").checked =
@@ -6610,6 +6774,18 @@
             // tiene que optar explícitamente.
             function lightsOffOnCloseEnabled() {
                 return localStorage.getItem(LIGHTS_OFF_ON_CLOSE_KEY) === "1";
+            }
+
+            async function setStartMinimized(on) {
+                try {
+                    await window.__TAURI__.core.invoke("set_start_minimized", {
+                        on,
+                    });
+                } catch (e) {
+                    console.warn("[settings] set_start_minimized falló", e);
+                    document.getElementById("start-minimized-toggle").checked =
+                        !on;
+                }
             }
 
             function setLightsOffOnClose(on) {
