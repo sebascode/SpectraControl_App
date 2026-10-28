@@ -3308,7 +3308,7 @@
   <div class="room-row-top">
     <div>
       <div class="room-row-name">${g.name}</div>
-      <div class="room-row-meta">${g.lights.length} luz${g.lights.length !== 1 ? "es" : ""}</div>
+      <div class="room-row-meta">${g.lights.length} ${g.lights.length !== 1 ? "luces" : "luz"}</div>
     </div>
     <label class="toggle" style="flex-shrink:0">
       <input type="checkbox" ${g.on ? "checked" : ""} onchange="toggleGroup('${g.id}',this.checked)">
@@ -3608,7 +3608,7 @@
     <label class="light-check">
       <input type="checkbox" id="sync-group-${g.id}" value="${g.id}" onchange="onGroupChecked()" />
       <span class="light-check-label">${g.name}
-        <span style="color:var(--text-muted);font-size:0.65rem"> · ${g.type} · ${g.lights.length} luz${g.lights.length !== 1 ? "es" : ""}</span>
+        <span style="color:var(--text-muted);font-size:0.65rem"> · ${g.type} · ${g.lights.length} ${g.lights.length !== 1 ? "luces" : "luz"}</span>
       </span>
     </label>
   `,
@@ -5525,7 +5525,7 @@
   <span class="zone-card-icon">${icon}</span>
   <div>
     <div class="zone-card-name">${cfg.name}</div>
-    <div class="zone-card-meta">${lightIds.length} luz${lightIds.length !== 1 ? "es" : ""} · ${cfg.channels.length} canales</div>
+    <div class="zone-card-meta">${lightIds.length} ${lightIds.length !== 1 ? "luces" : "luz"} · ${cfg.channels.length} canales</div>
   </div>
   <div class="zone-card-status">${statusText}</div>
 </div>`;
