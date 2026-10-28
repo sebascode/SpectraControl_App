@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>casa.scode.SpectraControl</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>SpectraControl</name>
+  <summary>Sync Philips Hue lights with your screen</summary>
+
+  <developer id="casa.scode">
+    <name>Sebas Contreras</name>
+  </developer>
+
+  <description>
+    <p>
+      SpectraControl is a Linux desktop app for Philips Hue. It samples
+      colors from your monitor and pushes them to your Hue lights in real
+      time over the Hue Entertainment API v2, with low enough latency for
+      bias lighting and ambient effects.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Real-time screen-to-light sync over Hue Entertainment v2 (DTLS).</li>
+      <li>Per-light monitor regions: bind any light to a specific rectangle of the screen.</li>
+      <li>Physical light positioning relative to the monitor for accurate sampling.</li>
+      <li>Audio-reactive mode that pulses brightness with system audio.</li>
+      <li>Dynamic, animated scenes with an in-app editor.</li>
+      <li>Real-time state sync from the bridge — external changes are reflected immediately.</li>
+      <li>System tray, desktop notifications and autostart.</li>
+      <li>Profile save and export.</li>
+      <li>Internationalization with a language picker on first run (English, Spanish).</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">casa.scode.SpectraControl.desktop</launchable>
+
+  <url type="homepage">https://spectracontrol.scode.casa/</url>
+  <url type="bugtracker">https://github.com/sebascode/SpectraControl_App/issues</url>
+  <url type="vcs-browser">https://github.com/sebascode/SpectraControl_App</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Home screen with sync controls</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_03_home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Initial setup and bridge pairing</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_01_initial_setup.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Per-light monitor zone selector</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_02_zone_selector.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Light configurator with physical positioning</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_04_light_config.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Lights overview</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_05_lights.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Dynamic scenes editor</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_06_scenes.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings</caption>
+      <image>https://spectracontrol.scode.casa/screenshots/en/en_07_settings.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>Utility</category>
+    <category>AudioVideo</category>
+  </categories>
+
+  <keywords>
+    <keyword>hue</keyword>
+    <keyword>philips</keyword>
+    <keyword>ambient</keyword>
+    <keyword>ambilight</keyword>
+    <keyword>bias lighting</keyword>
+    <keyword>rgb</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1" />
+
+  <branding>
+    <color type="primary" scheme_preference="light">#ffd9b3</color>
+    <color type="primary" scheme_preference="dark">#3a2a1f</color>
+  </branding>
+
+  <releases>
+    <release version="0.4.3" date="2026-10-06">
+      <description>
+        <p>Improvements:</p>
+        <ul>
+          <li>Zone settings now show each light's name instead of its numeric ID in the per-light brightness list and layout chips.</li>
+          <li>Clicking a light in the zone layout editor makes it blink for a few seconds so you can tell which one it is.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.4.2" date="2026-10-05">
+      <description>
+        <p>Fixes:</p>
+        <ul>
+          <li>Blank/black window on Fedora 44 and Bazzite. Recent Noto-COLRv1 emoji fonts crashed the bundled WebKit renderer; the app now excludes COLRv1 fonts for its own process (set SPECTRA_KEEP_COLRV1=1 to opt out).</li>
+          <li>Entertainment sync now yields when another device (PS5, Hue Sync Box, another PC) takes over the area: it stops sending frames, no longer kills the new owner's session or fights it with per-light HTTP updates, and shows a notice.</li>
+          <li>Log out / delete scene / import profile confirmation dialogs work again (missing dialog permissions).</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.4.1" date="2026-05-24">
+      <description>
+        <p>Hotfix:</p>
+        <ul>
+          <li>Home view no longer stays stuck on "No entertainment zones" when the app starts with the system. The first /clip/v2 fetch can race the bridge being reachable on cold boot, so the load now retries with a short backoff and the existing 5 s foreign-sync poll repopulates the zones grid once the bridge answers. A 10-fetch / 2-min budget keeps it from hammering when the bridge is genuinely unreachable.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.4.0" date="2026-05-24">
+      <description>
+        <p>Screen Sync improvements:</p>
+        <ul>
+          <li>Skip the "which monitor do you want to share?" portal dialog on every launch. The Screencast restore token is persisted between sessions, so once you pick a monitor the portal reuses it on the next sync. Falls back gracefully if the saved monitor is gone.</li>
+          <li>New "Remember last connected monitor" toggle in Settings → Screen Sync (on by default). Turning it off restores the legacy behavior — the portal asks every time and the saved token is wiped from disk.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.3.2" date="2026-05-16">
+      <description>
+        <p>Hotfix:</p>
+        <ul>
+          <li>Tray "Show" / left-click reliably brings the window to the foreground after autostart on Wayland. Previously, on GNOME/Mutter the first show() from the tray hit an unmapped WebKitGTK surface and the window stayed invisible.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.3.1" date="2026-05-16">
+      <description>
+        <p>Hotfix:</p>
+        <ul>
+          <li>Autostart cold boot: WebView no longer shows a native "Could not connect to localhost" error when the Go backend is slow to bind on cold boot. The shell now polls the backend port before constructing the WebView.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.3.0" date="2026-05-15">
+      <description>
+        <p>Sync experience overhaul and Flatpak hardening:</p>
+        <ul>
+          <li>Sync intensity modes (Subtle/Medium/High/Intense) with non-linear gain curve.</li>
+          <li>Per-light spatial glow on the active zone card.</li>
+          <li>0-100 sliders and gamma curve for finer color response.</li>
+          <li>Optional shutdown toggle: turn lights off when closing while syncing.</li>
+          <li>Entertainment: break other active streams before claiming the bridge.</li>
+          <li>Flatpak manifest, AppStream metadata and offline build sources published as release assets.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.15" date="2026-05-14">
+      <description>
+        <p>First Flathub submission. Sandbox-aware build:</p>
+        <ul>
+          <li>Notifications routed through xdg-desktop-portal.</li>
+          <li>Autostart routed through xdg-desktop-portal Background.</li>
+          <li>In-app updater disabled inside the sandbox (Flathub owns updates).</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

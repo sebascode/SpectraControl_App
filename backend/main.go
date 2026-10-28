@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -565,6 +566,11 @@ type lightCmd struct {
 	R  float64 `json:"r"`
 	G  float64 `json:"g"`
 	B  float64 `json:"b"`
+	// MaxBri caps this light's effective brightness (1-255). Optional: when
+	// nil, the global bri applies untouched. Used by the per-light cap in
+	// the zone config so a single bright bulb can be dialled down without
+	// changing the global sync bri.
+	MaxBri *int `json:"max_bri,omitempty"`
 }
 
 type wsMsg struct {
@@ -592,14 +598,24 @@ func sendColorUpdate(u colorUpdate) {
 		if pushToEntertainment(u.lights) {
 			return
 		}
+		// Perdimos el stream porque otro cliente (PS5, Sync Box) lo tomó:
+		// caer al HTTP PUT pelearía con el nuevo dueño y haría parpadear las
+		// luces. Descartamos frames hasta que la UI cierre el sync.
+		if entertainmentYielded() {
+			return
+		}
 		var wg sync.WaitGroup
 		for _, l := range u.lights {
 			wg.Add(1)
 			go func(l lightCmd) {
 				defer wg.Done()
 				xy := rgbToXY(l.R, l.G, l.B)
+				bri := u.bri
+				if l.MaxBri != nil && *l.MaxBri < bri {
+					bri = *l.MaxBri
+				}
 				huePut("lights/"+l.ID+"/state", map[string]any{
-					"on": true, "xy": xy[:], "bri": u.bri, "transitiontime": u.tt,
+					"on": true, "xy": xy[:], "bri": bri, "transitiontime": u.tt,
 				})
 			}(l)
 		}
@@ -742,9 +758,12 @@ func main() {
 	r.Get("/api/entertainment", handleListEntertainment)
 	r.Post("/api/entertainment/start", handleStartEntertainment)
 	r.Post("/api/entertainment/stop", handleStopEntertainment)
+	r.Post("/api/entertainment/break-others", handleBreakOtherEntertainment)
 
 	// Dynamic scenes
 	r.Get("/api/scenes", handleListScenes)
+	r.Post("/api/scenes", handleCreateScene)
+	r.Delete("/api/scenes/{id}", handleDeleteScene)
 	r.Post("/api/scenes/start", handleStartScene)
 	r.Post("/api/scenes/stop", handleStopScene)
 
@@ -754,6 +773,11 @@ func main() {
 
 	// WebSocket
 	r.Get("/ws/color", handleWsColor)
+	r.Get("/ws/state", handleWsState)
+
+	// SSE eventstream del bridge (state sync en tiempo real) — corre en
+	// background y se reconecta solo. Sin bridge configurado queda idle.
+	startBridgeEventStream(context.Background())
 
 	// Frontend estático — sin cache para que los cambios en index.html se reflejen al recargar.
 	fe := frontendPath(*frontendDir)
