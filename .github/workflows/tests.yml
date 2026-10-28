@@ -1,0 +1,56 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  go:
+    name: Go backend tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+      - name: go test
+        working-directory: backend
+        run: go test ./...
+
+  rust:
+    name: Rust shell tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install Tauri build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            build-essential
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable as of pinning
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: src-tauri
+      # tauri.conf.json declara backend/spectractl como bundle.resource — el
+      # build.rs de tauri-build valida la ruta a compile-time. Sin el binario
+      # presente, "cargo test" falla con "resource path doesn't exist".
+      - name: Pre-build Go backend (required by Tauri resource check)
+        working-directory: backend
+        run: go build -o spectractl .
+      - name: cargo test
+        working-directory: src-tauri
+        run: cargo test

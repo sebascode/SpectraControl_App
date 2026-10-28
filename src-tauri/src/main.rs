@@ -4,7 +4,15 @@
 // In release builds, this binary spawns the bundled `spectractl` from resource_dir
 // and kills it on window close.
 
+mod autostart;
+mod fonts;
+mod notifications;
+mod runtime;
+
+use std::fs;
 use std::io::{BufRead, BufReader, Read};
+use std::net::TcpStream;
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -12,11 +20,24 @@ use std::thread;
 use std::time::Duration;
 use ashpd::desktop::screencast::{CursorMode, Screencast, SourceType};
 use ashpd::desktop::PersistMode;
+use log::{debug, error, info, warn};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager,
+    Emitter, Manager,
 };
+
+// Inicializa env_logger leyendo SPECTRA_LOG_LEVEL (misma env var que el backend
+// Go), default "info". Filtros tipo "debug,hyper=warn" también funcionan,
+// env_logger los parsea igual que RUST_LOG.
+fn setup_logger() {
+    let level = std::env::var("SPECTRA_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
+    env_logger::Builder::new()
+        .parse_filters(&level)
+        .format_timestamp_millis()
+        .try_init()
+        .ok();
+}
 
 // linuxdeploy's AppRun prepends bundled lib/plugin paths to env vars before exec'ing
 // the app. Subprocesses we spawn that come from the *host* (gst-launch-1.0) inherit
@@ -73,6 +94,76 @@ struct CaptureState {
 
 static CAPTURE: OnceLock<CaptureState> = OnceLock::new();
 
+// Ruta del archivo donde persistimos el restore_token del portal Screencast.
+// Se inicializa en setup() con `app_config_dir/screencast_restore_token`. Si
+// nunca se inicializó (camino de tests) los helpers no-opean.
+static TOKEN_FILE: OnceLock<PathBuf> = OnceLock::new();
+
+// Marcador "iniciar minimizado". El setup de Rust corre antes de que el
+// frontend cargue (no puede leer su localStorage), así que la preferencia se
+// persiste como la existencia de este archivo en el config dir.
+static START_MINIMIZED_FILE: OnceLock<PathBuf> = OnceLock::new();
+
+fn start_minimized_enabled() -> bool {
+    START_MINIMIZED_FILE.get().is_some_and(|p| p.exists())
+}
+
+#[tauri::command]
+fn get_start_minimized() -> bool {
+    start_minimized_enabled()
+}
+
+#[tauri::command]
+fn set_start_minimized(on: bool) -> Result<(), String> {
+    let Some(path) = START_MINIMIZED_FILE.get() else {
+        return Err("config dir not available".into());
+    };
+    if on {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(path, "1").map_err(|e| e.to_string())
+    } else {
+        match fs::remove_file(path) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+            _ => Ok(()),
+        }
+    }
+}
+
+fn load_restore_token() -> Option<String> {
+    let path = TOKEN_FILE.get()?;
+    let raw = fs::read_to_string(path).ok()?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn save_restore_token(tok: &str) {
+    let Some(path) = TOKEN_FILE.get() else { return };
+    if let Some(parent) = path.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            warn!("[capture] no se pudo crear dir para restore token: {e}");
+            return;
+        }
+    }
+    if let Err(e) = fs::write(path, tok) {
+        warn!("[capture] no se pudo guardar restore token: {e}");
+    }
+}
+
+fn delete_restore_token() {
+    let Some(path) = TOKEN_FILE.get() else { return };
+    match fs::remove_file(path) {
+        Ok(()) => info!("[capture] restore token borrado"),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => warn!("[capture] no se pudo borrar restore token: {e}"),
+    }
+}
+
 fn capture_state() -> &'static CaptureState {
     CAPTURE.get_or_init(|| CaptureState {
         latest: Arc::new(Mutex::new(None)),
@@ -81,14 +172,19 @@ fn capture_state() -> &'static CaptureState {
     })
 }
 
-async fn ensure_capture_initialized() -> Result<(), String> {
+async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String> {
     let state = capture_state();
     let mut init = state.init_lock.lock().await;
     if *init {
         return Ok(());
     }
 
-    // 1) Negociar Screencast con el portal
+    // 1) Negociar Screencast con el portal.
+    //    Si remember_monitor=true cargamos el restore_token de una sesión
+    //    previa y le pedimos al portal que persista la selección — así no
+    //    vuelve a abrir el diálogo de monitor. Si el token está vencido o
+    //    el monitor ya no existe, el portal degrada solo (vuelve a mostrar
+    //    el diálogo) y nos devuelve un token nuevo que reemplaza al viejo.
     let proxy = Screencast::new()
         .await
         .map_err(|e| format!("portal proxy: {e}"))?;
@@ -96,14 +192,24 @@ async fn ensure_capture_initialized() -> Result<(), String> {
         .create_session()
         .await
         .map_err(|e| format!("create_session: {e}"))?;
+    let restore_token = if remember_monitor {
+        load_restore_token()
+    } else {
+        None
+    };
+    let persist_mode = if remember_monitor {
+        PersistMode::ExplicitlyRevoked
+    } else {
+        PersistMode::DoNot
+    };
     proxy
         .select_sources(
             &session,
             CursorMode::Hidden,
             SourceType::Monitor.into(),
             false,
-            None,
-            PersistMode::DoNot,
+            restore_token.as_deref(),
+            persist_mode,
         )
         .await
         .map_err(|e| format!("select_sources: {e}"))?;
@@ -113,10 +219,15 @@ async fn ensure_capture_initialized() -> Result<(), String> {
         .map_err(|e| format!("start: {e}"))?
         .response()
         .map_err(|e| format!("start response: {e}"))?;
+    if remember_monitor {
+        if let Some(tok) = response.restore_token() {
+            save_restore_token(tok);
+        }
+    }
     let streams: Vec<_> = response.streams().to_vec();
     let stream_info = streams.first().ok_or_else(|| "sin streams".to_string())?;
     let node_id = stream_info.pipe_wire_node_id();
-    eprintln!("[capture] portal listo — node_id={node_id}");
+    info!("[capture] portal listo — node_id={node_id}");
 
     // 2) Lanzar gst-launch leyendo de pipewire y escupiendo RGB raw a stdout
     let pipeline_args = [
@@ -153,7 +264,7 @@ async fn ensure_capture_initialized() -> Result<(), String> {
     if let Some(stderr) = child.stderr.take() {
         thread::spawn(move || {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                eprintln!("[capture/gst] {line}");
+                debug!("[capture/gst] {line}");
             }
         });
     }
@@ -167,12 +278,12 @@ async fn ensure_capture_initialized() -> Result<(), String> {
             while filled < FRAME_BYTES {
                 match stdout.read(&mut buf[filled..]) {
                     Ok(0) => {
-                        eprintln!("[capture] gst-launch cerró stdout");
+                        warn!("[capture] gst-launch cerró stdout");
                         return;
                     }
                     Ok(n) => filled += n,
                     Err(e) => {
-                        eprintln!("[capture] read error: {e}");
+                        error!("[capture] read error: {e}");
                         return;
                     }
                 }
@@ -187,8 +298,12 @@ async fn ensure_capture_initialized() -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn sample_screen_regions(positions: Vec<[f32; 2]>) -> Result<Vec<[u8; 3]>, String> {
-    ensure_capture_initialized().await?;
+async fn sample_screen_regions(
+    positions: Vec<[f32; 2]>,
+    remember: tauri::State<'_, RememberMonitor>,
+) -> Result<Vec<[u8; 3]>, String> {
+    let remember_monitor = remember.0.load(Ordering::SeqCst);
+    ensure_capture_initialized(remember_monitor).await?;
 
     // Esperar el primer frame (hasta 1.5s la primera vez tras negociar el portal)
     let state = capture_state();
@@ -235,6 +350,234 @@ async fn sample_screen_regions(positions: Vec<[f32; 2]>) -> Result<Vec<[u8; 3]>,
     Ok(colors)
 }
 
+// ── AUDIO CAPTURE via pulsesrc + GStreamer ──────────────────────────────────
+// El portal xdg-desktop-portal de pantalla en Linux todavía no expone toggle
+// de audio (GNOME ≤46 al menos), así que getDisplayMedia({audio:true}) cae
+// silenciosamente sin track. Para el audio sync corremos un pipeline
+// pulsesrc apuntando al monitor del sink default — sin diálogo, sin permiso
+// extra. La FFT se hace acá en Rust con rustfft, y devolvemos un Vec<u8>
+// con la misma semántica que AnalyserNode.getByteFrequencyData (fftSize
+// 1024 → 512 bins, dB clamp -100..-30 → 0..255), así audioFrameToRGB() en
+// JS funciona sin cambios.
+const AUDIO_RATE: u32 = 44100;
+const AUDIO_FFT: usize = 1024;
+const AUDIO_BINS: usize = AUDIO_FFT / 2;
+const AUDIO_RING: usize = AUDIO_FFT * 2;
+
+struct AudioRing {
+    buf: Vec<f32>,
+    head: usize,
+}
+
+impl AudioRing {
+    fn new(cap: usize) -> Self {
+        Self {
+            buf: vec![0.0; cap],
+            head: 0,
+        }
+    }
+    fn push(&mut self, samples: &[f32]) {
+        for &s in samples {
+            self.buf[self.head] = s;
+            self.head = (self.head + 1) % self.buf.len();
+        }
+    }
+    fn copy_latest(&self, out: &mut [f32]) {
+        let n = out.len().min(self.buf.len());
+        let start = (self.head + self.buf.len() - n) % self.buf.len();
+        for (i, slot) in out.iter_mut().enumerate().take(n) {
+            *slot = self.buf[(start + i) % self.buf.len()];
+        }
+    }
+}
+
+struct AudioCaptureState {
+    ring: Arc<Mutex<AudioRing>>,
+    init_lock: tokio::sync::Mutex<bool>,
+    gst_child: Mutex<Option<Child>>,
+    // Smoothing IIR estado-por-bin (alpha = smoothingTimeConstant en
+    // AnalyserNode). Inicialmente en cero → primer frame entra crudo.
+    smoothed: Mutex<Vec<f32>>,
+    // Plan FFT compartido — rustfft::Fft no es Send+Sync via Arc<dyn>, así
+    // que lo guardamos detrás de un Mutex.
+    fft: Mutex<Arc<dyn rustfft::Fft<f32>>>,
+}
+
+static AUDIO_CAPTURE: OnceLock<AudioCaptureState> = OnceLock::new();
+
+fn audio_capture_state() -> &'static AudioCaptureState {
+    AUDIO_CAPTURE.get_or_init(|| {
+        let mut planner = rustfft::FftPlanner::<f32>::new();
+        AudioCaptureState {
+            ring: Arc::new(Mutex::new(AudioRing::new(AUDIO_RING))),
+            init_lock: tokio::sync::Mutex::new(false),
+            gst_child: Mutex::new(None),
+            smoothed: Mutex::new(vec![0.0; AUDIO_BINS]),
+            fft: Mutex::new(planner.plan_fft_forward(AUDIO_FFT)),
+        }
+    })
+}
+
+async fn ensure_audio_capture_initialized() -> Result<(), String> {
+    let state = audio_capture_state();
+    let mut init = state.init_lock.lock().await;
+    if *init {
+        return Ok(());
+    }
+
+    // pulsesrc device=@DEFAULT_MONITOR@ captura el monitor del sink default,
+    // lo que en PipeWire (con la capa de compatibilidad Pulse) es el mismo
+    // audio que sale por los parlantes. Forzamos F32LE mono @ 44.1k para
+    // tener un buffer denso y simple que alimentar a la FFT.
+    let caps = format!(
+        "audio/x-raw,format=F32LE,rate={AUDIO_RATE},channels=1,layout=interleaved"
+    );
+    let pipeline_args = [
+        "-q",
+        "pulsesrc",
+        "device=@DEFAULT_MONITOR@",
+        "!",
+        "audioconvert",
+        "!",
+        "audioresample",
+        "!",
+        &caps,
+        "!",
+        "fdsink",
+        "fd=1",
+        "sync=false",
+    ];
+    let mut cmd = Command::new("gst-launch-1.0");
+    cmd.args(
+        pipeline_args
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
+    )
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped());
+    sanitize_host_env(&mut cmd);
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("spawn gst-launch-1.0 (audio): {e}"))?;
+
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "sin stdout (audio)".to_string())?;
+    if let Some(stderr) = child.stderr.take() {
+        thread::spawn(move || {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                debug!("[audio-capture/gst] {line}");
+            }
+        });
+    }
+
+    let ring = state.ring.clone();
+    thread::spawn(move || {
+        // Buffer de lectura: leemos hasta 4096 samples (16 KB) por iteración.
+        let chunk_samples = 4096usize;
+        let mut byte_buf = vec![0u8; chunk_samples * 4];
+        loop {
+            match stdout.read(&mut byte_buf) {
+                Ok(0) => {
+                    warn!("[audio-capture] gst-launch cerró stdout");
+                    return;
+                }
+                Ok(n) => {
+                    // F32LE → f32: ignoramos colas parciales (n % 4 != 0)
+                    // hasta la próxima lectura, gst alinea normalmente.
+                    let aligned = n - (n % 4);
+                    if aligned == 0 {
+                        continue;
+                    }
+                    let mut samples = Vec::with_capacity(aligned / 4);
+                    for i in (0..aligned).step_by(4) {
+                        let s = f32::from_le_bytes([
+                            byte_buf[i],
+                            byte_buf[i + 1],
+                            byte_buf[i + 2],
+                            byte_buf[i + 3],
+                        ]);
+                        samples.push(s);
+                    }
+                    ring.lock().unwrap().push(&samples);
+                }
+                Err(e) => {
+                    error!("[audio-capture] read error: {e}");
+                    return;
+                }
+            }
+        }
+    });
+
+    *state.gst_child.lock().unwrap() = Some(child);
+    *init = true;
+    Ok(())
+}
+
+#[tauri::command]
+async fn sample_audio_bins(smoothing: Option<f32>) -> Result<Vec<u8>, String> {
+    ensure_audio_capture_initialized().await?;
+    let state = audio_capture_state();
+    // 0.6 imita AnalyserNode default (bueno para color stability del audio
+    // sync). Para detección de beats — scene-audio — el caller pasa 0 para
+    // recibir magnitudes sin suavizar.
+    let smoothing = smoothing.unwrap_or(0.6).clamp(0.0, 0.99);
+
+    // Esperar a tener al menos un buffer completo (la primera vez tras
+    // arrancar gst). Bound bajo: si en ~1 s no hay datos, error.
+    let mut samples = vec![0.0f32; AUDIO_FFT];
+    let mut tries = 0;
+    loop {
+        state.ring.lock().unwrap().copy_latest(&mut samples);
+        // Heurística rápida: si todos los samples siguen siendo 0.0 y no
+        // pasaron muchos intentos, esperar — todavía no llegó audio.
+        let any_nonzero = samples.iter().any(|&s| s != 0.0);
+        if any_nonzero || tries > 50 {
+            break;
+        }
+        tries += 1;
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+
+    // Hann window — mismo windowing implícito que AnalyserNode.
+    for (i, s) in samples.iter_mut().enumerate() {
+        let w = 0.5
+            * (1.0
+                - (2.0 * std::f32::consts::PI * i as f32 / (AUDIO_FFT - 1) as f32)
+                    .cos());
+        *s *= w;
+    }
+
+    let mut fft_buf: Vec<rustfft::num_complex::Complex<f32>> = samples
+        .iter()
+        .map(|&s| rustfft::num_complex::Complex { re: s, im: 0.0 })
+        .collect();
+    {
+        let fft = state.fft.lock().unwrap();
+        fft.process(&mut fft_buf);
+    }
+
+    // dB clamp -100..-30 idéntico al default de AnalyserNode; el smoothing
+    // ahora viene del caller (parámetro arriba).
+    const MIN_DB: f32 = -100.0;
+    const MAX_DB: f32 = -30.0;
+    let mut smoothed = state.smoothed.lock().unwrap();
+    let mut out = vec![0u8; AUDIO_BINS];
+    for i in 0..AUDIO_BINS {
+        let re = fft_buf[i].re;
+        let im = fft_buf[i].im;
+        let mag = (re * re + im * im).sqrt() / AUDIO_FFT as f32;
+        let sm = smoothing * smoothed[i] + (1.0 - smoothing) * mag;
+        smoothed[i] = sm;
+        let db = 20.0 * sm.max(1e-12).log10();
+        let v = ((db - MIN_DB) / (MAX_DB - MIN_DB)).clamp(0.0, 1.0);
+        out[i] = (v * 255.0).round() as u8;
+    }
+    Ok(out)
+}
+
 #[cfg(target_os = "linux")]
 fn allow_display_capture(app: &tauri::App) {
     if let Some(window) = app.get_webview_window("main") {
@@ -267,9 +610,33 @@ struct IsQuitting(AtomicBool);
 // el toggle de Apariencia con set_quit_on_close.
 struct QuitOnClose(AtomicBool);
 
+// remember_monitor=true → guardamos el restore_token que devuelve el portal
+// Screencast y se lo pasamos en la próxima sesión: el portal salta el diálogo
+// de "qué monitor compartir". false → cada sesión renegocia desde cero y el
+// portal pregunta siempre. El frontend lo empuja con set_remember_monitor.
+struct RememberMonitor(AtomicBool);
+
+// graceful_quit: cuando el usuario pide cerrar (tray "Salir" o X con
+// quit_on_close=true), no salimos inmediato. Emitimos `spectra:before-quit`
+// y dejamos al frontend apagar las luces del ambiente sincronizado, que
+// después invoca `confirm_quit`. Un watchdog garantiza salida aunque el JS
+// no responda. QuitRequested evita re-entrada si el usuario insiste con
+// otro click.
+struct QuitRequested(AtomicBool);
+
 #[tauri::command]
 fn set_quit_on_close(on: bool, state: tauri::State<'_, QuitOnClose>) {
     state.0.store(on, Ordering::SeqCst);
+}
+
+// Apagar el toggle también limpia el token persistido: si el usuario revoca
+// la preferencia, el archivo no se queda atrás esperando a que la reactive.
+#[tauri::command]
+fn set_remember_monitor(on: bool, state: tauri::State<'_, RememberMonitor>) {
+    state.0.store(on, Ordering::SeqCst);
+    if !on {
+        delete_restore_token();
+    }
 }
 
 // Referencias a los items del menú del tray para poder reescribir sus labels
@@ -277,16 +644,19 @@ fn set_quit_on_close(on: bool, state: tauri::State<'_, QuitOnClose>) {
 // helper i18n del frontend).
 struct TrayMenuItems {
     show: MenuItem<tauri::Wry>,
+    lights_off: MenuItem<tauri::Wry>,
     quit: MenuItem<tauri::Wry>,
 }
 
 #[tauri::command]
 fn set_tray_menu_labels(
     show: String,
+    lights_off: String,
     quit: String,
     items: tauri::State<'_, TrayMenuItems>,
 ) -> Result<(), String> {
     items.show.set_text(show).map_err(|e| e.to_string())?;
+    items.lights_off.set_text(lights_off).map_err(|e| e.to_string())?;
     items.quit.set_text(quit).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -297,6 +667,114 @@ fn set_tray_menu_labels(
 #[tauri::command]
 fn write_text_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|e| e.to_string())
+}
+
+// withGlobalTauri=true no inyecta los wrappers JS de los plugins (no hay
+// bundler), así que window.__TAURI__.notification es undefined desde el
+// frontend. Exponemos el envío en Rust — el frontend pasa los strings ya
+// traducidos y nosotros disparamos la notificación nativa.
+//
+// Usamos notify-rust directamente en vez del plugin: tauri-plugin-notification
+// 2.x corre el .show() interno con async_runtime::spawn → cae en un worker
+// de tokio, donde el block_on de zbus dentro de notify-rust panic'ea con
+// "Cannot start a runtime from within a runtime". std::thread::spawn aísla
+// la llamada en un OS thread sin contexto tokio.
+
+fn force_exit(app: &tauri::AppHandle) {
+    app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
+    cleanup_children(app);
+    app.exit(0);
+}
+
+fn request_graceful_quit(app: &tauri::AppHandle) {
+    let already = app
+        .state::<QuitRequested>()
+        .0
+        .swap(true, Ordering::SeqCst);
+    if already {
+        return;
+    }
+    // Ocultar la ventana enseguida — el usuario ya pidió cerrar y no debería
+    // ver la UI mientras corre el shutdown del bridge.
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+    let _ = app.emit("spectra:before-quit", ());
+    let handle = app.clone();
+    thread::spawn(move || {
+        // Watchdog: si el frontend no llamó a confirm_quit en este margen,
+        // forzamos salida. Suficiente para mandar PUTs de "on:false" al
+        // bridge local (latencia típica ~50ms) sin hacer esperar al usuario.
+        thread::sleep(Duration::from_millis(1500));
+        force_exit(&handle);
+    });
+}
+
+#[tauri::command]
+fn confirm_quit(app: tauri::AppHandle) {
+    force_exit(&app);
+}
+
+// Trae la ventana principal al frente desde el tray. El orden importa en
+// Wayland/WebKitGTK: show() primero para garantizar que la surface esté
+// mapeada, después unminimize() (no-op en Wayland pero necesario en X11/
+// otros WMs), y por último set_focus() — GTK lo traduce a gtk_window_present
+// que pide al compositor mover la ventana al workspace actual. center() no
+// se llama porque Wayland ignora el posicionamiento de cliente y en X11 el
+// WM ya recuerda la última posición.
+fn present_main_window(window: &tauri::WebviewWindow) {
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+}
+
+// Redimensiona la ventana principal a un tamaño lógico (DPI-independent).
+// Lo expone Rust porque `window.__TAURI__.window.LogicalSize` no siempre
+// llega cuando `withGlobalTauri:true` está activo.
+#[tauri::command]
+fn resize_window(
+    window: tauri::WebviewWindow,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    window
+        .set_size(tauri::Size::Logical(tauri::LogicalSize {
+            width,
+            height,
+        }))
+        .map_err(|e| e.to_string())
+}
+
+// Polling al puerto del backend Go. El Tauri `frontendDist` lo apunta a este
+// mismo localhost:8000, así que si construimos el WebView antes de que el
+// Go acepte conexiones, WebKit2GTK pinta su error nativo "Connection refused"
+// (visible en autostart de boot frío). Esto bloquea el setup hasta que el
+// socket conteste o se agote el budget — sin sleeps fijos.
+fn wait_for_backend(addr: &str, budget: Duration) {
+    let start = std::time::Instant::now();
+    let connect_timeout = Duration::from_millis(200);
+    let retry_delay = Duration::from_millis(50);
+    let parsed: std::net::SocketAddr = match addr.parse() {
+        Ok(a) => a,
+        Err(e) => {
+            warn!("wait_for_backend: bad addr {addr}: {e}");
+            return;
+        }
+    };
+    loop {
+        if TcpStream::connect_timeout(&parsed, connect_timeout).is_ok() {
+            info!("backend listening at {addr} after {:?}", start.elapsed());
+            return;
+        }
+        if start.elapsed() >= budget {
+            warn!(
+                "backend not ready after {:?} — loading WebView anyway",
+                budget
+            );
+            return;
+        }
+        thread::sleep(retry_delay);
+    }
 }
 
 fn cleanup_children(app: &tauri::AppHandle) {
@@ -310,33 +788,78 @@ fn cleanup_children(app: &tauri::AppHandle) {
             let _ = gst.kill();
         }
     }
+    if let Some(audio) = AUDIO_CAPTURE.get() {
+        if let Some(mut gst) = audio.gst_child.lock().unwrap().take() {
+            let _ = gst.kill();
+        }
+    }
 }
 
 fn main() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
+    setup_logger();
+    fonts::guard_colrv1();
+    // Flathub no permite auto-update: el repo maneja el ciclo. Saltamos el
+    // registro del plugin para que el frontend ni siquiera vea el namespace
+    // `__TAURI__.updater` y el botón de la UI se esconda solo.
+    let in_flatpak = runtime::is_flatpak();
+    if in_flatpak {
+        info!("flatpak runtime detected; updater plugin disabled");
+    }
+    let mut builder = tauri::Builder::default();
+    if !in_flatpak {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+    builder
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
+            // `--autostart` deja al setup distinguir "GNOME me lanzó al boot" de
+            // un doble-click manual. Tray-first solo en el primer caso; la
+            // ventana se queda oculta hasta que el usuario abre desde el tray.
+            Some(vec!["--autostart"]),
         ))
         .manage(BackendProcess(Mutex::new(None)))
         .manage(IsQuitting(AtomicBool::new(false)))
         .manage(QuitOnClose(AtomicBool::new(false)))
+        .manage(QuitRequested(AtomicBool::new(false)))
+        .manage(RememberMonitor(AtomicBool::new(true)))
         .setup(|app| {
+            // Ubicación del restore_token del Screencast portal. Se hace acá
+            // (no en el primer uso) para que `delete_restore_token` desde el
+            // command funcione aunque la captura nunca se haya inicializado.
+            if let Ok(dir) = app.path().app_config_dir() {
+                let _ = TOKEN_FILE.set(dir.join("screencast_restore_token"));
+                let _ = START_MINIMIZED_FILE.set(dir.join("start_minimized"));
+            } else {
+                warn!("[capture] app_config_dir no resoluble; restore token deshabilitado");
+            }
             #[cfg(not(debug_assertions))]
             {
-                let resource_dir = app.path().resource_dir()
-                    .expect("cannot determine resource directory");
-                let backend_bin = resource_dir.join("backend").join("spectractl");
-                let child = std::process::Command::new(&backend_bin)
-                    .args(["-addr", "127.0.0.1:8000"])
-                    .spawn()
-                    .expect("failed to start backend");
+                let mut cmd = if runtime::is_flatpak() {
+                    // Flatpak install layout (packaging/flatpak/casa.scode.SpectraControl.yml):
+                    // backend lives at /app/bin and frontend assets at /app/share/spectra-control/frontend.
+                    // Tauri's resource_dir resolves to a /usr/lib/* path that doesn't exist in the
+                    // sandbox, so the locations are passed explicitly.
+                    let mut c = std::process::Command::new("/app/bin/spectractl");
+                    c.args(["-addr", "127.0.0.1:8000",
+                            "-frontend", "/app/share/spectra-control/frontend"]);
+                    c
+                } else {
+                    let resource_dir = app.path().resource_dir()
+                        .expect("cannot determine resource directory");
+                    let backend_bin = resource_dir.join("backend").join("spectractl");
+                    let mut c = std::process::Command::new(&backend_bin);
+                    c.args(["-addr", "127.0.0.1:8000"]);
+                    c
+                };
+                let child = cmd.spawn().expect("failed to start backend");
                 *app.state::<BackendProcess>().0.lock().unwrap() = Some(child);
-                std::thread::sleep(std::time::Duration::from_millis(300));
+                // `frontendDist` apunta a http://localhost:8000, así que el WebView
+                // se rompe (página nativa "Connection refused") si lo construimos
+                // antes de que el Go bindee el puerto. En autostart de boot frío
+                // 300 ms no alcanzan; polleamos hasta que el socket acepte.
+                wait_for_backend("127.0.0.1:8000", Duration::from_secs(15));
             }
             #[cfg(target_os = "linux")]
             allow_display_capture(app);
@@ -347,9 +870,17 @@ fn main() {
             // los placeholders quedan en español por si JS no llega a llamar.
             let show_item = MenuItem::with_id(app, "show", "Mostrar", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let lights_off_item = MenuItem::with_id(
+                app,
+                "lights_off",
+                "Apagar todas las luces",
+                true,
+                None::<&str>,
+            )?;
+            let menu = Menu::with_items(app, &[&show_item, &lights_off_item, &quit_item])?;
             app.manage(TrayMenuItems {
                 show: show_item.clone(),
+                lights_off: lights_off_item.clone(),
                 quit: quit_item.clone(),
             });
 
@@ -366,15 +897,16 @@ fn main() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.unminimize();
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                            present_main_window(&window);
                         }
                     }
+                    "lights_off" => {
+                        // El frontend sigue vivo con la ventana oculta; él
+                        // detiene sync/escenas y habla con el backend.
+                        let _ = app.emit("spectra:tray-lights-off", ());
+                    }
                     "quit" => {
-                        app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
-                        cleanup_children(app);
-                        app.exit(0);
+                        request_graceful_quit(app);
                     }
                     _ => {}
                 })
@@ -388,13 +920,32 @@ fn main() {
                     {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.unminimize();
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                            present_main_window(&window);
                         }
                     }
                 })
                 .build(app)?;
+
+            // La ventana se crea con `visible: false` (tauri.conf.json) para
+            // poder decidir en este punto si mostrarla. En autostart el plugin
+            // pasa `--autostart` → quedamos tray-first. Lanzamiento manual no
+            // tiene el flag → mostramos centrada apenas el backend respondió.
+            //
+            // Wayland/WebKitGTK: aun en el camino autostart hacemos show()+hide()
+            // para forzar el realize+map de la GtkWindow una vez. Sin eso, el
+            // primer show() disparado desde el tray ocurre sobre una surface
+            // que nunca se mapeó y Mutter no la presenta — la ventana queda
+            // invisible aunque Tauri reporte éxito.
+            let autostarted = std::env::args().any(|a| a == "--autostart")
+                || start_minimized_enabled();
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                if autostarted {
+                    let _ = window.hide();
+                } else {
+                    let _ = window.set_focus();
+                }
+            }
 
             Ok(())
         })
@@ -407,12 +958,11 @@ fn main() {
                     return;
                 }
                 if app.state::<QuitOnClose>().0.load(Ordering::SeqCst) {
-                    // El usuario eligió que la X cierre la app: limpiamos y
-                    // marcamos is_quitting para que el siguiente CloseRequested
-                    // (si llega) pase derecho.
-                    app.state::<IsQuitting>().0.store(true, Ordering::SeqCst);
-                    cleanup_children(&app);
-                    app.exit(0);
+                    // El usuario eligió que la X cierre la app. Cancelamos el
+                    // cierre de la ventana mientras el frontend apaga las luces;
+                    // confirm_quit (o el watchdog) hará el exit real luego.
+                    api.prevent_close();
+                    request_graceful_quit(&app);
                     return;
                 }
                 // Default: ocultar al tray.
@@ -422,9 +972,18 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             sample_screen_regions,
+            sample_audio_bins,
             set_tray_menu_labels,
             set_quit_on_close,
-            write_text_file
+            get_start_minimized,
+            set_start_minimized,
+            set_remember_monitor,
+            write_text_file,
+            notifications::notify_native,
+            confirm_quit,
+            resize_window,
+            runtime::runtime_environment,
+            autostart::set_autostart_portal
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -437,4 +996,73 @@ fn main() {
                 cleanup_children(app);
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsString;
+
+    #[test]
+    fn sanitize_host_env_removes_all_polluting_vars() {
+        // Build a Command pre-populated with every var sanitize_host_env claims to strip.
+        let polluting = [
+            "LD_LIBRARY_PATH",
+            "LD_PRELOAD",
+            "GST_PLUGIN_PATH",
+            "GST_PLUGIN_PATH_1_0",
+            "GST_PLUGIN_SYSTEM_PATH",
+            "GST_PLUGIN_SYSTEM_PATH_1_0",
+            "GST_PLUGIN_SCANNER",
+            "GST_REGISTRY",
+            "GIO_MODULE_DIR",
+            "GIO_EXTRA_MODULES",
+            "GSETTINGS_SCHEMA_DIR",
+            "GTK_PATH",
+            "GTK_DATA_PREFIX",
+            "GTK_EXE_PREFIX",
+            "GTK_IM_MODULE_FILE",
+            "GDK_PIXBUF_MODULE_FILE",
+            "QT_PLUGIN_PATH",
+            "PYTHONHOME",
+            "PYTHONPATH",
+            "PERLLIB",
+            "XDG_DATA_DIRS",
+        ];
+
+        let mut cmd = Command::new("/bin/true");
+        for v in &polluting {
+            cmd.env(v, "appimage-poison");
+        }
+        // A non-polluting var should survive sanitize_host_env untouched.
+        cmd.env("KEEP_ME", "ok");
+
+        sanitize_host_env(&mut cmd);
+
+        // Command::get_envs yields (key, None) for env_remove calls and
+        // (key, Some(value)) for env(...) calls. After sanitize_host_env, each
+        // polluting var must appear as a removal.
+        let envs: Vec<(OsString, Option<OsString>)> = cmd
+            .get_envs()
+            .map(|(k, v)| (k.to_owned(), v.map(|v| v.to_owned())))
+            .collect();
+
+        for v in &polluting {
+            let entry = envs.iter().find(|(k, _)| k == v);
+            match entry {
+                Some((_, None)) => {} // removed — good
+                Some((_, Some(val))) => panic!(
+                    "{v} still set to {val:?} after sanitize_host_env"
+                ),
+                None => panic!("{v} missing from Command envs (expected a removal entry)"),
+            }
+        }
+
+        // KEEP_ME should still be present with its value.
+        let keep = envs.iter().find(|(k, _)| k == "KEEP_ME");
+        assert!(
+            matches!(keep, Some((_, Some(v))) if v == "ok"),
+            "KEEP_ME was disturbed by sanitize_host_env: {keep:?}"
+        );
+    }
 }

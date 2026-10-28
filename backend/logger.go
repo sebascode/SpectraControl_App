@@ -14,7 +14,10 @@ import (
 	"strings"
 )
 
-var logger *slog.Logger
+// Default to slog.Default() so call sites son seguros antes de que main()
+// invoque setupLogger (e.g. en tests que ejercitan handlers sin pasar por
+// la inicialización completa del binario).
+var logger *slog.Logger = slog.Default()
 
 func setupLogger(level string) {
 	var lv slog.Level

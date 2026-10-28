@@ -4,7 +4,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -155,13 +157,56 @@ func hueURL(path string) string {
 	return fmt.Sprintf("http://%s/api/%s/%s", bridgeIP, apiKey, path)
 }
 
+// errHueUnauthorized indica que el bridge rechazó el application key (tipo 1
+// "unauthorized user" en la API v1). La v1 responde 200 con un array de
+// errores, así que hay que mirar el body y no solo el status.
+var errHueUnauthorized = errors.New("bridge rechazó la API key (unauthorized user)")
+
+// checkHueBody inspecciona una respuesta v1 buscando errores en el formato
+// `[{"error":{"type":N,...}}]`. Devuelve errHueUnauthorized para el tipo 1.
+func checkHueBody(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || data[0] != '[' {
+		return nil
+	}
+	var items []struct {
+		Error *struct {
+			Type        int    `json:"type"`
+			Description string `json:"description"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(data, &items) != nil {
+		return nil
+	}
+	for _, it := range items {
+		if it.Error == nil {
+			continue
+		}
+		if it.Error.Type == 1 {
+			return errHueUnauthorized
+		}
+		return fmt.Errorf("bridge error %d: %s", it.Error.Type, it.Error.Description)
+	}
+	return nil
+}
+
 func hueGet(path string) ([]byte, error) {
 	resp, err := hueClient.Get(hueURL(path))
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, errHueUnauthorized
+	}
+	if err := checkHueBody(data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func huePut(path string, body any) error {
@@ -175,8 +220,25 @@ func huePut(path string, body any) error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return errHueUnauthorized
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	if errors.Is(checkHueBody(respBody), errHueUnauthorized) {
+		return errHueUnauthorized
+	}
 	return nil
+}
+
+// writeHueErr traduce un error de hueGet/huePut: 401 si la key fue rechazada
+// (el frontend lo usa para pedir re-vincular), 503 para el resto.
+func writeHueErr(w http.ResponseWriter, err error) {
+	if errors.Is(err, errHueUnauthorized) {
+		writeErr(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	writeErr(w, http.StatusServiceUnavailable, err.Error())
 }
 
 func huePostRaw(url string, body any) ([]byte, error) {
@@ -396,7 +458,7 @@ func handleGetLights(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := hueGet("lights")
 	if err != nil {
-		writeErr(w, http.StatusServiceUnavailable, err.Error())
+		writeHueErr(w, err)
 		return
 	}
 	var raw map[string]map[string]any
@@ -435,7 +497,7 @@ func handleSetLightState(w http.ResponseWriter, r *http.Request) {
 	var body map[string]any
 	json.NewDecoder(r.Body).Decode(&body)
 	if err := huePut("lights/"+id+"/state", body); err != nil {
-		writeErr(w, http.StatusServiceUnavailable, err.Error())
+		writeHueErr(w, err)
 		return
 	}
 	writeJSON(w, map[string]bool{"ok": true})
@@ -458,7 +520,7 @@ func handleSetLightColor(w http.ResponseWriter, r *http.Request) {
 	if err := huePut("lights/"+id+"/state", map[string]any{
 		"on": true, "xy": xy[:], "bri": body.Bri, "transitiontime": body.TT,
 	}); err != nil {
-		writeErr(w, http.StatusServiceUnavailable, err.Error())
+		writeHueErr(w, err)
 		return
 	}
 	writeJSON(w, map[string]bool{"ok": true})
@@ -472,7 +534,7 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := hueGet("groups")
 	if err != nil {
-		writeErr(w, http.StatusServiceUnavailable, err.Error())
+		writeHueErr(w, err)
 		return
 	}
 	var raw map[string]map[string]any
@@ -515,7 +577,7 @@ func handleSetGroupAction(w http.ResponseWriter, r *http.Request) {
 	var body map[string]any
 	json.NewDecoder(r.Body).Decode(&body)
 	if err := huePut("groups/"+id+"/action", body); err != nil {
-		writeErr(w, http.StatusServiceUnavailable, err.Error())
+		writeHueErr(w, err)
 		return
 	}
 	writeJSON(w, map[string]bool{"ok": true})
@@ -538,7 +600,7 @@ func handleSetGroupColor(w http.ResponseWriter, r *http.Request) {
 	if err := huePut("groups/"+id+"/action", map[string]any{
 		"on": true, "xy": xy[:], "bri": body.Bri, "transitiontime": body.TT,
 	}); err != nil {
-		writeErr(w, http.StatusServiceUnavailable, err.Error())
+		writeHueErr(w, err)
 		return
 	}
 	writeJSON(w, map[string]bool{"ok": true})
@@ -565,6 +627,11 @@ type lightCmd struct {
 	R  float64 `json:"r"`
 	G  float64 `json:"g"`
 	B  float64 `json:"b"`
+	// MaxBri caps this light's effective brightness (1-255). Optional: when
+	// nil, the global bri applies untouched. Used by the per-light cap in
+	// the zone config so a single bright bulb can be dialled down without
+	// changing the global sync bri.
+	MaxBri *int `json:"max_bri,omitempty"`
 }
 
 type wsMsg struct {
@@ -592,14 +659,24 @@ func sendColorUpdate(u colorUpdate) {
 		if pushToEntertainment(u.lights) {
 			return
 		}
+		// Perdimos el stream porque otro cliente (PS5, Sync Box) lo tomó:
+		// caer al HTTP PUT pelearía con el nuevo dueño y haría parpadear las
+		// luces. Descartamos frames hasta que la UI cierre el sync.
+		if entertainmentYielded() {
+			return
+		}
 		var wg sync.WaitGroup
 		for _, l := range u.lights {
 			wg.Add(1)
 			go func(l lightCmd) {
 				defer wg.Done()
 				xy := rgbToXY(l.R, l.G, l.B)
+				bri := u.bri
+				if l.MaxBri != nil && *l.MaxBri < bri {
+					bri = *l.MaxBri
+				}
 				huePut("lights/"+l.ID+"/state", map[string]any{
-					"on": true, "xy": xy[:], "bri": u.bri, "transitiontime": u.tt,
+					"on": true, "xy": xy[:], "bri": bri, "transitiontime": u.tt,
 				})
 			}(l)
 		}
@@ -742,9 +819,12 @@ func main() {
 	r.Get("/api/entertainment", handleListEntertainment)
 	r.Post("/api/entertainment/start", handleStartEntertainment)
 	r.Post("/api/entertainment/stop", handleStopEntertainment)
+	r.Post("/api/entertainment/break-others", handleBreakOtherEntertainment)
 
 	// Dynamic scenes
 	r.Get("/api/scenes", handleListScenes)
+	r.Post("/api/scenes", handleCreateScene)
+	r.Delete("/api/scenes/{id}", handleDeleteScene)
 	r.Post("/api/scenes/start", handleStartScene)
 	r.Post("/api/scenes/stop", handleStopScene)
 
@@ -754,6 +834,11 @@ func main() {
 
 	// WebSocket
 	r.Get("/ws/color", handleWsColor)
+	r.Get("/ws/state", handleWsState)
+
+	// SSE eventstream del bridge (state sync en tiempo real) — corre en
+	// background y se reconecta solo. Sin bridge configurado queda idle.
+	startBridgeEventStream(context.Background())
 
 	// Frontend estático — sin cache para que los cambios en index.html se reflejen al recargar.
 	fe := frontendPath(*frontendDir)
