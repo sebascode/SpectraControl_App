@@ -2322,6 +2322,19 @@
                         <span class="toggle-track"></span>
                     </span>
                 </label>
+                <label class="settings-row">
+                    <span data-i18n="settings.startMinimized">
+                        Iniciar minimizado en la bandeja
+                    </span>
+                    <span class="toggle">
+                        <input
+                            type="checkbox"
+                            id="start-minimized-toggle"
+                            onchange="setStartMinimized(this.checked)"
+                        />
+                        <span class="toggle-track"></span>
+                    </span>
+                </label>
                 <label
                     class="settings-row"
                     id="autostart-sync-row"
@@ -6722,6 +6735,17 @@
                     rememberMonitorEnabled();
                 pushQuitOnCloseToRust();
                 pushRememberMonitorToRust();
+                // La pref vive en Rust (archivo en config dir), no en localStorage.
+                window.__TAURI__?.core
+                    ?.invoke("get_start_minimized")
+                    .then((on) => {
+                        document.getElementById(
+                            "start-minimized-toggle",
+                        ).checked = on;
+                    })
+                    .catch((e) =>
+                        console.warn("[settings] get_start_minimized falló", e),
+                    );
                 getAutostartEnabled().then((on) => {
                     document.getElementById("autostart-toggle").checked = on;
                     document.getElementById("autostart-sync-toggle").checked =
@@ -6750,6 +6774,18 @@
             // tiene que optar explícitamente.
             function lightsOffOnCloseEnabled() {
                 return localStorage.getItem(LIGHTS_OFF_ON_CLOSE_KEY) === "1";
+            }
+
+            async function setStartMinimized(on) {
+                try {
+                    await window.__TAURI__.core.invoke("set_start_minimized", {
+                        on,
+                    });
+                } catch (e) {
+                    console.warn("[settings] set_start_minimized falló", e);
+                    document.getElementById("start-minimized-toggle").checked =
+                        !on;
+                }
             }
 
             function setLightsOffOnClose(on) {

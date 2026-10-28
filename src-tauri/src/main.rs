@@ -99,6 +99,38 @@ static CAPTURE: OnceLock<CaptureState> = OnceLock::new();
 // nunca se inicializó (camino de tests) los helpers no-opean.
 static TOKEN_FILE: OnceLock<PathBuf> = OnceLock::new();
 
+// Marcador "iniciar minimizado". El setup de Rust corre antes de que el
+// frontend cargue (no puede leer su localStorage), así que la preferencia se
+// persiste como la existencia de este archivo en el config dir.
+static START_MINIMIZED_FILE: OnceLock<PathBuf> = OnceLock::new();
+
+fn start_minimized_enabled() -> bool {
+    START_MINIMIZED_FILE.get().is_some_and(|p| p.exists())
+}
+
+#[tauri::command]
+fn get_start_minimized() -> bool {
+    start_minimized_enabled()
+}
+
+#[tauri::command]
+fn set_start_minimized(on: bool) -> Result<(), String> {
+    let Some(path) = START_MINIMIZED_FILE.get() else {
+        return Err("config dir not available".into());
+    };
+    if on {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(path, "1").map_err(|e| e.to_string())
+    } else {
+        match fs::remove_file(path) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+            _ => Ok(()),
+        }
+    }
+}
+
 fn load_restore_token() -> Option<String> {
     let path = TOKEN_FILE.get()?;
     let raw = fs::read_to_string(path).ok()?;
@@ -798,6 +830,7 @@ fn main() {
             // command funcione aunque la captura nunca se haya inicializado.
             if let Ok(dir) = app.path().app_config_dir() {
                 let _ = TOKEN_FILE.set(dir.join("screencast_restore_token"));
+                let _ = START_MINIMIZED_FILE.set(dir.join("start_minimized"));
             } else {
                 warn!("[capture] app_config_dir no resoluble; restore token deshabilitado");
             }
@@ -903,7 +936,8 @@ fn main() {
             // primer show() disparado desde el tray ocurre sobre una surface
             // que nunca se mapeó y Mutter no la presenta — la ventana queda
             // invisible aunque Tauri reporte éxito.
-            let autostarted = std::env::args().any(|a| a == "--autostart");
+            let autostarted = std::env::args().any(|a| a == "--autostart")
+                || start_minimized_enabled();
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 if autostarted {
@@ -941,6 +975,8 @@ fn main() {
             sample_audio_bins,
             set_tray_menu_labels,
             set_quit_on_close,
+            get_start_minimized,
+            set_start_minimized,
             set_remember_monitor,
             write_text_file,
             notifications::notify_native,
