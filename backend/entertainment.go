@@ -133,7 +133,12 @@ type entConfig struct {
 	} `json:"active_streamer"`
 	Channels []struct {
 		ChannelID int `json:"channel_id"`
-		Members   []struct {
+		Position  struct {
+			X float64 `json:"x"`
+			Y float64 `json:"y"`
+			Z float64 `json:"z"`
+		} `json:"position"`
+		Members []struct {
 			Service struct {
 				RID   string `json:"rid"`
 				RType string `json:"rtype"`
@@ -149,6 +154,7 @@ type entState struct {
 	conn       net.Conn          // DTLS connection (nil = inactivo)
 	configID   string
 	channelMap map[string][]byte // v1 light ID → channel IDs (una Gradient Lightstrip tiene varios)
+	segMap     map[string]byte   // id de segmento ("7#2") → channel ID
 	colorCh    chan []chanColor
 	seq        byte
 	done       chan struct{} // se cierra al terminar la sesión (frena el watcher)
@@ -208,17 +214,29 @@ func getEntertainmentConfigs() ([]map[string]any, error) {
 
 	result := make([]map[string]any, 0, len(resp.Data))
 	for _, cfg := range resp.Data {
+		base := channelMapFromConfig(cfg, entIDMap)
 		channels := make([]map[string]any, 0, len(cfg.Channels))
 		for _, ch := range cfg.Channels {
 			lights := make([]string, 0)
 			for _, m := range ch.Members {
-				if v1, ok := entIDMap[m.Service.RID]; ok {
+				v1, ok := entIDMap[m.Service.RID]
+				if !ok {
+					continue
+				}
+				// Luz con varios canales (Gradient Lightstrip): cada canal se
+				// expone como segmento propio para poder posicionarlo y
+				// muestrearlo por separado.
+				if chs := base[v1]; len(chs) > 1 {
+					k := slices.Index(chs, byte(ch.ChannelID))
+					lights = append(lights, segmentID(v1, k))
+				} else {
 					lights = append(lights, v1)
 				}
 			}
 			channels = append(channels, map[string]any{
 				"channel_id": ch.ChannelID,
 				"lights":     lights,
+				"position":   []float64{ch.Position.X, ch.Position.Y, ch.Position.Z},
 			})
 		}
 		result = append(result, map[string]any{
@@ -250,6 +268,30 @@ func channelMapFromConfig(cfg entConfig, entIDMap map[string]string) map[string]
 		}
 	}
 	return result
+}
+
+// segmentID es el id virtual de un segmento de una luz multi-canal ("7#2"). El
+// frontend lo trata como una luz más (posición, brillo máximo, color propio).
+func segmentID(v1 string, k int) string { return fmt.Sprintf("%s#%d", v1, k) }
+
+// baseLightID devuelve el id v1 real de un id que puede ser un segmento.
+func baseLightID(id string) string {
+	base, _, _ := strings.Cut(id, "#")
+	return base
+}
+
+// segmentChannels mapea "7#k" → canal para las luces con más de un canal.
+func segmentChannels(base map[string][]byte) map[string]byte {
+	out := make(map[string]byte)
+	for v1, chs := range base {
+		if len(chs) < 2 {
+			continue
+		}
+		for k, ch := range chs {
+			out[segmentID(v1, k)] = ch
+		}
+	}
+	return out
 }
 
 // buildChannelMap construye el mapa v1 light ID → channel IDs para una config dada.
@@ -362,6 +404,7 @@ func startEntertainmentStreaming(configID string) error {
 	ent.conn = conn
 	ent.configID = configID
 	ent.channelMap = channelMap
+	ent.segMap = segmentChannels(channelMap)
 	ent.colorCh = make(chan []chanColor, 1)
 	ent.seq = 0
 	ent.done = make(chan struct{})
@@ -402,6 +445,7 @@ func teardownEntertainment(sendStop bool, lostReason string) {
 	ent.conn = nil
 	ent.configID = ""
 	ent.channelMap = nil
+	ent.segMap = nil
 	ent.colorCh = nil
 	ent.done = nil
 	ent.yielded = lostReason != "" && conn != nil
@@ -712,6 +756,7 @@ func pushToEntertainment(lights []lightCmd) bool {
 	ent.mu.Lock()
 	active := ent.conn != nil
 	chMap := ent.channelMap
+	segMap := ent.segMap
 	colorCh := ent.colorCh
 	ent.mu.Unlock()
 
@@ -722,8 +767,14 @@ func pushToEntertainment(lights []lightCmd) bool {
 	colors := make([]chanColor, 0, len(lights))
 	globalBri := getBri()
 	for _, l := range lights {
-		chIDs, ok := chMap[l.ID]
-		if !ok {
+		// Un id de segmento ("7#2") apunta a un solo canal; un id de luz
+		// completa, a todos los suyos.
+		var chIDs []byte
+		if ch, isSeg := segMap[l.ID]; isSeg {
+			chIDs = []byte{ch}
+		} else if all, ok := chMap[l.ID]; ok {
+			chIDs = all
+		} else {
 			continue
 		}
 		effBri := globalBri

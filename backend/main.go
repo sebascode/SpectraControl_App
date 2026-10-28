@@ -665,8 +665,16 @@ func sendColorUpdate(u colorUpdate) {
 		if entertainmentYielded() {
 			return
 		}
+		// Sin stream DTLS no se puede direccionar un segmento: los ids "7#k"
+		// colapsan a su luz real y gana el primer color recibido.
+		seen := make(map[string]bool, len(u.lights))
 		var wg sync.WaitGroup
 		for _, l := range u.lights {
+			l.ID = baseLightID(l.ID)
+			if seen[l.ID] {
+				continue
+			}
+			seen[l.ID] = true
 			wg.Add(1)
 			go func(l lightCmd) {
 				defer wg.Done()

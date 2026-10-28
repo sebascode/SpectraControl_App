@@ -3801,7 +3801,21 @@
                     return {};
                 }
             }
+            // Una luz multi-canal (Gradient Lightstrip) llega como segmentos
+            // con id "7#0", "7#1"… Para el bridge y los nombres cuenta la luz
+            // real; solo posición y color son por segmento.
+            function baseLightId(id) {
+                return String(id).split("#")[0];
+            }
+            function lightLabel(id) {
+                const m = String(id).match(/^(.+)#(\d+)$/);
+                const l = lights.find((x) => x.id === baseLightId(id));
+                const name = l ? l.name : baseLightId(id);
+                return m ? `${name} · ${+m[2] + 1}` : name;
+            }
+
             function getLightMaxBri(id) {
+                id = baseLightId(id);
                 const map = loadLightMaxBri();
                 const v = parseInt(map[id], 10);
                 if (isNaN(v) || v < 1 || v > 255) return 255;
@@ -3833,6 +3847,25 @@
                 localStorage.setItem(POSITIONS_KEY, JSON.stringify(map));
             }
 
+            // Posición inicial de un segmento a partir de la posición del canal
+            // en el área de entretenimiento (x,z en -1..1): la tira nace
+            // repartida como está montada, no apilada en la grilla.
+            function segmentSeed(id) {
+                if (!String(id).includes("#")) return null;
+                for (const cfg of entConfigs) {
+                    const ch = cfg.channels.find((c) => c.lights.includes(id));
+                    if (ch && Array.isArray(ch.position)) {
+                        const [x, , z] = ch.position;
+                        const clamp = (v) => Math.min(1, Math.max(0, v));
+                        return {
+                            x: snap01(clamp((x + 1) / 2), SNAP_COLS),
+                            y: snap01(clamp((1 - z) / 2), SNAP_ROWS),
+                        };
+                    }
+                }
+                return null;
+            }
+
             // Seed defaults using the legacy grid formula so first-time layouts feel familiar.
             function ensurePositionsFor(lightIds) {
                 const map = loadLightPositions();
@@ -3842,6 +3875,12 @@
                 const rows = Math.ceil(n / cols);
                 lightIds.forEach((id, idx) => {
                     if (map[id]) return;
+                    const seed = segmentSeed(id);
+                    if (seed) {
+                        map[id] = seed;
+                        dirty = true;
+                        return;
+                    }
                     const col = idx % cols;
                     const row = Math.floor(idx / cols);
                     map[id] = {
@@ -3882,7 +3921,7 @@
                 // Si la lista de luces está vacía o incompleta (p. ej. el bridge
                 // no respondió al arrancar), recargarla para mostrar nombres y
                 // no caer al id numérico.
-                if (ids.some((id) => !lights.some((l) => l.id === id))) {
+                if (ids.some((id) => !lights.some((l) => l.id === baseLightId(id)))) {
                     try {
                         await loadLights();
                     } catch (e) {
@@ -3904,12 +3943,11 @@
                     wrap.innerHTML = "";
                     return;
                 }
-                const lightById = Object.fromEntries(
-                    lights.map((l) => [l.id, l]),
-                );
-                wrap.innerHTML = lightIds
+                // Un solo slider por luz real: los segmentos comparten tope.
+                const capIds = [...new Set(lightIds.map(baseLightId))];
+                wrap.innerHTML = capIds
                     .map((id) => {
-                        const name = lightById[id] ? lightById[id].name : id;
+                        const name = lightLabel(id);
                         const pct = briToPct(getLightMaxBri(id));
                         return `
 <div style="display:flex;align-items:center;gap:10px">
@@ -3939,17 +3977,17 @@
                     return;
                 }
                 const positions = ensurePositionsFor(lightIds);
-                const lightById = Object.fromEntries(
-                    lights.map((l) => [l.id, l]),
-                );
                 monitor.innerHTML = lightIds
                     .map((id) => {
                         const p = positions[id] || { x: 0.5, y: 0.5 };
-                        const name = lightById[id] ? lightById[id].name : id;
-                        const initials = (name.match(/\b\w/g) || ["·"])
-                            .slice(0, 2)
-                            .join("")
-                            .toUpperCase();
+                        const name = lightLabel(id);
+                        const seg = String(id).match(/#(\d+)$/);
+                        const initials = seg
+                            ? String(+seg[1] + 1)
+                            : (name.match(/\b\w/g) || ["·"])
+                                  .slice(0, 2)
+                                  .join("")
+                                  .toUpperCase();
                         return `<div class="layout-chip" data-id="${id}" title="${name}"
                         style="position:absolute;left:${p.x * 100}%;top:${p.y * 100}%;transform:translate(-50%,-50%);
                                width:34px;height:34px;border-radius:50%;
@@ -4020,6 +4058,7 @@
             // Hace parpadear la luz ~3 s con el alert nativo de Hue.
             const identifyTimers = {};
             async function identifyLight(id) {
+                id = baseLightId(id);
                 const put = (alert) =>
                     fetch(`${API}/api/lights/${id}/state`, {
                         method: "PUT",
@@ -5087,7 +5126,7 @@
                 const ids = lightsForZone(zoneID);
                 if (!ids.length) return;
                 await Promise.all(
-                    ids.map((id) =>
+                    [...new Set(ids.map(baseLightId))].map((id) =>
                         fetch(`${API}/api/lights/${id}/state`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
@@ -5673,7 +5712,7 @@
   <span class="zone-card-icon">${icon}</span>
   <div>
     <div class="zone-card-name">${cfg.name}</div>
-    <div class="zone-card-meta">${lightIds.length} ${lightIds.length !== 1 ? "luces" : "luz"} · ${cfg.channels.length} canales</div>
+    <div class="zone-card-meta">${new Set(lightIds.map(baseLightId)).size} ${new Set(lightIds.map(baseLightId)).size !== 1 ? "luces" : "luz"} · ${cfg.channels.length} canales</div>
   </div>
   <div class="zone-card-status">${statusText}</div>
 </div>`;
