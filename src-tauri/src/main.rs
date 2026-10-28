@@ -5,6 +5,7 @@
 // and kills it on window close.
 
 mod autostart;
+mod fonts;
 mod notifications;
 mod runtime;
 
@@ -97,6 +98,38 @@ static CAPTURE: OnceLock<CaptureState> = OnceLock::new();
 // Se inicializa en setup() con `app_config_dir/screencast_restore_token`. Si
 // nunca se inicializó (camino de tests) los helpers no-opean.
 static TOKEN_FILE: OnceLock<PathBuf> = OnceLock::new();
+
+// Marcador "iniciar minimizado". El setup de Rust corre antes de que el
+// frontend cargue (no puede leer su localStorage), así que la preferencia se
+// persiste como la existencia de este archivo en el config dir.
+static START_MINIMIZED_FILE: OnceLock<PathBuf> = OnceLock::new();
+
+fn start_minimized_enabled() -> bool {
+    START_MINIMIZED_FILE.get().is_some_and(|p| p.exists())
+}
+
+#[tauri::command]
+fn get_start_minimized() -> bool {
+    start_minimized_enabled()
+}
+
+#[tauri::command]
+fn set_start_minimized(on: bool) -> Result<(), String> {
+    let Some(path) = START_MINIMIZED_FILE.get() else {
+        return Err("config dir not available".into());
+    };
+    if on {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(path, "1").map_err(|e| e.to_string())
+    } else {
+        match fs::remove_file(path) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+            _ => Ok(()),
+        }
+    }
+}
 
 fn load_restore_token() -> Option<String> {
     let path = TOKEN_FILE.get()?;
@@ -611,16 +644,19 @@ fn set_remember_monitor(on: bool, state: tauri::State<'_, RememberMonitor>) {
 // helper i18n del frontend).
 struct TrayMenuItems {
     show: MenuItem<tauri::Wry>,
+    lights_off: MenuItem<tauri::Wry>,
     quit: MenuItem<tauri::Wry>,
 }
 
 #[tauri::command]
 fn set_tray_menu_labels(
     show: String,
+    lights_off: String,
     quit: String,
     items: tauri::State<'_, TrayMenuItems>,
 ) -> Result<(), String> {
     items.show.set_text(show).map_err(|e| e.to_string())?;
+    items.lights_off.set_text(lights_off).map_err(|e| e.to_string())?;
     items.quit.set_text(quit).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -761,6 +797,7 @@ fn cleanup_children(app: &tauri::AppHandle) {
 
 fn main() {
     setup_logger();
+    fonts::guard_colrv1();
     // Flathub no permite auto-update: el repo maneja el ciclo. Saltamos el
     // registro del plugin para que el frontend ni siquiera vea el namespace
     // `__TAURI__.updater` y el botón de la UI se esconda solo.
@@ -793,6 +830,7 @@ fn main() {
             // command funcione aunque la captura nunca se haya inicializado.
             if let Ok(dir) = app.path().app_config_dir() {
                 let _ = TOKEN_FILE.set(dir.join("screencast_restore_token"));
+                let _ = START_MINIMIZED_FILE.set(dir.join("start_minimized"));
             } else {
                 warn!("[capture] app_config_dir no resoluble; restore token deshabilitado");
             }
@@ -832,9 +870,17 @@ fn main() {
             // los placeholders quedan en español por si JS no llega a llamar.
             let show_item = MenuItem::with_id(app, "show", "Mostrar", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let lights_off_item = MenuItem::with_id(
+                app,
+                "lights_off",
+                "Apagar todas las luces",
+                true,
+                None::<&str>,
+            )?;
+            let menu = Menu::with_items(app, &[&show_item, &lights_off_item, &quit_item])?;
             app.manage(TrayMenuItems {
                 show: show_item.clone(),
+                lights_off: lights_off_item.clone(),
                 quit: quit_item.clone(),
             });
 
@@ -853,6 +899,11 @@ fn main() {
                         if let Some(window) = app.get_webview_window("main") {
                             present_main_window(&window);
                         }
+                    }
+                    "lights_off" => {
+                        // El frontend sigue vivo con la ventana oculta; él
+                        // detiene sync/escenas y habla con el backend.
+                        let _ = app.emit("spectra:tray-lights-off", ());
                     }
                     "quit" => {
                         request_graceful_quit(app);
@@ -885,7 +936,8 @@ fn main() {
             // primer show() disparado desde el tray ocurre sobre una surface
             // que nunca se mapeó y Mutter no la presenta — la ventana queda
             // invisible aunque Tauri reporte éxito.
-            let autostarted = std::env::args().any(|a| a == "--autostart");
+            let autostarted = std::env::args().any(|a| a == "--autostart")
+                || start_minimized_enabled();
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 if autostarted {
@@ -923,6 +975,8 @@ fn main() {
             sample_audio_bins,
             set_tray_menu_labels,
             set_quit_on_close,
+            get_start_minimized,
+            set_start_minimized,
             set_remember_monitor,
             write_text_file,
             notifications::notify_native,
