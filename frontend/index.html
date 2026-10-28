@@ -1725,6 +1725,10 @@
             </div>
 
             <div class="main">
+                <div class="update-banner" id="relink-banner" hidden>
+                    <span class="update-banner-text" data-i18n="bridge.relinkBanner"></span>
+                    <button onclick="relinkBridge()" data-i18n="bridge.relink"></button>
+                </div>
                 <div class="update-banner" id="update-banner" hidden>
                     <span class="update-banner-text" id="update-banner-text"></span>
                     <button
@@ -3181,19 +3185,61 @@
                     await Promise.all([loadLights(), loadGroups()]);
                     statusEl.textContent = t("status.sync");
                     statusEl.classList.add("connected");
+                    document.getElementById("relink-banner").hidden = true;
+                    lastLoadOk = Date.now();
+                    loadRetryDelay = LOAD_RETRY_MIN_MS;
                     connectStateWs();
                 } catch (e) {
                     statusEl.textContent = t("status.error");
                     statusEl.classList.remove("connected");
-                    toast(t("toasts.bridgeConnect"), "error");
+                    if (e.status === 401) {
+                        // La key fue rechazada: reintentar no sirve, hay que
+                        // re-vincular. El sync en curso (si hay) no se toca.
+                        document.getElementById("relink-banner").hidden = false;
+                    } else {
+                        toast(t("toasts.bridgeConnect"), "error");
+                        scheduleLoadRetry();
+                    }
                 }
                 await loadSyncStatus();
                 loadEntertainmentConfigs();
             }
 
+            // Si el bridge no contesta (boot en frío, cambio de IP, corte de
+            // red) reintentamos con backoff en vez de dejar la UI vacía hasta
+            // que el usuario cierre sesión. También refrescamos al volver a
+            // mostrar la ventana: la app pasa semanas en la bandeja y el
+            // estado cargado al arrancar queda viejo.
+            const LOAD_RETRY_MIN_MS = 5_000;
+            const LOAD_RETRY_MAX_MS = 60_000;
+            const LOAD_STALE_MS = 10 * 60_000;
+            let loadRetryDelay = LOAD_RETRY_MIN_MS;
+            let loadRetryTimer = null;
+            let lastLoadOk = 0;
+
+            function scheduleLoadRetry() {
+                if (loadRetryTimer) return;
+                loadRetryTimer = setTimeout(() => {
+                    loadRetryTimer = null;
+                    loadAll();
+                }, loadRetryDelay);
+                loadRetryDelay = Math.min(loadRetryDelay * 2, LOAD_RETRY_MAX_MS);
+            }
+
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState !== "visible") return;
+                if (Date.now() - lastLoadOk > LOAD_STALE_MS) loadAll();
+            });
+
+            function relinkBridge() {
+                document.getElementById("relink-banner").hidden = true;
+                showSetup();
+            }
+
             // ── LIGHTS ──
             async function loadLights() {
                 const r = await fetch(`${API}/api/lights`);
+                if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status });
                 const data = await r.json();
                 lights = data.lights || [];
                 renderLights();
@@ -3266,6 +3312,7 @@
             // ── GROUPS / ROOMS ──
             async function loadGroups() {
                 const r = await fetch(`${API}/api/groups`);
+                if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status });
                 const data = await r.json();
                 // Filtra solo las áreas de entretenimiento (protocolo Hue Sync, no son habitaciones)
                 groups = (data.groups || []).filter(

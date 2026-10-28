@@ -20,6 +20,9 @@
   "status.sync": "Sync",
   "status.error": "Error",
 
+  "bridge.relinkBanner": "La app perdió acceso al bridge. Vinculalo de nuevo para recuperar el control.",
+  "bridge.relink": "Vincular de nuevo",
+
   "window.minimize": "Minimizar",
   "window.close": "Cerrar",
 
