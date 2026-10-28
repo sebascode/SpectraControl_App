@@ -11,6 +11,8 @@
     "updater:default",
     "process:allow-exit",
     "dialog:allow-save",
+    "dialog:allow-confirm",
+    "dialog:allow-message",
     "autostart:default"
   ]
 }
