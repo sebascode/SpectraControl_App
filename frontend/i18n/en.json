@@ -20,6 +20,15 @@
   "status.sync": "Sync",
   "status.error": "Error",
 
+  "bridge.relinkBanner": "The app lost access to the bridge. Link it again to regain control.",
+  "bridge.relink": "Link again",
+
+  "lights.quick": "Quick actions",
+  "lights.quickApply": "Apply to all",
+  "lights.quickOff": "Turn all off",
+  "tray.lightsOff": "Turn all lights off",
+  "toasts.allLightsOff": "🌙 All lights off",
+
   "window.minimize": "Minimize",
   "window.close": "Close",
 
@@ -123,6 +132,7 @@
   "settings.notifications": "System notifications",
   "settings.quitOnClose": "Close button quits the app (instead of minimizing to tray)",
   "settings.lightsOffOnClose": "Turn off lights on close (when syncing)",
+  "settings.startMinimized": "Start minimized to tray",
   "settings.autostart": "Start with system",
   "settings.autostartSync": "Start Screen Sync on launch",
   "settings.logout": "Sign out of bridge",
@@ -195,6 +205,7 @@
   "toasts.logoutError": "Sign-out failed: {err}",
   "toasts.sceneAudioTauriOnly": "Sound-reactive mode needs the desktop app (native audio capture).",
   "toasts.otherSyncBroken": "Other entertainment syncs stopped: {count}",
+  "toasts.syncTakenOver": "Another device took over the lights. Sync stopped here.",
   "toasts.noOtherSync": "No other entertainment syncs are active",
   "foreignSync.title": "Sync active on another entertainment zone",
   "foreignSync.subtitleOne": "{name}",
