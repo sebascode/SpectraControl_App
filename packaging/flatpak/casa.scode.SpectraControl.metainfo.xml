@@ -91,6 +91,20 @@
   </branding>
 
   <releases>
+    <release version="0.6.0" date="2026-10-28">
+      <description>
+        <p>New:</p>
+        <ul>
+          <li>Hue Gradient Lightstrip support: each segment of the strip appears in the zone layout editor and shows its own color during Screen and Audio Sync.</li>
+        </ul>
+        <p>Fixes:</p>
+        <ul>
+          <li>Screen Sync recovers by itself when the display wakes from idle or lock instead of freezing the lights.</li>
+          <li>A stale saved monitor selection no longer makes capture unrecoverable.</li>
+          <li>Updated dependencies, including security fixes for the networking stack.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.0" date="2026-10-27">
       <description>
         <p>New:</p>
