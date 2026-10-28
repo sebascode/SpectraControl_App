@@ -91,6 +91,20 @@
   </branding>
 
   <releases>
+    <release version="0.5.0" date="2026-10-27">
+      <description>
+        <p>New:</p>
+        <ul>
+          <li>Quick actions on the Lights page and in the tray menu: set every light to one color or turn them all off.</li>
+          <li>New setting to start minimized to the tray, also for manual launches.</li>
+        </ul>
+        <p>Fixes:</p>
+        <ul>
+          <li>The app no longer ends up showing no lights after weeks in the tray: failed loads are retried, stale data refreshes when the window is shown, and a banner offers to re-link the bridge when its key is rejected.</li>
+          <li>Correct Spanish plural ("luz/luces") in room and zone lists.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.3" date="2026-10-06">
       <description>
         <p>Improvements:</p>

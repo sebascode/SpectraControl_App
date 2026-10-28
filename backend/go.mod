@@ -3,7 +3,7 @@ module spectracontrol
 go 1.26.0
 
 require (
-	github.com/go-chi/chi/v5 v5.1.0
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/gorilla/websocket v1.5.3
 )
 

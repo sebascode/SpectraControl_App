@@ -20,6 +20,15 @@
   "status.sync": "Sync",
   "status.error": "Error",
 
+  "bridge.relinkBanner": "La app perdió acceso al bridge. Vinculalo de nuevo para recuperar el control.",
+  "bridge.relink": "Vincular de nuevo",
+
+  "lights.quick": "Acciones rápidas",
+  "lights.quickApply": "Aplicar a todas",
+  "lights.quickOff": "Apagar todas",
+  "tray.lightsOff": "Apagar todas las luces",
+  "toasts.allLightsOff": "🌙 Todas las luces apagadas",
+
   "window.minimize": "Minimizar",
   "window.close": "Cerrar",
 
@@ -123,6 +132,7 @@
   "settings.notifications": "Notificaciones del sistema",
   "settings.quitOnClose": "Al cerrar, salir de la app (en vez de minimizar al tray)",
   "settings.lightsOffOnClose": "Apagar las luces al cerrar (si está sincronizando)",
+  "settings.startMinimized": "Iniciar minimizado en la bandeja",
   "settings.autostart": "Iniciar con el sistema",
   "settings.autostartSync": "Iniciar Screen Sync al arrancar",
   "settings.logout": "Cerrar sesión del bridge",
