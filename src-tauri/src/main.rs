@@ -294,6 +294,10 @@ async fn ensure_capture_initialized(remember_monitor: bool) -> Result<(), String
         "-q",
         "pipewiresrc",
         &format!("path={node_id}"),
+        // El portal solo entrega frames cuando cambia la pantalla; sin esto
+        // una pantalla estática parece una captura trabada y el detector de
+        // stall reinicia la sesión (y el diálogo de monitor reaparece).
+        "keepalive-time=200",
         "!",
         "videorate",
         "!",

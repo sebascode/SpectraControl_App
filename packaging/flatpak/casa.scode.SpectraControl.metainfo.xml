@@ -91,6 +91,14 @@
   </branding>
 
   <releases>
+    <release version="0.6.1" date="2026-10-30">
+      <description>
+        <p>Fixes:</p>
+        <ul>
+          <li>Screen Sync no longer asks which screen to share every couple of minutes when the screen is idle.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.0" date="2026-10-28">
       <description>
         <p>New:</p>
