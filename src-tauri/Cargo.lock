@@ -3444,7 +3444,7 @@ dependencies = [
 
 [[package]]
 name = "spectra-control"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ashpd",
  "env_logger",
