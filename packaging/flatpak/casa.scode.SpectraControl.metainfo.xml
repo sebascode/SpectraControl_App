@@ -91,6 +91,14 @@
   </branding>
 
   <releases>
+    <release version="0.6.2" date="2026-11-02">
+      <description>
+        <p>Fixes:</p>
+        <ul>
+          <li>Sync no longer gets stuck as "syncing" in the Hue Sync phone app after the stream drops; the area is released and a new sync can start without stopping it from the phone.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.1" date="2026-10-30">
       <description>
         <p>Fixes:</p>
