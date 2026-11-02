@@ -215,3 +215,22 @@ func TestChannelMapFromConfigGradientStrip(t *testing.T) {
 		t.Errorf("baseLightID broken")
 	}
 }
+
+func TestEntOrphaned(t *testing.T) {
+	cases := []struct {
+		name                      string
+		status, snapshot, current string
+		want                      bool
+	}{
+		{"zombie, same streamer", "active", "app-a", "app-a", true},
+		{"zombie, streamer cleared", "active", "app-a", "", true},
+		{"dropped before snapshot", "active", "", "app-a", true},
+		{"other client took it", "active", "app-a", "app-b", false},
+		{"already inactive", "inactive", "app-a", "", false},
+	}
+	for _, c := range cases {
+		if got := entOrphaned(c.status, c.snapshot, c.current); got != c.want {
+			t.Errorf("%s: got %v want %v", c.name, got, c.want)
+		}
+	}
+}

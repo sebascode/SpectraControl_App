@@ -159,6 +159,7 @@ type entState struct {
 	seq        byte
 	done       chan struct{} // se cierra al terminar la sesión (frena el watcher)
 	yielded    bool          // true si perdimos el stream y no debemos reintentar por HTTP
+	streamer   string        // active_streamer.rid observado cuando el área era nuestra
 }
 
 var ent entState
@@ -326,6 +327,7 @@ func startEntertainmentStreaming(configID string) error {
 		return fmt.Errorf("streaming ya activo en config %s", ent.configID)
 	}
 	ent.yielded = false
+	ent.streamer = ""
 
 	channelMap, err := buildChannelMap(configID)
 	if err != nil {
@@ -350,25 +352,6 @@ func startEntertainmentStreaming(configID string) error {
 	}
 	wgOn.Wait()
 
-	// Forzar cierre de cualquier sesión existente (ej. Hue Sync Box en modo fijo).
-	// Si hay otro cliente con DTLS abierto sobreescribirá nuestros colores.
-	// Ignoramos el error — el área puede no estar activa aún.
-	clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
-	time.Sleep(150 * time.Millisecond)
-
-	// Activar modo streaming en el bridge (CLIP v2)
-	if _, err := clipDo(http.MethodPut,
-		"entertainment_configuration/"+configID,
-		map[string]string{"action": "start"},
-	); err != nil {
-		return fmt.Errorf("activar streaming: %w", err)
-	}
-	logInfof("[ent] modo streaming activo — config %s, canales: %v", configID, channelMap)
-
-	// Abrir conexión DTLS PSK al bridge:2100
-	// CRÍTICO: en v2 la PSK identity es el hue-application-id (NO el api_key).
-	// Antes el bridge aceptaba el handshake con api_key y mostraba "sincronizado",
-	// pero descartaba todos los frames v2 silenciosamente.
 	appID, err := fetchApplicationID()
 	if err != nil {
 		return fmt.Errorf("application_id: %w", err)
@@ -393,12 +376,48 @@ func startEntertainmentStreaming(configID string) error {
 		CipherSuites:    []dtls.CipherSuiteID{dtls.TLS_PSK_WITH_AES_128_GCM_SHA256},
 	}
 
-	conn, err := dtls.Dial("udp4", addr, dtlsCfg)
-	if err != nil {
-		logInfof("[ent] DTLS dial fallido a %s:2100 — appID=%s err=%v", ip, appID, err)
+	// Dos intentos: si el bridge quedó con el área (propia u otra) en estado
+	// zombie —típico tras perder el stream, la app Hue Sync del teléfono la ve
+	// "sincronizando"— el primer start/dial falla. Entre intentos se detiene
+	// el área propia y cualquier otra activa, sin exigir el toggle de la UI.
+	var conn *dtls.Conn
+	for attempt := 1; ; attempt++ {
+		// Forzar cierre de cualquier sesión existente (ej. Hue Sync Box en modo fijo).
+		// Si hay otro cliente con DTLS abierto sobreescribirá nuestros colores.
+		// Ignoramos el error — el área puede no estar activa aún.
+		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
+		if attempt > 1 {
+			breakOtherActiveEntertainment(configID) //nolint:errcheck
+		}
+		time.Sleep(150 * time.Millisecond)
+
+		// Activar modo streaming en el bridge (CLIP v2)
+		_, err = clipDo(http.MethodPut,
+			"entertainment_configuration/"+configID,
+			map[string]string{"action": "start"},
+		)
+		if err != nil {
+			err = fmt.Errorf("activar streaming: %w", err)
+		} else {
+			logInfof("[ent] modo streaming activo — config %s, canales: %v", configID, channelMap)
+			// Abrir conexión DTLS PSK al bridge:2100
+			// CRÍTICO: en v2 la PSK identity es el hue-application-id (NO el api_key).
+			// Antes el bridge aceptaba el handshake con api_key y mostraba "sincronizado",
+			// pero descartaba todos los frames v2 silenciosamente.
+			conn, err = dtls.Dial("udp4", addr, dtlsCfg)
+			if err == nil {
+				break
+			}
+			logInfof("[ent] DTLS dial fallido a %s:2100 — appID=%s err=%v", ip, appID, err)
+			err = fmt.Errorf("DTLS dial: %w", err)
+		}
 		// Revertir streaming mode en el bridge
 		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
-		return fmt.Errorf("DTLS dial: %w", err)
+		if attempt >= 2 {
+			return err
+		}
+		logWarnf("[ent] intento %d falló (%v) — liberando el bridge y reintentando", attempt, err)
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	ent.conn = conn
@@ -466,6 +485,11 @@ func teardownEntertainment(sendStop bool, lostReason string) {
 	if sendStop {
 		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
 		logInfof("[ent] streaming detenido")
+		if lostReason == "" {
+			return
+		}
+		logWarnf("[ent] stream perdido (%s) — área liberada en el bridge", lostReason)
+		bridgeStateHub.broadcast(stateEvent{Type: "ent_lost", ID: configID, Reason: lostReason})
 		return
 	}
 	logWarnf("[ent] stream perdido (%s) — soltando control sin detener al nuevo dueño", lostReason)
@@ -478,6 +502,16 @@ func entertainmentYielded() bool {
 	ent.mu.Lock()
 	defer ent.mu.Unlock()
 	return ent.yielded
+}
+
+// entOrphaned indica que, tras perder nuestra conexión DTLS, el área sigue
+// activa en el bridge y no la tiene otro cliente: nadie la está alimentando
+// pero la app Hue Sync la muestra "sincronizando" y bloquea un nuevo start.
+func entOrphaned(status, snapshot, current string) bool {
+	if status != "active" {
+		return false
+	}
+	return snapshot == "" || current == "" || current == snapshot
 }
 
 // entTakenOver decide si el estado observado del área indica que otro cliente
@@ -533,6 +567,11 @@ func watchEntertainmentSession(done <-chan struct{}, configID string, conn net.C
 		current := cfg.ActiveStreamer.RID
 		if snapshot == "" && cfg.Status == "active" {
 			snapshot = current
+			ent.mu.Lock()
+			if ent.done == done {
+				ent.streamer = snapshot
+			}
+			ent.mu.Unlock()
 		}
 		if entTakenOver(cfg.Status, snapshot, current) {
 			strikes++
@@ -551,11 +590,33 @@ func watchEntertainmentSession(done <-chan struct{}, configID string, conn net.C
 func releaseIfCurrent(done <-chan struct{}, reason string) {
 	ent.mu.Lock()
 	current := ent.done
+	configID := ent.configID
+	snapshot := ent.streamer
 	ent.mu.Unlock()
 	if current == nil || current != done {
 		return
 	}
-	teardownEntertainment(false, reason)
+	// Si no fue otro cliente quien nos sacó (DTLS caído, error de escritura),
+	// el bridge deja el área activa sin dueño: hay que detenerla nosotros.
+	stop := false
+	if reason != "taken-over" {
+		stop = areaOrphaned(configID, snapshot)
+	}
+	teardownEntertainment(stop, reason)
+}
+
+func areaOrphaned(configID, snapshot string) bool {
+	data, err := clipDo(http.MethodGet, "entertainment_configuration/"+configID, nil)
+	if err != nil {
+		return false
+	}
+	var resp struct {
+		Data []entConfig `json:"data"`
+	}
+	if json.Unmarshal(data, &resp) != nil || len(resp.Data) == 0 {
+		return false
+	}
+	return entOrphaned(resp.Data[0].Status, snapshot, resp.Data[0].ActiveStreamer.RID)
 }
 
 // breakOtherActiveEntertainment cierra cualquier sesión de entertainment activa
