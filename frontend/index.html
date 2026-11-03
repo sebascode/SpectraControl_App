@@ -5731,12 +5731,47 @@
             let foreignSyncs = [];
             let foreignSyncPollTimer = null;
 
+            // El backend puede conservar su DTLS cuando el frontend ya no tiene
+            // un sync corriendo (captura caída, recarga de la UI). Ese stream
+            // huérfano bloquea starts nuevos y hace que la zona se vea "Activa".
+            // Si persiste ORPHAN_POLLS lecturas seguidas sin sync local ni
+            // arranque en curso, se detiene y se libera la zona.
+            const ORPHAN_POLLS = 3;
+            let orphanStrikes = 0;
+
+            async function reapOrphanedOwnStream(backendActiveId) {
+                const busy =
+                    syncRunning ||
+                    audioSyncRunning ||
+                    loadingZoneID !== null;
+                if (!backendActiveId || busy) {
+                    orphanStrikes = 0;
+                    return;
+                }
+                if (++orphanStrikes < ORPHAN_POLLS) return;
+                orphanStrikes = 0;
+                console.warn("[sync] stream propio huérfano — liberando");
+                try {
+                    await fetch(`${API}/api/entertainment/stop`, {
+                        method: "POST",
+                    });
+                } catch (_) {
+                    return;
+                }
+                updateEntBadge(false);
+                activeZoneID = null;
+                clearActiveZoneGlow();
+                updateSyncUI();
+                renderZones();
+            }
+
             async function refreshForeignSyncs() {
                 try {
                     const r = await fetch(`${API}/api/entertainment`);
                     if (!r.ok) return;
                     const data = await r.json();
                     const configs = data.configs || [];
+                    await reapOrphanedOwnStream(data.active_id);
                     foreignSyncs = configs.filter(
                         (c) =>
                             c.status === "active" && c.id !== activeZoneID,
