@@ -5270,7 +5270,7 @@
                     const r = await fetch(`${API}/api/entertainment/start`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ config_id: zoneID }),
+                        body: JSON.stringify({ config_id: zoneID, break_others: breakOthersOnStartEnabled() }),
                     });
                     if (r.ok) {
                         entOk = true;
@@ -5431,7 +5431,7 @@
                     const r = await fetch(`${API}/api/entertainment/start`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ config_id: zoneID }),
+                        body: JSON.stringify({ config_id: zoneID, break_others: breakOthersOnStartEnabled() }),
                     });
                     if (r.ok) {
                         entOk = true;
@@ -6001,6 +6001,8 @@
                                     },
                                     body: JSON.stringify({
                                         config_id: configID,
+                                        break_others:
+                                            breakOthersOnStartEnabled(),
                                     }),
                                 },
                             );
@@ -6563,7 +6565,7 @@
                     const r = await fetch(`${API}/api/entertainment/start`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ config_id: configID }),
+                        body: JSON.stringify({ config_id: configID, break_others: breakOthersOnStartEnabled() }),
                     });
                     const data = await r.json();
                     if (!r.ok) {
