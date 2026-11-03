@@ -91,6 +91,14 @@
   </branding>
 
   <releases>
+    <release version="0.6.3" date="2026-11-03">
+      <description>
+        <p>Fixes:</p>
+        <ul>
+          <li>Starting a sync no longer fails with "streaming already active" when a previous session was left open; the stale session is replaced, and the "Stop" banner button now releases it.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.2" date="2026-11-02">
       <description>
         <p>Fixes:</p>

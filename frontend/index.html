@@ -5793,6 +5793,15 @@
                 const btn = document.getElementById("foreign-sync-stop-btn");
                 if (btn) btn.disabled = true;
                 try {
+                    // Sin sync local corriendo, un stream propio en el backend
+                    // está huérfano (break-others lo excluye): soltarlo también.
+                    if (!syncRunning) {
+                        await fetch(`${API}/api/entertainment/stop`, {
+                            method: "POST",
+                        }).catch(() => {});
+                        updateEntBadge(false);
+                        activeZoneID = null;
+                    }
                     await breakOtherSyncs(false);
                     foreignSyncs = [];
                     renderForeignSyncBanner();

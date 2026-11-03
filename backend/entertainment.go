@@ -320,6 +320,18 @@ func buildChannelMap(configID string) (map[string][]byte, error) {
 // ── START / STOP ─────────────────────────────────────────────────────────────
 
 func startEntertainmentStreaming(configID string) error {
+	// Una sesión propia previa (huérfana: el frontend perdió el sync pero el
+	// backend conservó el DTLS) bloqueaba para siempre todo start nuevo con
+	// "streaming ya activo". Un start explícito la reemplaza.
+	ent.mu.Lock()
+	held := ent.conn != nil
+	heldID := ent.configID
+	ent.mu.Unlock()
+	if held {
+		logWarnf("[ent] sesión previa en %s sigue abierta — reemplazando", heldID)
+		stopEntertainmentStreaming()
+	}
+
 	ent.mu.Lock()
 	defer ent.mu.Unlock()
 
