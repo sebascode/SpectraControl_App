@@ -319,7 +319,19 @@ func buildChannelMap(configID string) (map[string][]byte, error) {
 
 // ── START / STOP ─────────────────────────────────────────────────────────────
 
-func startEntertainmentStreaming(configID string) error {
+func startEntertainmentStreaming(configID string, breakOthers bool) error {
+	// Una sesión propia previa (huérfana: el frontend perdió el sync pero el
+	// backend conservó el DTLS) bloqueaba para siempre todo start nuevo con
+	// "streaming ya activo". Un start explícito la reemplaza.
+	ent.mu.Lock()
+	held := ent.conn != nil
+	heldID := ent.configID
+	ent.mu.Unlock()
+	if held {
+		logWarnf("[ent] sesión previa en %s sigue abierta — reemplazando", heldID)
+		stopEntertainmentStreaming()
+	}
+
 	ent.mu.Lock()
 	defer ent.mu.Unlock()
 
@@ -386,7 +398,7 @@ func startEntertainmentStreaming(configID string) error {
 		// Si hay otro cliente con DTLS abierto sobreescribirá nuestros colores.
 		// Ignoramos el error — el área puede no estar activa aún.
 		clipDo(http.MethodPut, "entertainment_configuration/"+configID, map[string]string{"action": "stop"}) //nolint:errcheck
-		if attempt > 1 {
+		if attempt > 1 && breakOthers {
 			breakOtherActiveEntertainment(configID) //nolint:errcheck
 		}
 		time.Sleep(150 * time.Millisecond)
@@ -924,13 +936,15 @@ func handleStartEntertainment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		ConfigID string `json:"config_id"`
+		ConfigID    string `json:"config_id"`
+		BreakOthers *bool  `json:"break_others"` // ausente = true (ajuste por defecto)
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ConfigID == "" {
 		writeErr(w, http.StatusBadRequest, "Falta config_id")
 		return
 	}
-	if err := startEntertainmentStreaming(body.ConfigID); err != nil {
+	breakOthers := body.BreakOthers == nil || *body.BreakOthers
+	if err := startEntertainmentStreaming(body.ConfigID, breakOthers); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
